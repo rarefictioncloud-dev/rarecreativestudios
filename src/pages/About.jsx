@@ -259,7 +259,7 @@ export default function About() {
           />
           <div className="relative mx-auto w-full max-w-[1440px]">
 
-            <h1 className="max-w-[1100px] text-[clamp(1.7rem,8.4vw,6.7rem)] font-black uppercase leading-[.9] tracking-[-.06em] sm:leading-[.86]">
+            <h1 className="max-w-[1100px] text-[clamp(1.24rem,6.13vw,4.89rem)] font-black uppercase leading-[.9] tracking-[-.06em] sm:leading-[.86]">
               The best PR
               <br />
               isn’t seen.
@@ -296,7 +296,7 @@ export default function About() {
                 </div>
 
                 <div>
-                  <h2 className="text-[clamp(2rem,7vw,6rem)] font-semibold uppercase leading-[.95] tracking-[-.05em]">
+                  <h2 className="text-[clamp(1.46rem,5.11vw,4.38rem)] font-semibold uppercase leading-[.95] tracking-[-.05em]">
                     Visibility is easy.
                     <br />
                     <span className="font-editorial font-normal normal-case italic text-[#0756BD]">
@@ -329,7 +329,7 @@ export default function About() {
           <div className="relative mx-auto max-w-[1440px]">
             <div data-reveal className="rcs-reveal max-w-5xl">
               <p className="text-[11px] font-bold uppercase tracking-[.28em] text-[#6BA8FF]">The strategy hierarchy</p>
-              <h2 className="mt-5 text-[clamp(2rem,7vw,6.6rem)] font-black uppercase leading-[.9] tracking-[-.06em]">
+              <h2 className="mt-5 text-[clamp(1.46rem,5.11vw,4.82rem)] font-black uppercase leading-[.9] tracking-[-.06em]">
                 Start at the top.
                 <br />
                 <span className="font-editorial font-normal normal-case italic text-white/55">
@@ -388,7 +388,7 @@ export default function About() {
               className="rcs-reveal rcs-tilt relative bg-[#E9E8E3] px-5 py-12 text-[#090a0d] shadow-[0_40px_120px_rgba(0,0,0,.55)] sm:px-10 sm:py-16 md:px-16 md:py-24"
             >
               <p className="text-[11px] font-bold uppercase tracking-[.28em] text-[#0756BD]">What we do</p>
-              <h2 className="mt-5 text-[clamp(2rem,7vw,6rem)] font-black uppercase leading-[.92] tracking-[-.06em]">
+              <h2 className="mt-5 text-[clamp(1.46rem,5.11vw,4.38rem)] font-black uppercase leading-[.92] tracking-[-.06em]">
                 One clear
                 <br />
                 <span className="font-editorial font-normal normal-case italic text-[#0756BD]">point of view.</span>
@@ -434,7 +434,7 @@ export default function About() {
               <span aria-hidden="true" className="absolute bottom-0 right-0 hidden h-8 w-8 border-b border-r border-[#C7CDD6]/60 sm:block" />
 
               <p className="text-[11px] font-bold uppercase tracking-[.28em] text-[#C7CDD6]">Creative production</p>
-              <h2 className="mt-5 text-[clamp(2.2rem,8.5vw,7.4rem)] font-black uppercase leading-[.88] tracking-[-.06em]">
+              <h2 className="mt-5 text-[clamp(1.61rem,6.21vw,5.4rem)] font-black uppercase leading-[.88] tracking-[-.06em]">
                 Stories designed
                 <br />
                 <span className="font-editorial font-normal normal-case italic text-[#6BA8FF]">to be felt.</span>
@@ -503,7 +503,7 @@ export default function About() {
                 <div className="min-w-0">
                   <p className="text-[11px] font-bold uppercase tracking-[.28em] text-[#0756BD]">Founder’s message</p>
 
-                  <h2 className="mt-5 text-[clamp(1.9rem,7.4vw,5.6rem)] font-black uppercase leading-[.88] tracking-[-.06em]">
+                  <h2 className="mt-5 text-[clamp(1.39rem,5.4vw,4.09rem)] font-black uppercase leading-[.88] tracking-[-.06em]">
                     Make work
                     <br />
                     <span className="text-black/25">worth remembering.</span>
@@ -538,7 +538,7 @@ export default function About() {
           <div className="mx-auto grid max-w-[1440px] gap-10 lg:grid-cols-[.72fr_1.28fr] lg:gap-20">
             <div data-reveal className="rcs-reveal lg:sticky lg:top-24 lg:self-start">
               <p className="text-[11px] font-bold uppercase tracking-[.28em] text-[#6BA8FF]">Frequently asked questions</p>
-              <h2 className="mt-5 text-[clamp(2rem,7vw,6rem)] font-black uppercase leading-[.9] tracking-[-.06em]">
+              <h2 className="mt-5 text-[clamp(1.46rem,5.11vw,4.38rem)] font-black uppercase leading-[.9] tracking-[-.06em]">
                 The right
                 <br />
                 questions.
@@ -595,7 +595,7 @@ export default function About() {
           />
           <div data-reveal className="rcs-reveal relative mx-auto max-w-[1440px]">
             <p className="text-[11px] font-bold uppercase tracking-[.28em] text-[#6BA8FF]">The next move</p>
-            <h2 className="mt-5 max-w-5xl text-[clamp(2rem,8vw,7.4rem)] font-black uppercase leading-[.88] tracking-[-.06em]">
+            <h2 className="mt-5 max-w-5xl text-[clamp(1.46rem,5.84vw,5.4rem)] font-black uppercase leading-[.88] tracking-[-.06em]">
               Your brand deserves
               <br />
               <span className="font-editorial font-normal normal-case italic text-[#6BA8FF]">a defining moment.</span>
