@@ -1,13 +1,4 @@
-import {
-  Component,
-  lazy,
-  Suspense,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
-
+import { Component, lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -15,14 +6,14 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import HeroFallback from "../components/hero/HeroFallback";
 
 gsap.registerPlugin(ScrollTrigger);
+// Phones: don't re-measure the page every time the browser toolbar shows/hides while scrolling
+ScrollTrigger.config({ ignoreMobileResize: true });
 
 /* ---------- WhatsApp enquiry link ---------- */
 
 const WHATSAPP_NUMBER = "917997658999"; // +91 7997658999
 const WHATSAPP_MESSAGE = "hi , i would like to enquire about rare creative studios";
-const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-  WHATSAPP_MESSAGE
-)}`;
+const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`;
 
 /* ---------- Lazy-load 3D scene ---------- */
 
@@ -33,15 +24,11 @@ const ChessWorld = lazy(() => import("../components/hero/ChessWorld"));
 const hasWebGL = () => {
   try {
     const canvas = document.createElement("canvas");
-
     const context = canvas.getContext("webgl2") || canvas.getContext("webgl");
-
     if (context) {
       const extension = context.getExtension("WEBGL_lose_context");
-
       extension?.loseContext();
     }
-
     return Boolean(window.WebGLRenderingContext);
   } catch {
     return false;
@@ -51,19 +38,14 @@ const hasWebGL = () => {
 /* ---------- Error Boundary ---------- */
 
 class GLBoundary extends Component {
-  state = {
-    failed: false,
-  };
+  state = { failed: false };
 
   static getDerivedStateFromError() {
-    return {
-      failed: true,
-    };
+    return { failed: true };
   }
 
   componentDidCatch(err) {
     console.warn("3D hero disabled, using fallback:", err);
-
     this.props.onFail?.();
   }
 
@@ -78,13 +60,12 @@ class GLBoundary extends Component {
 function ArrowLink({ href, children, className = "" }) {
   const external = /^https?:\/\//.test(href);
 
-  const classes = `group inline-flex items-center gap-4 rounded-full py-1 pr-1 text-base font-semibold tracking-[-0.01em] text-white outline-none focus-visible:ring-2 focus-visible:ring-white/70 md:text-lg ${className}`;
+  const classes = `group inline-flex touch-manipulation items-center gap-4 rounded-full py-1 pr-1 text-base font-semibold tracking-[-0.01em] text-white outline-none transition-transform active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-white/70 md:text-lg ${className}`;
 
   const content = (
     <>
       <span className="relative">
         {children}
-
         <span className="absolute -bottom-1 left-0 h-px w-full origin-left bg-white/40 transition-colors duration-300 group-hover:bg-white" />
       </span>
 
@@ -93,20 +74,8 @@ function ArrowLink({ href, children, className = "" }) {
           aria-hidden="true"
           className="absolute inset-y-0 -left-full w-full -skew-x-12 bg-gradient-to-r from-transparent via-white/45 to-transparent animate-[rcsGlint_4s_ease-in-out_infinite] motion-reduce:animate-none"
         />
-
-        <svg
-          viewBox="0 0 16 16"
-          fill="none"
-          className="relative h-4 w-4"
-          aria-hidden="true"
-        >
-          <path
-            d="M4.5 11.5l7-7M5.5 4.5h6v6"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
+        <svg viewBox="0 0 16 16" fill="none" className="relative h-4 w-4" aria-hidden="true">
+          <path d="M4.5 11.5l7-7M5.5 4.5h6v6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </span>
     </>
@@ -114,12 +83,7 @@ function ArrowLink({ href, children, className = "" }) {
 
   if (external) {
     return (
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={classes}
-      >
+      <a href={href} target="_blank" rel="noopener noreferrer" className={classes}>
         {content}
         <span className="sr-only"> (opens in a new tab)</span>
       </a>
@@ -139,14 +103,10 @@ function Chapter({ side = "left", title, children }) {
   const right = side === "right";
 
   return (
-    <section className="chapter relative flex min-h-[110svh] items-center px-5 sm:px-8 md:px-14">
-      <div
-        className={`relative mx-auto w-full max-w-[1470px] ${
-          right ? "text-right" : ""
-        }`}
-      >
+    <section className="chapter relative flex min-h-[100svh] items-center px-5 sm:px-8 md:min-h-[110svh] md:px-14">
+      <div className={`relative mx-auto w-full max-w-[1470px] ${right ? "text-right" : ""}`}>
         <h2
-          className={`reveal font-editorial drop-shadow-[0_6px_30px_rgba(0,0,0,0.6)] max-w-[13ch] text-[clamp(2.6rem,6.4vw,6.5rem)] leading-[0.98] ${
+          className={`reveal font-editorial max-w-[13ch] text-[clamp(2.6rem,6.4vw,6.5rem)] leading-[0.98] drop-shadow-[0_6px_30px_rgba(0,0,0,0.6)] max-md:drop-shadow-[0_2px_26px_rgba(0,0,0,0.95)] max-md:[text-wrap:balance] ${
             right ? "ml-auto" : ""
           }`}
         >
@@ -154,7 +114,7 @@ function Chapter({ side = "left", title, children }) {
         </h2>
 
         <p
-          className={`reveal mt-6 max-w-md text-base leading-relaxed text-white/80 drop-shadow-[0_2px_16px_rgba(0,0,0,0.8)] md:text-lg ${
+          className={`reveal mt-6 max-w-md text-base leading-relaxed text-white/80 drop-shadow-[0_2px_16px_rgba(0,0,0,0.8)] max-md:text-white/90 max-md:drop-shadow-[0_2px_22px_rgba(0,0,0,1)] md:text-lg ${
             right ? "ml-auto" : ""
           }`}
         >
@@ -173,148 +133,89 @@ export default function Home() {
   const heroTl = useRef(null);
 
   // Shared scroll progress for the 3D camera.
-  const scroll = useRef({
-    p: 0,
-  });
+  const scroll = useRef({ p: 0 });
 
-  // Shared pointer values for the 3D scene.
-  const pointer = useRef({
-    x: 0,
-    y: 0,
-    t: 0,
-  });
+  // Shared pointer values for the 3D scene (t = time of last real input).
+  const pointer = useRef({ x: 0, y: 0, t: 0 });
 
-  /*
-   * Detect WebGL once.
-   * Respect data-saving preferences.
-   */
+  // Detect WebGL once. Respect data-saving preferences.
   const [gl] = useState(() => {
-    if (typeof window === "undefined") {
-      return false;
-    }
-
+    if (typeof window === "undefined") return false;
     const saveData = Boolean(navigator.connection?.saveData);
-
     return !saveData && hasWebGL();
   });
 
-  /*
-   * Mount the 3D scene after the initial render.
-   */
+  // Mount the 3D scene after the initial render.
   const [mount3D, setMount3D] = useState(false);
 
-  /*
-   * Pointer tracking for the 3D scene.
-   */
+  /* Pointer (mouse / finger drag) + phone tilt */
   useEffect(() => {
     const onMove = (event) => {
       pointer.current.x = (event.clientX / window.innerWidth) * 2 - 1;
-
       pointer.current.y = -((event.clientY / window.innerHeight) * 2 - 1);
-
       pointer.current.t = performance.now();
     };
 
-    window.addEventListener("pointermove", onMove, {
-      passive: true,
-    });
+    // Phones: tilting the device moves the board (Android; iOS needs a permission prompt, so it simply idles)
+    const coarse = window.matchMedia("(pointer: coarse)").matches;
+    const clamp = (v) => Math.max(-1, Math.min(1, v));
+    const onTilt = (e) => {
+      if (e.gamma == null || e.beta == null) return;
+      pointer.current.x = clamp(e.gamma / 25);
+      pointer.current.y = clamp((55 - e.beta) / 30);
+      pointer.current.t = performance.now();
+    };
+
+    window.addEventListener("pointermove", onMove, { passive: true });
+    if (coarse) window.addEventListener("deviceorientation", onTilt, { passive: true });
 
     return () => {
       window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("deviceorientation", onTilt);
     };
   }, []);
 
-  /*
-   * Load 3D during browser idle time.
-   */
+  /* Load 3D during browser idle time */
   useEffect(() => {
-    if (!gl) {
-      return;
-    }
+    if (!gl) return;
 
     let idleId;
     let timerId;
     let cancelled = false;
 
     const start3D = () => {
-      if (!cancelled) {
-        setMount3D(true);
-      }
+      if (!cancelled) setMount3D(true);
     };
 
     if ("requestIdleCallback" in window) {
-      idleId = window.requestIdleCallback(start3D, {
-        timeout: 2500,
-      });
+      idleId = window.requestIdleCallback(start3D, { timeout: 2500 });
     } else {
       timerId = window.setTimeout(start3D, 1000);
     }
 
     return () => {
       cancelled = true;
-
-      if (idleId !== undefined && "cancelIdleCallback" in window) {
-        window.cancelIdleCallback(idleId);
-      }
-
-      if (timerId !== undefined) {
-        window.clearTimeout(timerId);
-      }
+      if (idleId !== undefined && "cancelIdleCallback" in window) window.cancelIdleCallback(idleId);
+      if (timerId !== undefined) window.clearTimeout(timerId);
     };
   }, [gl]);
 
-  /*
-   * GSAP animations.
-   */
+  /* GSAP animations */
   useLayoutEffect(() => {
     const ctx = gsap.context(() => {
-      gsap.set(".hl", {
-        yPercent: 110,
-      });
-
-      gsap.set(".hero-fade", {
-        autoAlpha: 0,
-        y: 24,
-      });
+      gsap.set(".hl", { yPercent: 110 });
+      gsap.set(".hero-fade", { autoAlpha: 0, y: 24 });
 
       heroTl.current = gsap
-        .timeline({
-          paused: true,
-          defaults: {
-            ease: "power4.out",
-          },
-        })
-        .to(
-          ".hl",
-          {
-            yPercent: 0,
-            duration: 1.6,
-            stagger: 0.18,
-          },
-          0
-        )
-        .to(
-          ".hero-fade",
-          {
-            autoAlpha: 1,
-            y: 0,
-            duration: 1.2,
-            stagger: 0.15,
-          },
-          0.7
-        );
+        .timeline({ paused: true, defaults: { ease: "power4.out" } })
+        .to(".hl", { yPercent: 0, duration: 1.6, stagger: 0.18 }, 0)
+        .to(".hero-fade", { autoAlpha: 1, y: 0, duration: 1.2, stagger: 0.15 }, 0.7);
 
       // Page progress controls the 3D camera.
       gsap.to(scroll.current, {
         p: 1,
         ease: "none",
-
-        scrollTrigger: {
-          trigger: root.current,
-          start: "top top",
-          end: "bottom bottom",
-          scrub: 0.8,
-        },
+        scrollTrigger: { trigger: root.current, start: "top top", end: "bottom bottom", scrub: 0.8 },
       });
 
       // Hero-copy scroll effect.
@@ -322,13 +223,7 @@ export default function Home() {
         yPercent: -18,
         autoAlpha: 0,
         ease: "none",
-
-        scrollTrigger: {
-          trigger: ".hero",
-          start: "top top",
-          end: "bottom 35%",
-          scrub: true,
-        },
+        scrollTrigger: { trigger: ".hero", start: "top top", end: "bottom 35%", scrub: true },
       });
 
       // Section reveal animations.
@@ -339,29 +234,12 @@ export default function Home() {
           duration: 1.1,
           ease: "power3.out",
           stagger: 0.12,
-
-          scrollTrigger: {
-            trigger: element,
-            start: "top 60%",
-            toggleActions: "play none none reverse",
-          },
+          scrollTrigger: { trigger: element, start: "top 60%", toggleActions: "play none none reverse" },
         });
       });
 
       // Scroll indicator animation.
-      gsap.fromTo(
-        ".scroll-dot",
-        {
-          y: 0,
-        },
-        {
-          y: 36,
-          duration: 1.6,
-          ease: "power1.inOut",
-          repeat: -1,
-          yoyo: true,
-        }
-      );
+      gsap.fromTo(".scroll-dot", { y: 0 }, { y: 36, duration: 1.6, ease: "power1.inOut", repeat: -1, yoyo: true });
     }, root);
 
     document.fonts?.ready.then(() => {
@@ -373,26 +251,16 @@ export default function Home() {
     };
   }, []);
 
-  /*
-   * Start the hero animation immediately.
-   */
+  /* Start the hero animation immediately */
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const animationFrame = requestAnimationFrame(() => {
       if (curtain.current) {
-        gsap.to(curtain.current, {
-          autoAlpha: 0,
-          duration: reduce ? 0 : 1.6,
-          ease: "power2.inOut",
-        });
+        gsap.to(curtain.current, { autoAlpha: 0, duration: reduce ? 0 : 1.6, ease: "power2.inOut" });
       }
-
-      if (reduce) {
-        heroTl.current?.progress(1);
-      } else {
-        heroTl.current?.play();
-      }
+      if (reduce) heroTl.current?.progress(1);
+      else heroTl.current?.play();
     });
 
     return () => {
@@ -404,46 +272,24 @@ export default function Home() {
     <main ref={root} className="relative bg-black text-white">
       <style>{`
         @keyframes rcsSheen {
-          0% {
-            background-position: 100% 0;
-          }
-
-          100% {
-            background-position: -150% 0;
-          }
+          0% { background-position: 100% 0; }
+          100% { background-position: -150% 0; }
         }
-
         @keyframes rcsGlint {
-          0%, 55% {
-            left: -100%;
-          }
-
-          100% {
-            left: 200%;
-          }
+          0%, 55% { left: -100%; }
+          100% { left: 200%; }
         }
       `}</style>
 
       {/* Black curtain */}
-      <div
-        ref={curtain}
-        className="pointer-events-none fixed inset-0 z-[45] bg-black"
-        aria-hidden="true"
-      />
+      <div ref={curtain} className="pointer-events-none fixed inset-0 z-[45] bg-black" aria-hidden="true" />
 
       {/* Fixed 3D stage */}
-      <div
-        className="pointer-events-none fixed inset-x-0 top-0 z-0 h-[100lvh]"
-        aria-hidden="true"
-      >
+      <div className="pointer-events-none fixed inset-x-0 top-0 z-0 h-[100lvh]" aria-hidden="true">
         <GLBoundary fallback={<HeroFallback />} onFail={() => {}}>
           {gl && mount3D ? (
             <Suspense fallback={<HeroFallback />}>
-              <ChessWorld
-                scroll={scroll}
-                pointer={pointer}
-                onReady={() => {}}
-              />
+              <ChessWorld scroll={scroll} pointer={pointer} onReady={() => {}} />
             </Suspense>
           ) : (
             <HeroFallback />
@@ -454,28 +300,26 @@ export default function Home() {
       <div className="relative z-10">
         {/* ---------------- Hero ---------------- */}
 
-        <section className="hero relative flex min-h-[100svh] items-end px-5 pb-10 sm:px-8 md:px-14 md:pb-14">
+        <section className="hero relative flex min-h-[100svh] items-end px-5 pb-[max(2.5rem,env(safe-area-inset-bottom))] sm:px-8 md:px-14 md:pb-14">
           <div className="hero-content relative mx-auto w-full max-w-[1470px]">
             <h1>
               <span className="block overflow-hidden">
-                <span className="hl font-condensed block text-[clamp(1.4rem,3.5vw,3.8rem)] font-extrabold uppercase leading-[0.88] tracking-[-0.01em] drop-shadow-[0_6px_30px_rgba(0,0,0,0.55)]">
+                <span className="hl font-condensed block text-[clamp(2.2rem,10.8vw,3.4rem)] font-extrabold uppercase leading-[0.88] tracking-[-0.01em] drop-shadow-[0_6px_30px_rgba(0,0,0,0.55)] max-md:[text-wrap:balance] md:text-[clamp(1.4rem,3.5vw,3.8rem)]">
                   We don't send press releases.
                 </span>
               </span>
 
               <span className="block overflow-hidden pb-[0.12em]">
-                <span className="hl font-editorial block bg-[linear-gradient(110deg,#8f99a8_0%,#ffffff_35%,#8f99a8_50%,#ffffff_70%,#8f99a8_100%)] bg-[length:250%_100%] animate-[rcsSheen_7s_linear_infinite] motion-reduce:animate-none bg-clip-text text-[clamp(1.8rem,4.2vw,4.5rem)] italic leading-[0.95] text-transparent drop-shadow-[0_6px_30px_rgba(0,0,0,0.55)]">
+                <span className="hl font-editorial block bg-[linear-gradient(110deg,#8f99a8_0%,#ffffff_35%,#8f99a8_50%,#ffffff_70%,#8f99a8_100%)] bg-[length:250%_100%] bg-clip-text text-[clamp(2.4rem,11.5vw,3.8rem)] italic leading-[0.95] text-transparent drop-shadow-[0_6px_30px_rgba(0,0,0,0.55)] animate-[rcsSheen_7s_linear_infinite] motion-reduce:animate-none md:text-[clamp(1.8rem,4.2vw,4.5rem)]">
                   We create moments.
                 </span>
               </span>
             </h1>
 
-            <div className="mt-8 flex flex-col gap-8 md:mt-10 md:flex-row md:items-end md:justify-between">
-              <p className="hero-fade font-editorial text-2xl text-white/85 drop-shadow-[0_2px_16px_rgba(0,0,0,0.8)] md:text-3xl">
+            <div className="mt-8 flex flex-col gap-8 max-md:mt-5 md:mt-10 md:flex-row md:items-end md:justify-between">
+              <p className="hero-fade font-editorial text-2xl text-white/85 drop-shadow-[0_2px_16px_rgba(0,0,0,0.8)] max-md:pr-12 max-md:text-[1.3rem] max-md:leading-snug md:text-3xl">
                 Turning brands into conversations.
               </p>
-
-        
             </div>
           </div>
 
@@ -485,7 +329,6 @@ export default function Home() {
             aria-hidden="true"
           >
             <span className="[writing-mode:vertical-rl]">Scroll</span>
-
             <span className="relative h-14 w-px bg-white/20">
               <span className="scroll-dot absolute -left-[1.5px] top-0 h-1.5 w-1.5 rounded-full bg-[#2f8bff]" />
             </span>
@@ -495,24 +338,21 @@ export default function Home() {
         {/* ---------------- Scroll Chapters ---------------- */}
 
         <Chapter title="Strategy before noise.">
-          Every move starts with the position on the board: who is listening,
-          what they trust, and what they will repeat.
+          Every move starts with the position on the board: who is listening, what they trust, and what they will repeat.
         </Chapter>
 
         <Chapter side="right" title="Influence is a position, not a volume.">
-          We place brands where conversations already happen, then give people
-          a reason to keep going.
+          We place brands where conversations already happen, then give people a reason to keep going.
         </Chapter>
 
         <Chapter title="Authority is earned in public.">
-          The strongest piece on the board rarely moves first. It moves when
-          the moment is right, and everyone sees why.
+          The strongest piece on the board rarely moves first. It moves when the moment is right, and everyone sees why.
         </Chapter>
 
         {/* ---------------- Finale ---------------- */}
 
-        <section className="finale relative flex min-h-[100svh] flex-col items-center justify-end px-5 pb-14 text-center md:pb-20">
-          <h2 className="reveal font-editorial relative drop-shadow-[0_6px_30px_rgba(0,0,0,0.55)] bg-[linear-gradient(110deg,#8f99a8_0%,#ffffff_35%,#8f99a8_50%,#ffffff_70%,#8f99a8_100%)] bg-[length:250%_100%] animate-[rcsSheen_7s_linear_infinite] motion-reduce:animate-none bg-clip-text text-[clamp(3.4rem,10.5vw,10.5rem)] italic leading-[0.9] text-transparent">
+        <section className="finale relative flex min-h-[100svh] flex-col items-center justify-end px-5 pb-[max(3.5rem,env(safe-area-inset-bottom))] text-center md:pb-20">
+          <h2 className="reveal font-editorial relative bg-[linear-gradient(110deg,#8f99a8_0%,#ffffff_35%,#8f99a8_50%,#ffffff_70%,#8f99a8_100%)] bg-[length:250%_100%] bg-clip-text text-[clamp(3.4rem,10.5vw,10.5rem)] italic leading-[0.9] text-transparent drop-shadow-[0_6px_30px_rgba(0,0,0,0.55)] animate-[rcsSheen_7s_linear_infinite] motion-reduce:animate-none">
             Your move.
           </h2>
 

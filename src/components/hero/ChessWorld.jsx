@@ -45,9 +45,13 @@ const Y_AXIS = new THREE.Vector3(0, 1, 0);
 const getTier = () => {
   if (typeof window === "undefined") return "low";
   const small = window.innerWidth < 768;
+  const touch = window.matchMedia("(pointer: coarse)").matches; // phones + tablets, incl. landscape
   const weak = (navigator.hardwareConcurrency || 4) <= 4 || (navigator.deviceMemory || 4) <= 4;
-  return small || weak ? "low" : "high";
+  return small || touch || weak ? "low" : "high";
 };
+
+// pixel-density ceiling per tier (desktop "high" is unchanged)
+const DPR = { high: [1, 2], low: [1, 1.5], min: [0.75, 1.1] };
 
 /* ------------------------------------------------------------------ */
 
@@ -195,11 +199,11 @@ function World({ scroll, pointer, high, onReady }) {
     const u = Math.min(Math.max(sp.current, 0), 1);
 
     const aspect = size.width / size.height;
-    const k = aspect < 0.7 ? 2.0 : aspect < 1 ? 1.5 : aspect < 1.4 ? 1.2 : 1;
+    const k = aspect < 0.7 ? 1.7 : aspect < 1 ? 1.5 : aspect < 1.4 ? 1.2 : 1;
 
     CAM_PATH.getPoint(u, camPos).multiplyScalar(k);
     LOOK_PATH.getPoint(u, camLook);
-    const lift = aspect < 0.7 ? 2.2 : aspect < 1 ? 1.4 : aspect < 1.4 ? 0.6 : 0;
+    const lift = aspect < 0.7 ? 2.0 : aspect < 1 ? 1.4 : aspect < 1.4 ? 0.6 : 0;
     camLook.y -= lift * (1 - THREE.MathUtils.smoothstep(u, 0, 0.2));
 
     // slow orbit + intro dolly + pointer parallax + impact shake
@@ -244,7 +248,7 @@ function World({ scroll, pointer, high, onReady }) {
       <pointLight ref={glint} position={[0, 2.4, 1]} intensity={22} distance={10} color="#d6e4ff" />
 
       {/* Procedural studio reflections (no external HDR) */}
-      <Environment resolution={256} frames={1}>
+      <Environment resolution={high ? 256 : 128} frames={1}>
         <Lightformer form="rect" intensity={4} position={[0, 6, 2]} scale={[10, 4, 1]} color="#ffffff" />
         <Lightformer form="rect" intensity={6} position={[-8, 2, -3]} rotation-y={Math.PI / 2} scale={[8, 3, 1]} color="#0756BD" />
         <Lightformer form="rect" intensity={5} position={[8, 2, -3]} rotation-y={-Math.PI / 2} scale={[8, 3, 1]} color="#2f8bff" />
@@ -274,13 +278,13 @@ export default function ChessWorld({ scroll, pointer, onReady }) {
   return (
     <Canvas
       shadows={shadows}
-      dpr={tier === "high" ? [1, 2] : [1, 1.5]}
+      dpr={DPR[tier]}
       camera={{ fov: 36, near: 0.1, far: 90, position: [0.8, 1.6, 11.4] }}
       gl={{ antialias: true, powerPreference: "high-performance" }}
       style={{ width: "100%", height: "100%" }}
     >
-      {/* If FPS drops, only the pixel density is reduced */}
-      <PerformanceMonitor onDecline={() => setTier("low")} flipflops={3} />
+      {/* If FPS drops, only the pixel density is reduced (step by step) */}
+      <PerformanceMonitor onDecline={() => setTier((t) => (t === "high" ? "low" : "min"))} flipflops={3} />
       <World scroll={scroll} pointer={pointer} high={shadows} onReady={onReady} />
     </Canvas>
   );
