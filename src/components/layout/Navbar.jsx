@@ -37,7 +37,7 @@ export default function Navbar() {
           aria-label="Rare Creative Studios home"
           className="group flex shrink-0 items-center"
         >
-          <span className="text-[17px] font-black uppercase tracking-[-0.075em] sm:text-[19px]">
+          <span className="text-[14px] font-black uppercase tracking-[-0.075em] sm:text-[16px]">
             <span className="text-white">RARE</span>
             <span className="text-[#0756BD]"> CREATIVE STUDIOS</span>
             <span className="text-[#0756BD]">.</span>
