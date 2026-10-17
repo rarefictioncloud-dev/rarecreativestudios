@@ -16,12 +16,8 @@ import HeroFallback from "../components/hero/HeroFallback";
 
 gsap.registerPlugin(ScrollTrigger);
 
-/*
- * PERFORMANCE OPTIMIZATION
- *
- * Keep the 3D scene lazy-loaded.
- * The actual scene will mount after the initial page render.
- */
+/* ---------- Lazy-load 3D scene ---------- */
+
 const ChessWorld = lazy(() =>
   import("../components/hero/ChessWorld")
 );
@@ -32,24 +28,21 @@ const hasWebGL = () => {
   try {
     const canvas = document.createElement("canvas");
 
-    const supported =
-      window.WebGLRenderingContext &&
-      (canvas.getContext("webgl2") ||
-        canvas.getContext("webgl"));
-
-    // Release the temporary context.
-    const loseContext = canvas.getContext("webgl2") ||
+    const context =
+      canvas.getContext("webgl2") ||
       canvas.getContext("webgl");
 
-    if (loseContext) {
-      const extension = loseContext.getExtension(
+    if (context) {
+      const extension = context.getExtension(
         "WEBGL_lose_context"
       );
 
       extension?.loseContext();
     }
 
-    return Boolean(supported);
+    return Boolean(
+      window.WebGLRenderingContext
+    );
   } catch {
     return false;
   }
@@ -199,13 +192,12 @@ export default function Home() {
   });
 
   /*
-   * Do not mount the expensive 3D scene immediately.
-   * This state is enabled when the browser is idle.
+   * Mount the 3D scene after the initial render.
    */
   const [mount3D, setMount3D] = useState(false);
 
   /*
-   * Keep the existing 3D camera animation synchronized
+   * Keep the 3D camera animation synchronized
    * with page scrolling.
    */
   useEffect(() => {
@@ -239,11 +231,7 @@ export default function Home() {
   }, []);
 
   /*
-   * LOAD 3D DURING IDLE TIME
-   *
-   * The text and fallback can render first.
-   * The browser then downloads and mounts ChessWorld
-   * when it has spare time.
+   * Load 3D during browser idle time.
    */
   useEffect(() => {
     if (!gl) {
@@ -291,10 +279,8 @@ export default function Home() {
   }, [gl]);
 
   /*
-   * GSAP ANIMATIONS
-   *
-   * Preserve the existing entrance animation,
-   * scroll effects, reveals, and scroll indicator.
+   * GSAP animations.
+   * Original animations and scroll effects preserved.
    */
   useLayoutEffect(() => {
     const ctx = gsap.context(() => {
@@ -347,7 +333,7 @@ export default function Home() {
         },
       });
 
-      // Preserve the original hero-copy scroll effect.
+      // Original hero-copy scroll effect.
       gsap.to(".hero-content", {
         yPercent: -18,
         autoAlpha: 0,
@@ -361,7 +347,7 @@ export default function Home() {
         },
       });
 
-      // Preserve the original section reveal animations.
+      // Original section reveal animations.
       gsap.utils
         .toArray(".chapter, .finale")
         .forEach((element) => {
@@ -384,7 +370,7 @@ export default function Home() {
           );
         });
 
-      // Preserve the scroll indicator animation.
+      // Original scroll indicator animation.
       gsap.fromTo(
         ".scroll-dot",
         {
@@ -400,7 +386,6 @@ export default function Home() {
       );
     }, root);
 
-    // Refresh after fonts are available without blocking rendering.
     document.fonts?.ready.then(() => {
       ScrollTrigger.refresh();
     });
@@ -411,10 +396,7 @@ export default function Home() {
   }, []);
 
   /*
-   * START HERO ANIMATION IMMEDIATELY
-   *
-   * Previously, the black curtain waited for the 3D scene.
-   * Now it fades away independently of the WebGL startup.
+   * Start the hero animation immediately.
    */
   useEffect(() => {
     const reduce = window.matchMedia(
@@ -469,17 +451,14 @@ export default function Home() {
         }
       `}</style>
 
-      {/* 
-        Keep the original curtain and styling.
-        Its fade no longer waits for the 3D scene.
-      */}
+      {/* Original black curtain */}
       <div
         ref={curtain}
         className="pointer-events-none fixed inset-0 z-[45] bg-black"
         aria-hidden="true"
       />
 
-      {/* Fixed 3D stage. */}
+      {/* Fixed 3D stage */}
       <div
         className="pointer-events-none fixed inset-x-0 top-0 z-0 h-[100lvh]"
         aria-hidden="true"
@@ -511,13 +490,13 @@ export default function Home() {
           <div className="hero-content relative mx-auto w-full max-w-[1470px]">
             <h1>
               <span className="block overflow-hidden">
-                <span className="hl font-condensed block text-[clamp(2.2rem,6.2vw,6.8rem)] font-extrabold uppercase leading-[0.88] tracking-[-0.01em] drop-shadow-[0_6px_30px_rgba(0,0,0,0.55)]">
+                <span className="hl font-condensed block text-[clamp(1.4rem,3.5vw,3.8rem)] font-extrabold uppercase leading-[0.88] tracking-[-0.01em] drop-shadow-[0_6px_30px_rgba(0,0,0,0.55)]">
                   We don't send press releases.
                 </span>
               </span>
 
               <span className="block overflow-hidden pb-[0.12em]">
-                <span className="hl font-editorial block bg-[linear-gradient(110deg,#8f99a8_0%,#ffffff_35%,#8f99a8_50%,#ffffff_70%,#8f99a8_100%)] bg-[length:250%_100%] animate-[rcsSheen_7s_linear_infinite] motion-reduce:animate-none bg-clip-text text-[clamp(2.6rem,7.6vw,8.2rem)] italic leading-[0.95] text-transparent drop-shadow-[0_6px_30px_rgba(0,0,0,0.55)]">
+                <span className="hl font-editorial block bg-[linear-gradient(110deg,#8f99a8_0%,#ffffff_35%,#8f99a8_50%,#ffffff_70%,#8f99a8_100%)] bg-[length:250%_100%] animate-[rcsSheen_7s_linear_infinite] motion-reduce:animate-none bg-clip-text text-[clamp(1.8rem,4.2vw,4.5rem)] italic leading-[0.95] text-transparent drop-shadow-[0_6px_30px_rgba(0,0,0,0.55)]">
                   We create moments.
                 </span>
               </span>
@@ -537,7 +516,6 @@ export default function Home() {
           </div>
 
           {/* Scroll indicator */}
-
           <div
             className="hero-fade absolute bottom-10 right-5 flex flex-col items-center gap-3 text-xs text-white/50 md:bottom-14 md:right-14"
             aria-hidden="true"
@@ -576,7 +554,7 @@ export default function Home() {
         {/* ---------------- Finale ---------------- */}
 
         <section className="finale relative flex min-h-[100svh] flex-col items-center justify-end px-5 pb-14 text-center md:pb-20">
-          <h2 className="reveal font-editorial relative bg-[linear-gradient(110deg,#8f99a8_0%,#ffffff_35%,#8f99a8_50%,#ffffff_70%,#8f99a8_100%)] bg-[length:250%_100%] animate-[rcsSheen_7s_linear_infinite] motion-reduce:animate-none bg-clip-text text-[clamp(3.4rem,10.5vw,10.5rem)] italic leading-[0.9] text-transparent drop-shadow-[0_6px_30px_rgba(0,0,0,0.55)]">
+          <h2 className="reveal font-editorial relative drop-shadow-[0_6px_30px_rgba(0,0,0,0.55)] bg-[linear-gradient(110deg,#8f99a8_0%,#ffffff_35%,#8f99a8_50%,#ffffff_70%,#8f99a8_100%)] bg-[length:250%_100%] animate-[rcsSheen_7s_linear_infinite] motion-reduce:animate-none bg-clip-text text-[clamp(3.4rem,10.5vw,10.5rem)] italic leading-[0.9] text-transparent">
             Your move.
           </h2>
 
