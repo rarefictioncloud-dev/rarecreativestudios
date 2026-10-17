@@ -1,15 +1,22 @@
-import { useEffect, useMemo, useRef } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Environment } from "@react-three/drei";
+import { Environment, PerformanceMonitor } from "@react-three/drei";
 import * as THREE from "three";
 
 /*
   One shared scene for the whole About page. The canvas is fixed behind the
   content; the camera descends along a tall vertical path as the page scrolls.
   The path narrows toward the end so the ribbon "resolves" at the final CTA.
+
+  Responsive rules
+  - "compact" = phones (< 768px wide) and portrait tablets (< 1024px, taller than wide).
+  - Everything the desktop view uses (fov 36, full ribbon, transmission, all sheets,
+    pointer parallax) is untouched; only the compact branches below change.
 */
 const H = 34;
 const STOPS = 14;
+
+const isCompact = (w, h) => w < 768 || (w < 1024 && w < h);
 
 const curve = new THREE.CatmullRomCurve3(
   Array.from({ length: STOPS }, (_, i) => {
@@ -153,6 +160,7 @@ function Ribbon({ progress, mobile }) {
 function Rig({ progress, mobile }) {
   const target = useRef(0);
   const { camera } = useThree();
+  const reduce = useMemo(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches, []);
 
   useEffect(() => {
     camera.fov = mobile ? 50 : 36;
@@ -160,8 +168,22 @@ function Rig({ progress, mobile }) {
   }, [mobile, camera]);
 
   useEffect(() => {
+    // Touch devices: measure against the LARGE viewport (100lvh) so the browser toolbar
+    // sliding in/out never changes the scroll range (no jumps, and progress still reaches 1).
+    // Desktop (mouse) keeps using window.innerHeight exactly as before.
+    const coarse = window.matchMedia("(pointer: coarse)").matches;
+    let probe = null;
+    if (coarse && window.CSS?.supports?.("height", "100lvh")) {
+      probe = document.createElement("div");
+      probe.setAttribute("aria-hidden", "true");
+      probe.style.cssText =
+        "position:fixed;top:0;left:0;width:0;height:100lvh;visibility:hidden;pointer-events:none";
+      document.body.appendChild(probe);
+    }
+    const viewport = () => (probe && probe.offsetHeight) || window.innerHeight;
+
     const read = () => {
-      const max = document.documentElement.scrollHeight - window.innerHeight;
+      const max = document.documentElement.scrollHeight - viewport();
       target.current = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
     };
     read();
@@ -174,15 +196,18 @@ function Rig({ progress, mobile }) {
       window.removeEventListener("scroll", read);
       window.removeEventListener("resize", read);
       ro.disconnect();
+      probe?.remove();
     };
   }, []);
 
-  useFrame(({ camera, pointer }, delta) => {
+  useFrame(({ camera, pointer, clock }, delta) => {
     progress.current = THREE.MathUtils.damp(progress.current, target.current, 4, delta);
     const p = progress.current;
     const y = -p * H * 0.92 - 1;
-    const px = mobile ? 0 : pointer.x * 0.35;
-    const py = mobile ? 0 : pointer.y * 0.2;
+    // desktop: pointer parallax. phones: no pointer, so a very gentle idle drift instead
+    const drift = mobile && !reduce ? Math.sin(clock.elapsedTime * 0.35) * 0.22 : 0;
+    const px = mobile ? drift : pointer.x * 0.35;
+    const py = mobile ? drift * 0.5 : pointer.y * 0.2;
     camera.position.set(Math.sin(p * 4) * 1.2 * (1 - p * 0.7) + px, y + py, 11 - Math.sin(p * Math.PI) * 3);
     camera.lookAt(0, y - 1.5, 0);
   });
@@ -191,9 +216,17 @@ function Rig({ progress, mobile }) {
 }
 
 function Scene({ progress }) {
-  const width = useThree((s) => s.size.width);
-  const mobile = width < 768;
+  const size = useThree((s) => s.size);
+  const mobile = isCompact(size.width, size.height);
   const sheets = mobile ? SHEETS.filter((_, i) => i % 3 !== 2) : SHEETS;
+
+  // Adaptive fit for compact screens. `fit` is exactly 1 at a typical phone (aspect 0.5),
+  // which reproduces the original 0.72 scale / 1.5 offset; narrower or wider screens adapt.
+  const aspect = size.width / Math.max(size.height, 1);
+  const halfW = 4.43 * aspect; // visible half-width at mid-scroll (fov 50)
+  const fit = THREE.MathUtils.clamp(halfW / 2.215, 0.7, 1.4);
+  const groupScale = mobile ? THREE.MathUtils.clamp(0.72 * fit, 0.5, 1) : 1;
+  const groupX = mobile ? THREE.MathUtils.clamp(1.5 * fit, 0.8, 2.6) : 0;
 
   return (
     <>
@@ -206,28 +239,53 @@ function Scene({ progress }) {
 
       {/* on phones the whole installation sits to the right and smaller,
           so it stays clear of the left-aligned headline */}
-      <group position={mobile ? [1.5, 0, -2] : [0, 0, 0]} scale={mobile ? 0.72 : 1}>
+      <group position={mobile ? [groupX, 0, -2] : [0, 0, 0]} scale={groupScale}>
         {sheets.map((s, i) => (
           <Sheet key={i} {...s} progress={progress} scale={mobile ? 0.8 : 1} />
         ))}
         <Ribbon progress={progress} mobile={mobile} />
       </group>
-      <Environment preset="studio" />
+
+      {/* its own Suspense: the scene renders straight away while the HDR streams in (slow mobile networks) */}
+      <Suspense fallback={null}>
+        <Environment preset="studio" />
+      </Suspense>
     </>
   );
 }
 
+function useCompact() {
+  const [compact, setCompact] = useState(
+    () => typeof window !== "undefined" && isCompact(window.innerWidth, window.innerHeight)
+  );
+  useEffect(() => {
+    const on = () => setCompact(isCompact(window.innerWidth, window.innerHeight));
+    window.addEventListener("resize", on);
+    window.addEventListener("orientationchange", on);
+    return () => {
+      window.removeEventListener("resize", on);
+      window.removeEventListener("orientationchange", on);
+    };
+  }, []);
+  return compact;
+}
+
 export default function RibbonWorld() {
   const progress = useRef(0);
-  const small = typeof window !== "undefined" && window.innerWidth < 768;
+  const compact = useCompact();
+  const [lowPerf, setLowPerf] = useState(false);
+
+  // desktop: [1, 1.5] as before. phones: [1, 1.5] too, stepping down only if the frame rate drops
+  const dpr = compact && lowPerf ? [0.75, 1.1] : [1, 1.5];
 
   return (
     <Canvas
-      dpr={small ? [1, 1.25] : [1, 1.5]}
-      camera={{ position: [0, 0, 11], fov: small ? 50 : 36, near: 0.1, far: 60 }}
-      gl={{ antialias: !small, alpha: false, powerPreference: "high-performance" }}
+      dpr={dpr}
+      camera={{ position: [0, 0, 11], fov: compact ? 50 : 36, near: 0.1, far: 60 }}
+      gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
       style={{ width: "100%", height: "100%" }}
     >
+      {compact && <PerformanceMonitor onDecline={() => setLowPerf(true)} flipflops={2} />}
       <Scene progress={progress} />
     </Canvas>
   );
