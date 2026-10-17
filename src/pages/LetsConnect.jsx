@@ -232,11 +232,11 @@ export default function LetsConnect() {
               <span aria-hidden="true" className="block h-2.5 w-2.5 rounded-full bg-[#FAD430]" />
               LET’S CONNECT
             </p>
-            <h1 id="idea-hero" className="break-words text-[clamp(2.1rem,7.4vw,6.8rem)] font-bold uppercase leading-[.86] tracking-[-.05em]">
+            <h1 id="idea-hero" className="break-words text-[clamp(1.58rem,5.55vw,5.1rem)] font-bold uppercase leading-[.86] tracking-[-.05em]">
               <span className="block">Got a big</span>
               <span className="block">idea?</span>
             </h1>
-            <p className="mt-6 text-[clamp(1.15rem,3.2vw,2.6rem)] font-bold uppercase leading-[.95] tracking-[-.04em] text-[#5271FF]">
+            <p className="mt-6 text-[clamp(0.9rem,2.4vw,1.95rem)] font-bold uppercase leading-[.95] tracking-[-.04em] text-[#5271FF]">
               Let’s make it rare.
             </p>
             <span aria-hidden="true" className="mt-5 block h-1.5 w-14 bg-[#FAD430]" />
@@ -265,7 +265,7 @@ export default function LetsConnect() {
           <span aria-hidden="true" className="mb-8 block h-1.5 w-16 bg-[#FAD430]" />
           <h2
             id="form-heading"
-            className="break-words text-[clamp(1.7rem,4.5vw,4.5rem)] font-bold uppercase leading-[.88] tracking-[-.045em] text-[#5271FF]"
+            className="break-words text-[clamp(1.28rem,3.38vw,3.38rem)] font-bold uppercase leading-[.88] tracking-[-.045em] text-[#5271FF]"
           >
             <span className="block">Every good</span>
             <span className="block">idea starts</span>
@@ -358,7 +358,7 @@ export default function LetsConnect() {
       {/* ================= 3. LET'S MAKE SOMETHING THAT MATTERS ================= */}
       <section aria-labelledby="matters" className="overflow-hidden border-t border-white/10 bg-black px-[max(1.25rem,env(safe-area-inset-left))] py-24 sm:px-10 md:px-16 md:py-36">
         <div className="mx-auto max-w-[1440px]">
-          <h2 id="matters" className="break-words text-[clamp(1.5rem,6.4vw,6rem)] font-bold uppercase leading-[.88] tracking-[-.05em] text-white">
+          <h2 id="matters" className="break-words text-[clamp(1.13rem,4.8vw,4.5rem)] font-bold uppercase leading-[.88] tracking-[-.05em] text-white">
             <span className="block">Let’s make</span>
             <span className="block">something</span>
             <span className="block text-[#5271FF]">that matters<span className="text-[#FAD430]">.</span></span>
@@ -379,7 +379,7 @@ export default function LetsConnect() {
       {/* ================= 4. FINAL CTA ================= */}
       <section aria-labelledby="closing" className="border-t border-white/10 bg-black px-[max(1.25rem,env(safe-area-inset-left))] pb-[max(6rem,env(safe-area-inset-bottom))] pt-24 sm:px-10 md:px-16 md:py-36">
         <div className="mx-auto max-w-[1440px]">
-          <h2 id="closing" className="break-words text-[clamp(1.25rem,5.6vw,5.2rem)] font-bold uppercase leading-[.9] tracking-[-.045em]">
+          <h2 id="closing" className="break-words text-[clamp(0.94rem,4.2vw,3.9rem)] font-bold uppercase leading-[.9] tracking-[-.045em]">
             <span className="block">Your idea.</span>
             <span className="block">Our imagination.</span>
             <span className="block text-[#5271FF]">Something rare<span className="text-[#FAD430]">.</span></span>
