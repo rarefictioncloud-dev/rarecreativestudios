@@ -247,7 +247,7 @@ export default function Contact() {
           <div className="relative mx-auto w-full max-w-[1440px]">
   
 
-            <h1 className="max-w-[1100px] text-[clamp(1.9rem,8.6vw,6.7rem)] font-black uppercase leading-[.9] tracking-[-.06em] sm:leading-[.86]">
+            <h1 className="max-w-[1100px] text-[clamp(1.6rem,7vw,5rem)] font-black uppercase leading-[.9] tracking-[-.06em] sm:leading-[.86]">
               Let’s make
               <br />
               <span className="font-editorial font-normal normal-case italic tracking-[-.04em] text-[#6BA8FF]">
@@ -276,7 +276,7 @@ export default function Contact() {
               data-reveal
               className="rcs-reveal rcs-tilt relative bg-[#F5F5F2] px-5 py-12 text-[#07080B] shadow-[0_40px_120px_rgba(0,0,0,.55)] sm:px-10 sm:py-16 md:ml-[8%] md:px-16 md:py-24"
             >
-              <h2 className="text-[clamp(1.9rem,6.4vw,5.6rem)] font-black uppercase leading-[.92] tracking-[-.055em]">
+              <h2 className="text-[clamp(1.6rem,5.2vw,4.2rem)] font-black uppercase leading-[.92] tracking-[-.055em]">
                 Good work
                 <br />
                 starts with a
@@ -305,7 +305,7 @@ export default function Contact() {
           <div className="relative mx-auto max-w-[1100px]">
             <Layer speed={-0.04} rot={2} className="left-3 top-0 h-[96%] w-[96%] bg-[#6BA8FF]/20" />
             <div className="relative bg-[#F5F5F2] px-5 py-10 text-[#07080B] shadow-[0_40px_120px_rgba(0,0,0,.55)] sm:px-10 sm:py-14 md:px-16 md:py-16">
-              <h2 className="text-[clamp(1.7rem,5vw,3.6rem)] font-black uppercase leading-[.95] tracking-[-.05em]">
+              <h2 className="text-[clamp(1.5rem,4vw,2.8rem)] font-black uppercase leading-[.95] tracking-[-.05em]">
                 Tell us about it.
               </h2>
 
@@ -414,7 +414,7 @@ export default function Contact() {
           <div data-reveal className="rcs-reveal relative mx-auto max-w-[1440px]">
             <p className="text-[11px] font-bold uppercase tracking-[.4em] text-[#6BA8FF]">The next chapter</p>
 
-            <h2 className="mt-6 text-[clamp(1.6rem,9vw,9rem)] font-black uppercase leading-[.86] tracking-[-.06em] text-white">
+            <h2 className="mt-6 text-[clamp(1.4rem,7vw,6.5rem)] font-black uppercase leading-[.86] tracking-[-.06em] text-white">
               Make something
               <br />
               <span className="text-[#0756BD]">Rare.</span>
@@ -442,7 +442,7 @@ export default function Contact() {
             className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_35%,rgba(7,86,189,.3),transparent_60%)]"
           />
           <div data-reveal className="rcs-reveal relative mx-auto w-full max-w-[1440px]">
-            <h2 className="max-w-5xl text-[clamp(1.9rem,8vw,7.2rem)] font-black uppercase leading-[.88] tracking-[-.06em]">
+            <h2 className="max-w-5xl text-[clamp(1.6rem,6.4vw,5.4rem)] font-black uppercase leading-[.88] tracking-[-.06em]">
               The next great story
               <br />
               <span className="font-editorial font-normal normal-case italic text-[#6BA8FF]">could start here.</span>
