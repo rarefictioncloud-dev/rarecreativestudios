@@ -4,7 +4,7 @@ import Home from "../pages/Home";
 import About from "../pages/About";
 import Contact from "../pages/Contact";
 import Services from "../pages/Services";
-
+import LetsConnect from "../pages/LetsConnect";
 export default function AppRoutes() {
   return (
     <Routes>
@@ -15,6 +15,8 @@ export default function AppRoutes() {
       <Route path="/services" element={<Services />} />
 
       <Route path="/contact" element={<Contact />} />
+
+      <Route path="/letsconnect" element={<LetsConnect />} />
     </Routes>
   );
 }

@@ -76,7 +76,7 @@ export default function Navbar() {
 
           {/* CONTACT CTA */}
           <Link
-            to="/contact"
+            to="/letsconnect"
             className="
               group ml-3 flex items-center gap-2
               rounded-full bg-[#0756BD]
@@ -162,7 +162,7 @@ export default function Navbar() {
           })}
 
           <Link
-            to="/contact"
+            to="/letsconnect"
             onClick={closeMenu}
             className="
               mt-2 flex h-11 items-center justify-center gap-2
