@@ -22,7 +22,8 @@ const PROCESS = [
 /* ---------- 3D RARE object (CSS 3D) ---------- */
 
 const DEPTH = 16;
-const face = "whitespace-nowrap text-[clamp(4.5rem,22vw,8rem)] font-black leading-[0.8] tracking-tighter md:text-[clamp(5rem,12.5vw,13rem)]";
+// Type scale reduced by 2rem at desktop sizes (the vw terms carry "- 2rem" so it holds across widths)
+const face = "whitespace-nowrap text-[clamp(2.5rem,calc(22vw_-_2rem),6rem)] font-black leading-[0.8] tracking-tighter md:text-[clamp(3rem,calc(12.5vw_-_2rem),11rem)]";
 
 // Extruded "RARE": stacked text layers in CSS 3D. Decorative only; the page's real text is HTML.
 function RareObject() {
@@ -52,8 +53,9 @@ function RareObject() {
   return (
     <div aria-hidden="true" className="select-none [perspective:1000px]">
       <div ref={ref} className="relative [transform-style:preserve-3d]" style={{ transform: "rotateX(6deg) rotateY(-18deg)" }}>
+        {/* extrusion depth is in em, so it stays in proportion to the (smaller) lettering */}
         {Array.from({ length: DEPTH }, (_, i) => (
-          <span key={i} className={`absolute left-0 top-0 ${face}`} style={{ transform: `translateZ(${-(DEPTH - i) * 3}px)`, color: `hsl(213 92% ${22 + (i / DEPTH) * 16}%)` }}>RARE</span>
+          <span key={i} className={`absolute left-0 top-0 ${face}`} style={{ transform: `translateZ(${-(DEPTH - i) * 0.02}em)`, color: `hsl(213 92% ${22 + (i / DEPTH) * 16}%)` }}>RARE</span>
         ))}
         <span className={`relative block text-[#090909] ${face}`}>RARE</span>
       </div>
@@ -64,8 +66,13 @@ function RareObject() {
 /* ---------- page ---------- */
 const CSS = `@keyframes rr-marq{to{transform:translateX(-50%)}}`;
 const SEC = "relative overflow-hidden px-[clamp(1.25rem,5vw,4rem)] py-20 md:py-32";
-const T = "break-words text-[clamp(1.8rem,8.5vw,7rem)] font-black uppercase leading-[0.9] tracking-tighter";
-const btn = "inline-block px-7 py-4 text-center text-sm font-bold tracking-[0.16em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0756BD]";
+
+// Headline scales (each reduced by >= 2rem at desktop widths; phones shrink proportionally)
+const T_BASE = "break-words font-black uppercase leading-[0.9] tracking-tighter";
+const T_SIZE = "text-[clamp(1.6rem,7vw,2.6rem)] md:text-[clamp(2.6rem,5.4vw,5rem)]";
+const T_BIG = "text-[clamp(1.8rem,9vw,3rem)] md:text-[clamp(3rem,7vw,6.5rem)]";
+
+const btn = "inline-block px-7 py-4 text-center text-[0.8rem] font-bold tracking-[0.16em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0756BD] md:text-sm";
 const dark = `${btn} bg-[#090909] text-[#F5F3EE] hover:bg-[#0756BD]`;
 const line = `${btn} border-2 border-[#090909] text-[#090909] hover:bg-[#090909] hover:text-[#F5F3EE]`;
 
@@ -93,13 +100,13 @@ const Meta = ({ i, d }) => (
     <span className={d ? "text-[#D8D8D4]" : "text-[#090909]/70"}>{SERVICES[i].label.toUpperCase()}</span>
   </p>
 );
-const Title = ({ i, cls = "" }) => (
-  <h2 id={`sv${i}`} className={`${T} ${cls}`}>
+const Title = ({ i, big = false, cls = "" }) => (
+  <h2 id={`sv${i}`} className={`${T_BASE} ${big ? T_BIG : T_SIZE} ${cls}`}>
     {SERVICES[i].name.map((l) => <span key={l} className="block">{l}{" "}</span>)}
   </h2>
 );
 const Desc = ({ i, d }) => (
-  <p className={`mt-5 max-w-[42ch] text-base leading-relaxed md:text-lg ${d ? "text-[#D8D8D4]" : "text-[#090909]/75"}`}>{SERVICES[i].desc}</p>
+  <p className={`mt-5 max-w-[42ch] text-[0.95rem] leading-relaxed md:text-base ${d ? "text-[#D8D8D4]" : "text-[#090909]/75"}`}>{SERVICES[i].desc}</p>
 );
 
 const FRAMES = ["STRATEGY", "STORY", "CAMPAIGN", "FILM", "IMPACT"];
@@ -122,10 +129,10 @@ export default function Services() {
             <RareObject />
           </div>
           <div className="md:col-span-8">
-            <h1 className="break-words text-[clamp(2.1rem,10vw,8.5rem)] font-black uppercase leading-[0.88] tracking-tighter">
+            <h1 className="break-words text-[clamp(1.75rem,8.4vw,3.2rem)] font-black uppercase leading-[0.88] tracking-tighter md:text-[clamp(3rem,6.6vw,6.5rem)]">
               {["WE MAKE", "BRANDS", "IMPOSSIBLE", "TO IGNORE."].map((l) => <span key={l} className="block">{l}{" "}</span>)}
             </h1>
-            <p className="mt-6 max-w-[44ch] text-base leading-relaxed md:text-lg">
+            <p className="mt-6 max-w-[44ch] text-[0.95rem] leading-relaxed md:text-base">
               We combine strategy, storytelling, PR, and creative production to turn brands into conversations people want to be part of.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -141,7 +148,7 @@ export default function Services() {
         <Sprockets />
         <div className="my-2 flex w-max animate-[rr-marq_32s_linear_infinite] motion-reduce:animate-none">
           {[...FRAMES, ...FRAMES].map((t, i) => (
-            <div key={i} className={`mx-1.5 grid h-[clamp(4rem,12vw,7rem)] w-[clamp(7rem,22vw,13rem)] shrink-0 place-items-center text-[clamp(0.9rem,2.4vw,1.5rem)] font-black tracking-tight ${i % 2 ? "bg-[#F5F3EE] text-[#090909]" : "bg-[#0756BD] text-[#F5F3EE]"}`}>{t}</div>
+            <div key={i} className={`mx-1.5 grid h-[clamp(4rem,12vw,7rem)] w-[clamp(7rem,22vw,13rem)] shrink-0 place-items-center text-[clamp(0.8rem,2vw,1.1rem)] font-black tracking-tight ${i % 2 ? "bg-[#F5F3EE] text-[#090909]" : "bg-[#0756BD] text-[#F5F3EE]"}`}>{t}</div>
           ))}
         </div>
         <Sprockets />
@@ -150,7 +157,7 @@ export default function Services() {
       {/* 01 BRAND STRATEGY: giant outlined number */}
       <section id="services-start" aria-labelledby="sv0" className={SEC}>
         <Reveal className="group grid items-end gap-6 md:grid-cols-12">
-          <p aria-hidden="true" className="select-none text-[clamp(7rem,34vw,20rem)] font-black leading-[0.75] text-transparent transition-all duration-500 [-webkit-text-stroke:2px_#090909] group-hover:translate-x-3 group-hover:[-webkit-text-stroke-color:#0756BD] md:col-span-5">01</p>
+          <p aria-hidden="true" className="select-none text-[clamp(5rem,26vw,9rem)] font-black leading-[0.75] text-transparent transition-all duration-500 [-webkit-text-stroke:2px_#090909] group-hover:translate-x-3 group-hover:[-webkit-text-stroke-color:#0756BD] md:col-span-5 md:text-[clamp(8rem,26vw,17rem)]">01</p>
           <div className="md:col-span-7"><Meta i={0} /><Title i={0} /><Desc i={0} /></div>
         </Reveal>
       </section>
@@ -159,7 +166,7 @@ export default function Services() {
       <section aria-labelledby="sv1" className={`${SEC} pt-0 md:pt-0`}>
         <Reveal className="group grid items-center gap-10 md:grid-cols-12">
           <div aria-hidden="true" className="mx-auto w-full max-w-sm -rotate-3 border-2 border-[#090909] bg-[#F5F3EE] p-4 transition-transform duration-500 group-hover:rotate-0 md:col-span-5">
-            <p className="border-b-4 border-[#090909] pb-2 text-center text-[clamp(1.4rem,6vw,2.2rem)] font-black tracking-tighter">THE DAILY STORY</p>
+            <p className="border-b-4 border-[#090909] pb-2 text-center text-[clamp(1.1rem,5vw,1.6rem)] font-black tracking-tighter">THE DAILY STORY</p>
             <div className="mt-3 grid grid-cols-3 gap-2"><span className="col-span-2 h-24 bg-[#0756BD]" /><span className="h-24 bg-[#D8D8D4]" /></div>
             {["100%", "92%", "100%", "68%", "85%"].map((w, k) => <span key={k} className="mt-2 block h-1.5 bg-[#090909]/80" style={{ width: w }} />)}
           </div>
@@ -171,12 +178,12 @@ export default function Services() {
       <section aria-labelledby="sv2" className={`${SEC} bg-[#090909] text-[#F5F3EE]`}>
         <Reveal className="group">
           <div className="md:flex md:items-end md:justify-between md:gap-12">
-            <div><Meta i={2} d /><Title i={2} cls="text-[clamp(2rem,11vw,9rem)]" /></div>
+            <div><Meta i={2} d /><Title i={2} big /></div>
             <Desc i={2} d />
           </div>
           <div aria-hidden="true" className="relative mt-12 h-[clamp(11rem,36vw,22rem)]">
             <span className="absolute left-[4%] top-4 h-[80%] w-[34%] -rotate-6 bg-[#0756BD] transition-transform duration-500 group-hover:-rotate-12" />
-            <span className="absolute left-[31%] top-0 grid h-[92%] w-[36%] rotate-3 place-items-center bg-[#F5F3EE] text-[clamp(1.5rem,7vw,5rem)] font-black text-[#090909] transition-transform duration-500 group-hover:rotate-0">BIG IDEA</span>
+            <span className="absolute left-[31%] top-0 grid h-[92%] w-[36%] rotate-3 place-items-center bg-[#F5F3EE] text-[clamp(1.1rem,5.4vw,3rem)] font-black text-[#090909] transition-transform duration-500 group-hover:rotate-0">BIG IDEA</span>
             <span className="absolute right-[4%] top-8 h-[75%] w-[30%] rotate-12 bg-[#D8D8D4] transition-transform duration-500 group-hover:rotate-[18deg]" />
           </div>
         </Reveal>
@@ -188,7 +195,7 @@ export default function Services() {
           <div className="md:col-span-5"><Meta i={3} /><Title i={3} cls="font-serif italic font-semibold" /><Desc i={3} /></div>
           <div aria-hidden="true" className="relative aspect-[2.39/1] bg-[#090909] transition-transform duration-500 group-hover:scale-[1.03] md:col-span-7 md:-mr-12">
             <span className="absolute left-3 top-3 text-[10px] font-bold tracking-widest text-[#D8D8D4]">00:00:12:04</span>
-            <span className="absolute inset-0 grid place-items-center font-serif text-[clamp(1.6rem,6vw,4rem)] italic text-[#F5F3EE]">Chapter one.</span>
+            <span className="absolute inset-0 grid place-items-center font-serif text-[clamp(1.2rem,4.2vw,2rem)] italic text-[#F5F3EE]">Chapter one.</span>
             <span className="absolute bottom-0 left-0 h-1.5 w-1/3 bg-[#0756BD] transition-all duration-700 group-hover:w-2/3" />
           </div>
         </Reveal>
@@ -197,12 +204,12 @@ export default function Services() {
       {/* 05 VIDEO: film strip frames */}
       <section aria-labelledby="sv4" className={`${SEC} bg-[#090909] text-[#F5F3EE]`}>
         <Reveal className="group">
-          <Meta i={4} d /><Title i={4} cls="text-[clamp(2rem,11vw,9rem)]" /><Desc i={4} d />
+          <Meta i={4} d /><Title i={4} big /><Desc i={4} d />
           <div aria-hidden="true" className="mt-12">
             <Sprockets />
             <div className="my-2 grid grid-cols-2 gap-2 md:grid-cols-4">
               {["ROLL", "FRAME", "CUT", "WRAP"].map((w, k) => (
-                <div key={w} className={`grid aspect-[4/3] place-items-center text-[clamp(1rem,3vw,2rem)] font-black transition-transform duration-500 group-hover:-translate-y-1 ${["bg-[#0756BD] text-[#F5F3EE]", "bg-[#F5F3EE] text-[#090909]", "bg-[#D8D8D4] text-[#090909]", "border-2 border-[#F5F3EE]"][k]}`}>{w}</div>
+                <div key={w} className={`grid aspect-[4/3] place-items-center text-[clamp(0.9rem,2.4vw,1.3rem)] font-black transition-transform duration-500 group-hover:-translate-y-1 ${["bg-[#0756BD] text-[#F5F3EE]", "bg-[#F5F3EE] text-[#090909]", "bg-[#D8D8D4] text-[#090909]", "border-2 border-[#F5F3EE]"][k]}`}>{w}</div>
               ))}
             </div>
             <Sprockets />
@@ -225,14 +232,14 @@ export default function Services() {
 
       {/* PROCESS: horizontal on desktop, vertical on mobile */}
       <section aria-labelledby="proc" className={`${SEC} bg-[#D8D8D4]`}>
-        <Reveal><h2 id="proc" className={T}>CREATIVE PROCESS</h2></Reveal>
+        <Reveal><h2 id="proc" className={`${T_BASE} ${T_SIZE}`}>CREATIVE PROCESS</h2></Reveal>
         <ol className="mt-14 md:grid md:grid-cols-4">
           {PROCESS.map((p, i) => (
             <Reveal as="li" key={p.n} delay={i * 150} from="translate-y-8 md:translate-y-0 md:translate-x-10" className="relative border-l-2 border-[#090909] pb-10 pl-6 md:border-l-0 md:border-t-2 md:pb-0 md:pl-0 md:pr-6 md:pt-6">
               <span aria-hidden="true" className="absolute -left-[7px] top-0 h-3 w-3 rounded-full bg-[#0756BD] md:-top-[7px] md:left-0" />
-              <p className="text-[clamp(3rem,7vw,5.5rem)] font-black leading-none text-[#0756BD]">{p.n}</p>
-              <h3 className="mt-2 text-xl font-black tracking-tight md:text-2xl">{p.name}</h3>
-              <p className="mt-2 max-w-[30ch] text-base text-[#090909]/80">{p.desc}</p>
+              <p className="text-[clamp(2.2rem,5vw,3.5rem)] font-black leading-none text-[#0756BD]">{p.n}</p>
+              <h3 className="mt-2 text-lg font-black tracking-tight md:text-xl">{p.name}</h3>
+              <p className="mt-2 max-w-[30ch] text-[0.95rem] text-[#090909]/80 md:text-base">{p.desc}</p>
             </Reveal>
           ))}
         </ol>
@@ -241,7 +248,7 @@ export default function Services() {
       {/* FINAL CTA */}
       <section aria-labelledby="cta" className={`${SEC} bg-[#0756BD] text-[#F5F3EE]`}>
         <Reveal>
-          <h2 id="cta" className="break-words text-[clamp(2rem,9vw,8.5rem)] font-black uppercase leading-[0.9] tracking-tighter">GOT A BIG IDEA? LET'S MAKE IT RARE.</h2>
+          <h2 id="cta" className="break-words text-[clamp(1.7rem,7.6vw,2.8rem)] font-black uppercase leading-[0.9] tracking-tighter md:text-[clamp(2.8rem,6vw,6rem)]">GOT A BIG IDEA? LET'S MAKE IT RARE.</h2>
           <Link to="/contact" className={`${btn} mt-10 bg-[#F5F3EE] text-[#0756BD] hover:bg-[#090909] hover:text-[#F5F3EE] focus-visible:outline-[#F5F3EE]`}>START A PROJECT</Link>
         </Reveal>
       </section>
