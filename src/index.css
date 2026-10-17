@@ -1,0 +1,4 @@
+@import "tailwindcss";
+.font-condensed { font-family: "Barlow Condensed", "Arial Narrow", sans-serif; }
+.font-editorial { font-family: "Instrument Serif", Georgia, serif; }
+html { background: #000; }
