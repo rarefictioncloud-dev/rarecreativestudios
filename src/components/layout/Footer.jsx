@@ -47,7 +47,7 @@ export default function Footer() {
       <section aria-labelledby="footer-statement" className={`${padX} pb-16 pt-20 md:pb-24 md:pt-32`}>
         <span aria-hidden="true" className="mb-8 block h-1 w-16 bg-[#FAD430]" />
         <div className="grid gap-10 lg:grid-cols-12 lg:items-end">
-          <h2 id="footer-statement" className="break-words text-[clamp(2.2rem,10.5vw,9rem)] font-bold uppercase leading-[0.9] tracking-tighter lg:col-span-8">
+          <h2 id="footer-statement" className="break-words text-[clamp(2.2rem,10.5vw,9rem)] font-bold uppercase leading-[0.9] tracking-tighter lg:col-span-8 lg:text-[clamp(2.2rem,calc(10.5vw_-_2rem),7rem)]">
             <span className="block">LET'S MAKE{" "}</span>
             <span className="block">SOMETHING{" "}</span>
             <span className="block">RARE<span className="text-[#FAD430]">.</span></span>
