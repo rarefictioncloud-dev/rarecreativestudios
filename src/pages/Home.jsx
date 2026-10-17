@@ -16,11 +16,17 @@ import HeroFallback from "../components/hero/HeroFallback";
 
 gsap.registerPlugin(ScrollTrigger);
 
+/* ---------- WhatsApp enquiry link ---------- */
+
+const WHATSAPP_NUMBER = "917997658999"; // +91 7997658999
+const WHATSAPP_MESSAGE = "hi , i would like to enquire about rare creative studios";
+const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
+  WHATSAPP_MESSAGE
+)}`;
+
 /* ---------- Lazy-load 3D scene ---------- */
 
-const ChessWorld = lazy(() =>
-  import("../components/hero/ChessWorld")
-);
+const ChessWorld = lazy(() => import("../components/hero/ChessWorld"));
 
 /* ---------- WebGL Detection ---------- */
 
@@ -28,21 +34,15 @@ const hasWebGL = () => {
   try {
     const canvas = document.createElement("canvas");
 
-    const context =
-      canvas.getContext("webgl2") ||
-      canvas.getContext("webgl");
+    const context = canvas.getContext("webgl2") || canvas.getContext("webgl");
 
     if (context) {
-      const extension = context.getExtension(
-        "WEBGL_lose_context"
-      );
+      const extension = context.getExtension("WEBGL_lose_context");
 
       extension?.loseContext();
     }
 
-    return Boolean(
-      window.WebGLRenderingContext
-    );
+    return Boolean(window.WebGLRenderingContext);
   } catch {
     return false;
   }
@@ -62,33 +62,26 @@ class GLBoundary extends Component {
   }
 
   componentDidCatch(err) {
-    console.warn(
-      "3D hero disabled, using fallback:",
-      err
-    );
+    console.warn("3D hero disabled, using fallback:", err);
 
     this.props.onFail?.();
   }
 
   render() {
-    return this.state.failed
-      ? this.props.fallback
-      : this.props.children;
+    return this.state.failed ? this.props.fallback : this.props.children;
   }
 }
 
 /* ---------- Arrow Link ---------- */
+/* Internal paths use the router; full http(s) URLs open in a new tab. */
 
-function ArrowLink({
-  href,
-  children,
-  className = "",
-}) {
-  return (
-    <Link
-      to={href}
-      className={`group inline-flex items-center gap-4 rounded-full py-1 pr-1 text-base font-semibold tracking-[-0.01em] text-white outline-none focus-visible:ring-2 focus-visible:ring-white/70 md:text-lg ${className}`}
-    >
+function ArrowLink({ href, children, className = "" }) {
+  const external = /^https?:\/\//.test(href);
+
+  const classes = `group inline-flex items-center gap-4 rounded-full py-1 pr-1 text-base font-semibold tracking-[-0.01em] text-white outline-none focus-visible:ring-2 focus-visible:ring-white/70 md:text-lg ${className}`;
+
+  const content = (
+    <>
       <span className="relative">
         {children}
 
@@ -116,17 +109,33 @@ function ArrowLink({
           />
         </svg>
       </span>
+    </>
+  );
+
+  if (external) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={classes}
+      >
+        {content}
+        <span className="sr-only"> (opens in a new tab)</span>
+      </a>
+    );
+  }
+
+  return (
+    <Link to={href} className={classes}>
+      {content}
     </Link>
   );
 }
 
 /* ---------- Content Chapters ---------- */
 
-function Chapter({
-  side = "left",
-  title,
-  children,
-}) {
+function Chapter({ side = "left", title, children }) {
   const right = side === "right";
 
   return (
@@ -184,9 +193,7 @@ export default function Home() {
       return false;
     }
 
-    const saveData = Boolean(
-      navigator.connection?.saveData
-    );
+    const saveData = Boolean(navigator.connection?.saveData);
 
     return !saveData && hasWebGL();
   });
@@ -197,36 +204,23 @@ export default function Home() {
   const [mount3D, setMount3D] = useState(false);
 
   /*
-   * Keep the 3D camera animation synchronized
-   * with page scrolling.
+   * Pointer tracking for the 3D scene.
    */
   useEffect(() => {
     const onMove = (event) => {
-      pointer.current.x =
-        (event.clientX / window.innerWidth) * 2 - 1;
+      pointer.current.x = (event.clientX / window.innerWidth) * 2 - 1;
 
-      pointer.current.y =
-        -(
-          (event.clientY / window.innerHeight) * 2 -
-          1
-        );
+      pointer.current.y = -((event.clientY / window.innerHeight) * 2 - 1);
 
       pointer.current.t = performance.now();
     };
 
-    window.addEventListener(
-      "pointermove",
-      onMove,
-      {
-        passive: true,
-      }
-    );
+    window.addEventListener("pointermove", onMove, {
+      passive: true,
+    });
 
     return () => {
-      window.removeEventListener(
-        "pointermove",
-        onMove
-      );
+      window.removeEventListener("pointermove", onMove);
     };
   }, []);
 
@@ -249,26 +243,17 @@ export default function Home() {
     };
 
     if ("requestIdleCallback" in window) {
-      idleId = window.requestIdleCallback(
-        start3D,
-        {
-          timeout: 2500,
-        }
-      );
+      idleId = window.requestIdleCallback(start3D, {
+        timeout: 2500,
+      });
     } else {
-      timerId = window.setTimeout(
-        start3D,
-        1000
-      );
+      timerId = window.setTimeout(start3D, 1000);
     }
 
     return () => {
       cancelled = true;
 
-      if (
-        idleId !== undefined &&
-        "cancelIdleCallback" in window
-      ) {
+      if (idleId !== undefined && "cancelIdleCallback" in window) {
         window.cancelIdleCallback(idleId);
       }
 
@@ -280,7 +265,6 @@ export default function Home() {
 
   /*
    * GSAP animations.
-   * Original animations and scroll effects preserved.
    */
   useLayoutEffect(() => {
     const ctx = gsap.context(() => {
@@ -333,7 +317,7 @@ export default function Home() {
         },
       });
 
-      // Original hero-copy scroll effect.
+      // Hero-copy scroll effect.
       gsap.to(".hero-content", {
         yPercent: -18,
         autoAlpha: 0,
@@ -347,30 +331,24 @@ export default function Home() {
         },
       });
 
-      // Original section reveal animations.
-      gsap.utils
-        .toArray(".chapter, .finale")
-        .forEach((element) => {
-          gsap.from(
-            element.querySelectorAll(".reveal"),
-            {
-              y: 50,
-              autoAlpha: 0,
-              duration: 1.1,
-              ease: "power3.out",
-              stagger: 0.12,
+      // Section reveal animations.
+      gsap.utils.toArray(".chapter, .finale").forEach((element) => {
+        gsap.from(element.querySelectorAll(".reveal"), {
+          y: 50,
+          autoAlpha: 0,
+          duration: 1.1,
+          ease: "power3.out",
+          stagger: 0.12,
 
-              scrollTrigger: {
-                trigger: element,
-                start: "top 60%",
-                toggleActions:
-                  "play none none reverse",
-              },
-            }
-          );
+          scrollTrigger: {
+            trigger: element,
+            start: "top 60%",
+            toggleActions: "play none none reverse",
+          },
         });
+      });
 
-      // Original scroll indicator animation.
+      // Scroll indicator animation.
       gsap.fromTo(
         ".scroll-dot",
         {
@@ -399,9 +377,7 @@ export default function Home() {
    * Start the hero animation immediately.
    */
   useEffect(() => {
-    const reduce = window.matchMedia(
-      "(prefers-reduced-motion: reduce)"
-    ).matches;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const animationFrame = requestAnimationFrame(() => {
       if (curtain.current) {
@@ -425,10 +401,7 @@ export default function Home() {
   }, []);
 
   return (
-    <main
-      ref={root}
-      className="relative bg-black text-white"
-    >
+    <main ref={root} className="relative bg-black text-white">
       <style>{`
         @keyframes rcsSheen {
           0% {
@@ -451,7 +424,7 @@ export default function Home() {
         }
       `}</style>
 
-      {/* Original black curtain */}
+      {/* Black curtain */}
       <div
         ref={curtain}
         className="pointer-events-none fixed inset-0 z-[45] bg-black"
@@ -463,14 +436,9 @@ export default function Home() {
         className="pointer-events-none fixed inset-x-0 top-0 z-0 h-[100lvh]"
         aria-hidden="true"
       >
-        <GLBoundary
-          fallback={<HeroFallback />}
-          onFail={() => {}}
-        >
+        <GLBoundary fallback={<HeroFallback />} onFail={() => {}}>
           {gl && mount3D ? (
-            <Suspense
-              fallback={<HeroFallback />}
-            >
+            <Suspense fallback={<HeroFallback />}>
               <ChessWorld
                 scroll={scroll}
                 pointer={pointer}
@@ -507,11 +475,7 @@ export default function Home() {
                 Turning brands into conversations.
               </p>
 
-              <div className="hero-fade">
-                <ArrowLink href="/portfolio">
-                  Explore our craft
-                </ArrowLink>
-              </div>
+        
             </div>
           </div>
 
@@ -520,9 +484,7 @@ export default function Home() {
             className="hero-fade absolute bottom-10 right-5 flex flex-col items-center gap-3 text-xs text-white/50 md:bottom-14 md:right-14"
             aria-hidden="true"
           >
-            <span className="[writing-mode:vertical-rl]">
-              Scroll
-            </span>
+            <span className="[writing-mode:vertical-rl]">Scroll</span>
 
             <span className="relative h-14 w-px bg-white/20">
               <span className="scroll-dot absolute -left-[1.5px] top-0 h-1.5 w-1.5 rounded-full bg-[#2f8bff]" />
@@ -533,22 +495,18 @@ export default function Home() {
         {/* ---------------- Scroll Chapters ---------------- */}
 
         <Chapter title="Strategy before noise.">
-          Every move starts with the position on the board:
-          who is listening, what they trust, and what they
-          will repeat.
+          Every move starts with the position on the board: who is listening,
+          what they trust, and what they will repeat.
         </Chapter>
 
-        <Chapter
-          side="right"
-          title="Influence is a position, not a volume."
-        >
-          We place brands where conversations already happen,
-          then give people a reason to keep going.
+        <Chapter side="right" title="Influence is a position, not a volume.">
+          We place brands where conversations already happen, then give people
+          a reason to keep going.
         </Chapter>
 
         <Chapter title="Authority is earned in public.">
-          The strongest piece on the board rarely moves first.
-          It moves when the moment is right, and everyone sees why.
+          The strongest piece on the board rarely moves first. It moves when
+          the moment is right, and everyone sees why.
         </Chapter>
 
         {/* ---------------- Finale ---------------- */}
@@ -559,9 +517,7 @@ export default function Home() {
           </h2>
 
           <div className="reveal relative mt-8">
-            <ArrowLink href="/contact">
-              Start a conversation
-            </ArrowLink>
+            <ArrowLink href={WHATSAPP_URL}>Start a conversation</ArrowLink>
           </div>
         </section>
       </div>

@@ -3,10 +3,9 @@ import { Link, useLocation } from "react-router-dom";
 import { ArrowUpRight, Menu, X } from "lucide-react";
 
 const NAV_LINKS = [
-  { label: "Our Craft", path: "/portfolio" },
-  { label: "Services", path: "/services" },
+
   { label: "About", path: "/about" },
-  { label: "Careers", path: "/careers" },
+
 ];
 
 export default function Navbar() {
