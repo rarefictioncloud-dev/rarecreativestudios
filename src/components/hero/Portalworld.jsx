@@ -1,6 +1,6 @@
-import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Environment } from "@react-three/drei";
+import { Environment, PerformanceMonitor } from "@react-three/drei";
 import * as THREE from "three";
 
 /*
@@ -12,6 +12,11 @@ import * as THREE from "three";
   pieces gliding to final tiles, a cobalt route lighting tile by tile, and a
   cleaner composition near the form. It is damped, reversible, and never
   touches native scrolling.
+
+  Responsive rules
+  - Landscape screens (desktop, laptops, landscape phones) use exactly the original cameras.
+  - Portrait screens (phones, portrait tablets) get an automatic "zoom out" so the WHOLE board
+    stays in frame during the entire scroll sweep (see BOARD_FIT).
 */
 
 const ss = THREE.MathUtils.smoothstep;
@@ -19,6 +24,11 @@ const lerp = THREE.MathUtils.lerp;
 const BG_DARK = new THREE.Color("#07080b");
 const BG_LIGHT = new THREE.Color("#121c30");
 const tileXZ = ([i, j]) => [i - 3.5, j - 3.5];
+
+// World-space width the camera must be able to see in portrait (board + margin for the diagonal sweep).
+// Larger = zoomed out further. Raise it for more breathing room, lower it to get closer.
+const BOARD_FIT = 13.2;
+const MAX_ZOOM = 3.2;
 
 /* Lathe profiles: [radius, height] */
 const PROFILES = {
@@ -132,7 +142,11 @@ function RouteLight({ progress }) {
 
 function Rig({ progress, mobile }) {
   const target = useRef(0);
+  const zoom = useRef(null); // null until the first frame, so portrait screens open already zoomed out
   const { camera } = useThree();
+  const size = useThree((s) => s.size);
+  const reduce = useMemo(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches, []);
+
   const v = useMemo(
     () => ({
       posA: mobile ? new THREE.Vector3(3.6, 4.4, 9.4) : new THREE.Vector3(6.5, 5, 9.5),
@@ -145,14 +159,38 @@ function Rig({ progress, mobile }) {
     [mobile]
   );
 
+  // How far to pull the whole rig back so the board's full width fits the screen.
+  // Landscape (aspect >= 1) => exactly 1 (the original desktop framing). Quantised so tiny
+  // browser-toolbar resizes on phones don't nudge the camera.
+  const aspectQ = Math.round(Math.max(size.width / Math.max(size.height, 1), 0.3) * 20) / 20;
+  const zoomTarget = useMemo(() => {
+    if (aspectQ >= 1) return 1;
+    const half = Math.tan(THREE.MathUtils.degToRad((mobile ? 46 : 34) / 2));
+    const needed = BOARD_FIT / (2 * half * aspectQ); // camera distance that sees BOARD_FIT units across
+    return THREE.MathUtils.clamp(needed / v.posA.length(), 1, MAX_ZOOM);
+  }, [aspectQ, mobile, v]);
+
   useEffect(() => {
     camera.fov = mobile ? 46 : 34;
     camera.updateProjectionMatrix();
   }, [mobile, camera]);
 
   useEffect(() => {
+    // Touch devices: measure against the LARGE viewport (100lvh) so the browser toolbar
+    // sliding in/out never changes the scroll range. Mouse devices keep window.innerHeight.
+    const coarse = window.matchMedia("(pointer: coarse)").matches;
+    let probe = null;
+    if (coarse && window.CSS?.supports?.("height", "100lvh")) {
+      probe = document.createElement("div");
+      probe.setAttribute("aria-hidden", "true");
+      probe.style.cssText =
+        "position:fixed;top:0;left:0;width:0;height:100lvh;visibility:hidden;pointer-events:none";
+      document.body.appendChild(probe);
+    }
+    const viewport = () => (probe && probe.offsetHeight) || window.innerHeight;
+
     const read = () => {
-      const max = document.documentElement.scrollHeight - window.innerHeight;
+      const max = document.documentElement.scrollHeight - viewport();
       target.current = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
     };
     read();
@@ -164,22 +202,38 @@ function Rig({ progress, mobile }) {
       window.removeEventListener("scroll", read);
       window.removeEventListener("resize", read);
       ro.disconnect();
+      probe?.remove();
     };
   }, []);
 
-  useFrame(({ camera, pointer, scene }, delta) => {
+  useFrame(({ camera, pointer, scene, clock }, delta) => {
     progress.current = THREE.MathUtils.damp(progress.current, target.current, 4, delta);
     const p = progress.current;
     const e = p * p * (3 - 2 * p); // eased diagonal sweep
+
+    zoom.current = zoom.current === null ? zoomTarget : THREE.MathUtils.damp(zoom.current, zoomTarget, 3, delta);
+    const z = zoom.current;
+
     v.pos.lerpVectors(v.posA, v.posB, e);
-    if (!mobile) v.pos.x += pointer.x * 0.3;
-    camera.position.copy(v.pos);
     v.look.lerpVectors(v.lookA, v.lookB, e);
+    // Scaling position AND look target about the origin zooms out without moving the composition
+    if (z !== 1) {
+      v.pos.multiplyScalar(z);
+      v.look.multiplyScalar(z);
+    }
+    if (!mobile) v.pos.x += pointer.x * 0.3;
+    else if (!reduce) v.pos.x += Math.sin(clock.elapsedTime * 0.35) * 0.25 * z; // phones: gentle idle drift instead of a pointer
+    camera.position.copy(v.pos);
     camera.lookAt(v.look);
 
     const mix = p * 0.8;
     if (scene.background?.isColor) scene.background.copy(BG_DARK).lerp(BG_LIGHT, mix);
-    if (scene.fog) scene.fog.color.copy(BG_DARK).lerp(BG_LIGHT, mix);
+    if (scene.fog) {
+      scene.fog.color.copy(BG_DARK).lerp(BG_LIGHT, mix);
+      // keep the fog behind the (now further) board so it never looks washed out
+      scene.fog.near = 16 * z;
+      scene.fog.far = 38 * z;
+    }
   });
 
   return null;
@@ -238,23 +292,33 @@ function Scene({ progress }) {
           <Piece key={spec.id} spec={spec} progress={progress} geos={geos} />
         ))}
       </group>
-      <Environment preset="studio" />
+
+      {/* own Suspense: the board renders immediately while the HDR streams in (slow mobile networks) */}
+      <Suspense fallback={null}>
+        <Environment preset="studio" />
+      </Suspense>
     </>
   );
 }
 
 export default function ChessMoveWorld() {
   const progress = useRef(0);
-  const small = typeof window !== "undefined" && window.innerWidth < 768;
+  // GL options are fixed when the canvas is created, so decide them once
+  const small = useRef(typeof window !== "undefined" && window.innerWidth < 768).current;
+  const [lowPerf, setLowPerf] = useState(false);
+
+  // desktop: [1, 1.5] as before. phones: [1, 1.5] (sharper than before), stepping down only if FPS drops
+  const dpr = small && lowPerf ? [0.75, 1.1] : [1, 1.5];
 
   return (
     <Canvas
       shadows={!small}
-      dpr={small ? [1, 1.25] : [1, 1.5]}
-      camera={{ position: small ? [3.6, 4.4, 9.4] : [6.5, 5, 9.5], fov: small ? 46 : 34, near: 0.1, far: 60 }}
-      gl={{ antialias: !small, alpha: false, powerPreference: "high-performance" }}
+      dpr={dpr}
+      camera={{ position: small ? [3.6, 4.4, 9.4] : [6.5, 5, 9.5], fov: small ? 46 : 34, near: 0.1, far: 90 }}
+      gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
       style={{ width: "100%", height: "100%" }}
     >
+      {small && <PerformanceMonitor onDecline={() => setLowPerf(true)} flipflops={2} />}
       <Scene progress={progress} />
     </Canvas>
   );

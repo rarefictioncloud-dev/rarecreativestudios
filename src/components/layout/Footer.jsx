@@ -28,8 +28,14 @@ const CSS = `
 
 const font = '"Helvetica Now Display","Helvetica Now Text","Helvetica Neue",Helvetica,Arial,sans-serif';
 const focus = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#5271FF]";
-const link = `relative inline-block text-white/90 transition-colors hover:text-white after:absolute after:-bottom-0.5 after:left-0 after:h-0.5 after:w-full after:origin-left after:scale-x-0 after:bg-[#5271FF] after:transition-transform after:duration-300 hover:after:scale-x-100 focus-visible:after:scale-x-100 ${focus}`;
-const h3 = "mb-5 text-xs font-bold tracking-[0.18em] text-[#75849B]";
+
+// Fluid side padding that also clears phone notches in landscape (equals the original px-[clamp(1.25rem,5vw,4rem)] elsewhere)
+const padX =
+  "pl-[max(env(safe-area-inset-left),clamp(1.25rem,5vw,4rem))] pr-[max(env(safe-area-inset-right),clamp(1.25rem,5vw,4rem))]";
+
+// Links: on phones each one gets a ~44px tap target (underline kept tight to the text); md+ is unchanged
+const link = `relative inline-block break-words text-white/90 transition-colors hover:text-white max-md:py-2.5 after:absolute after:-bottom-0.5 after:left-0 after:h-0.5 after:w-full after:origin-left after:scale-x-0 after:bg-[#5271FF] after:transition-transform after:duration-300 max-md:after:bottom-2 hover:after:scale-x-100 focus-visible:after:scale-x-100 ${focus}`;
+const h3 = "mb-5 text-xs font-bold tracking-[0.18em] text-[#75849B] max-md:mb-3";
 
 export default function Footer() {
   const year = new Date().getFullYear();
@@ -38,7 +44,7 @@ export default function Footer() {
       <style>{CSS}</style>
 
       {/* 1 — Closing statement */}
-      <section aria-labelledby="footer-statement" className="px-[clamp(1.25rem,5vw,4rem)] pb-16 pt-20 md:pb-24 md:pt-32">
+      <section aria-labelledby="footer-statement" className={`${padX} pb-16 pt-20 md:pb-24 md:pt-32`}>
         <span aria-hidden="true" className="mb-8 block h-1 w-16 bg-[#FAD430]" />
         <div className="grid gap-10 lg:grid-cols-12 lg:items-end">
           <h2 id="footer-statement" className="break-words text-[clamp(2.2rem,10.5vw,9rem)] font-bold uppercase leading-[0.9] tracking-tighter lg:col-span-8">
@@ -47,10 +53,14 @@ export default function Footer() {
             <span className="block">RARE<span className="text-[#FAD430]">.</span></span>
           </h2>
           <div className="lg:col-span-4">
-            <p className="max-w-[36ch] text-base leading-relaxed text-white/80 md:text-lg">
+            <p className="max-w-[36ch] break-words text-base leading-relaxed text-white/80 md:text-lg">
               Have an idea, a story, or a brand ready for its next chapter? Let's create something worth talking about.
             </p>
-            <Link to="/contact" className={`mt-8 inline-flex min-h-12 items-center gap-3 bg-[#5271FF] px-7 py-4 text-[1.2rem] font-bold leading-none text-white transition-colors hover:bg-white hover:text-black ${focus}`}>
+            {/* Phones: full-width, thumb-friendly button that can never overflow; sm+ is the original inline button */}
+            <Link
+              to="/contact"
+              className={`mt-8 inline-flex min-h-12 w-full touch-manipulation items-center justify-between gap-3 bg-[#5271FF] px-5 py-4 text-[clamp(0.95rem,4.2vw,1.2rem)] font-bold leading-none text-white transition-colors hover:bg-white hover:text-black active:bg-white active:text-black sm:w-auto sm:justify-start sm:px-7 ${focus}`}
+            >
               START A CONVERSATION <span aria-hidden="true">↗</span>
             </Link>
           </div>
@@ -58,37 +68,38 @@ export default function Footer() {
       </section>
 
       {/* 2 — Main footer */}
-      <div className="border-t border-[#75849B]/30 px-[clamp(1.25rem,5vw,4rem)] py-14 md:py-20">
-        <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-12">
-          <div className="md:col-span-2 lg:col-span-5">
+      <div className={`border-t border-[#75849B]/30 ${padX} py-12 md:py-20`}>
+        {/* Phones: Explore + Capabilities sit side by side (2 columns) instead of one long stack */}
+        <div className="grid grid-cols-2 gap-x-6 gap-y-10 md:gap-12 lg:grid-cols-12">
+          <div className="col-span-2 lg:col-span-5">
             {LOGO_SRC ? (
               <img src={LOGO_SRC} alt="Rare Creative Studios" className="h-10 w-auto max-w-full md:h-12" loading="lazy" />
             ) : (
               <p className="text-2xl font-bold leading-none tracking-tighter">RARE <span className="block text-xs font-bold tracking-[0.18em] text-[#75849B]">CREATIVE STUDIOS</span></p>
             )}
-            <p className="mt-6 max-w-[40ch] text-base leading-relaxed text-white/80">
+            <p className="mt-6 max-w-[40ch] break-words text-base leading-relaxed text-white/80">
               Strategy, storytelling, PR, and creative production for brands ready to make a lasting impression.
             </p>
-            <p className="mt-5 text-xs font-bold tracking-[0.18em] text-[#FAD430]">CREATIVE THINKING. RARE EXECUTION.</p>
+            <p className="mt-5 text-xs font-bold leading-relaxed tracking-[0.18em] text-[#FAD430]">CREATIVE THINKING. RARE EXECUTION.</p>
           </div>
 
-          <nav aria-label="Explore" className="lg:col-span-2 lg:col-start-7">
+          <nav aria-label="Explore" className="min-w-0 lg:col-span-2 lg:col-start-7">
             <h3 className={h3}>EXPLORE</h3>
-            <ul className="space-y-3">
+            <ul className="space-y-3 max-md:space-y-0">
               {EXPLORE.map((l) => <li key={l.to}><Link to={l.to} className={link}>{l.label}</Link></li>)}
             </ul>
           </nav>
 
-          <div className="lg:col-span-3">
+          <div className="min-w-0 lg:col-span-3">
             <h3 className={h3}>CAPABILITIES</h3>
-            <ul className="space-y-3 text-white/80">
+            <ul className="space-y-3 break-words text-white/80 max-md:space-y-2.5 max-md:text-[0.95rem] max-md:leading-snug">
               {CAPABILITIES.map((c) => <li key={c}>{c}</li>)}
             </ul>
           </div>
 
-          <div className="md:col-span-2 lg:col-span-12 lg:-mt-2">
+          <div className="col-span-2 lg:col-span-12 lg:-mt-2">
             <h3 className={h3}>CONNECT</h3>
-            <ul className="flex flex-wrap gap-x-8 gap-y-3">
+            <ul className="flex flex-wrap gap-x-8 gap-y-3 max-md:gap-y-0">
               {EMAIL && <li><a href={`mailto:${EMAIL}`} className={link}>{EMAIL}</a></li>}
               {SOCIALS.map((s) => <li key={s.href}><a href={s.href} target="_blank" rel="noopener noreferrer" className={link}>{s.label}</a></li>)}
               {!EMAIL && SOCIALS.length === 0 && <li><Link to="/contact" className={link}>Tell us about your project</Link></li>}
@@ -97,7 +108,7 @@ export default function Footer() {
         </div>
 
         {/* 3 — Creative detail: film frames with a single moving yellow frame */}
-        <div aria-hidden="true" className="relative mt-14 h-3 w-[232px] max-w-full">
+        <div aria-hidden="true" className="relative mt-14 h-3 w-[232px] max-w-full max-md:mt-12">
           <div className="flex gap-2">
             {Array.from({ length: 12 }, (_, i) => <span key={i} className="block h-3 w-3 border border-[#75849B]/60 bg-[#002366]" />)}
           </div>
@@ -105,9 +116,9 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* 4 — Bottom bar */}
-      <div className="border-t border-[#75849B]/30 px-[clamp(1.25rem,5vw,4rem)] py-6">
-        <div className="flex flex-col gap-2 text-xs tracking-[0.14em] text-[#75849B] md:flex-row md:items-center md:justify-between">
+      {/* 4 — Bottom bar (clears the iPhone home bar) */}
+      <div className={`border-t border-[#75849B]/30 ${padX} pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-6`}>
+        <div className="flex flex-col gap-2 text-xs leading-relaxed tracking-[0.14em] text-[#75849B] md:flex-row md:items-center md:justify-between">
           <p>© {year} RARE CREATIVE STUDIOS</p>
           <p>INDEPENDENT THINKING. DISTINCTIVE WORK.</p>
         </div>
