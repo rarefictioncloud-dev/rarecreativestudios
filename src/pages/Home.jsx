@@ -285,7 +285,7 @@ export default function Home() {
       <div ref={curtain} className="pointer-events-none fixed inset-0 z-[45] bg-black" aria-hidden="true" />
 
       {/* Fixed 3D stage */}
-      <div className="pointer-events-none fixed inset-x-0 top-0 z-0 h-[100lvh]" aria-hidden="true">
+      <div className="pointer-events-none fixed inset-x-0 top-0 z-0 h-[100svh] md:h-[100lvh]" aria-hidden="true">
         <GLBoundary fallback={<HeroFallback />} onFail={() => {}}>
           {gl && mount3D ? (
             <Suspense fallback={<HeroFallback />}>

@@ -129,6 +129,7 @@ function World({ scroll, pointer, high, onReady }) {
   const intro = useRef({ dolly: 1, shake: 0 });
   const camPos = useMemo(() => new THREE.Vector3(), []);
   const camLook = useMemo(() => new THREE.Vector3(), []);
+  const heroLook = useMemo(() => new THREE.Vector3(), []);
   const reduce = useMemo(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches, []);
 
   /* Opening sequence: pieces rise, knight captures, king takes command */
@@ -199,15 +200,36 @@ function World({ scroll, pointer, high, onReady }) {
     const u = Math.min(Math.max(sp.current, 0), 1);
 
     const aspect = size.width / size.height;
-    const k = aspect < 0.7 ? 1.7 : aspect < 1 ? 1.5 : aspect < 1.4 ? 1.2 : 1;
+    const portrait = aspect < 1;
+
+    // Portrait (phones / tablets): open on the WHOLE board from a raised angle, then ease into the cinematic path.
+    // Landscape / desktop (aspect >= 1) takes the exact same code path as before.
+    const el = 0.47; // camera elevation (rad) for the portrait hero shot
+    const a = Math.max(aspect, 0.35);
+    const kFit = ((16 / a) * Math.cos(el)) / 11.43; // distance at which the board width just fits the screen
+    const w = portrait ? 1 - THREE.MathUtils.smoothstep(u, 0, 0.28) : 0;
+    const kRest = aspect < 0.7 ? 1.7 : aspect < 1 ? 1.5 : aspect < 1.4 ? 1.2 : 1;
+    const k = portrait ? THREE.MathUtils.lerp(kRest, kFit, w) : kRest;
 
     CAM_PATH.getPoint(u, camPos).multiplyScalar(k);
     LOOK_PATH.getPoint(u, camLook);
-    const lift = aspect < 0.7 ? 2.0 : aspect < 1 ? 1.4 : aspect < 1.4 ? 0.6 : 0;
-    camLook.y -= lift * (1 - THREE.MathUtils.smoothstep(u, 0, 0.2));
+
+    if (portrait) {
+      if (w > 0) {
+        const hd = Math.hypot(camPos.x, camPos.z);
+        camPos.y = THREE.MathUtils.lerp(camPos.y, 0.3 + hd * Math.tan(el), w);
+        camPos.x = THREE.MathUtils.lerp(camPos.x, 0, w); // dead-centre so the board is symmetric
+        const visH = 2 * (hd / Math.cos(el)) * 0.3249; // visible world height at the board
+        const lift = (0.09 * visH) / Math.cos(el); // park the board in the free band above the copy
+        camLook.lerp(heroLook.set(0, 0.3 - lift, 0.3), w);
+      }
+    } else {
+      const lift = aspect < 1.4 ? 0.6 : 0;
+      camLook.y -= lift * (1 - THREE.MathUtils.smoothstep(u, 0, 0.2));
+    }
 
     // slow orbit + intro dolly + pointer parallax + impact shake
-    if (!reduce) camPos.applyAxisAngle(Y_AXIS, Math.sin(t * 0.15) * 0.14);
+    if (!reduce) camPos.applyAxisAngle(Y_AXIS, Math.sin(t * 0.15) * 0.14 * (portrait ? 0.5 : 1));
     const d = intro.current.dolly;
     camPos.z += d * 6;
     camPos.y -= d * 0.7;
@@ -217,11 +239,19 @@ function World({ scroll, pointer, high, onReady }) {
     camera.position.copy(camPos);
     camera.lookAt(camLook);
 
+    const fog = state.scene.fog;
+    if (fog) {
+      const shift = portrait ? Math.max(0, camPos.length() - 12) : 0; // desktop: shift = 0 (unchanged)
+      fog.near = 16 + shift;
+      fog.far = 46 + shift;
+    }
+
     // the whole board follows the cursor: yaw, tilt, slide
     if (world.current) {
-      world.current.rotation.y = sm.current.x * 0.3;
+      const sway = portrait ? 0.6 : 1;
+      world.current.rotation.y = sm.current.x * 0.3 * sway;
       world.current.rotation.x = -sm.current.y * 0.1;
-      world.current.rotation.z = -sm.current.x * 0.02;
+      world.current.rotation.z = -sm.current.x * 0.02 * sway;
       world.current.position.x = sm.current.x * 0.5;
       world.current.position.y = (reduce ? 0 : Math.sin(t * 0.6) * 0.08) + sm.current.y * 0.15;
     }
