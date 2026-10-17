@@ -437,10 +437,6 @@ export default function Contact() {
 
         {/* ================= 5. FINAL CONNECTION ================= */}
         <section className="relative flex min-h-[90svh] items-end overflow-hidden px-5 pb-[max(5rem,env(safe-area-inset-bottom))] pt-24 sm:px-8 md:px-14 md:pb-28">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_35%,rgba(7,86,189,.3),transparent_60%)]"
-          />
           <div data-reveal className="rcs-reveal relative mx-auto w-full max-w-[1440px]">
             <h2 className="max-w-5xl text-[clamp(1.44rem,5.76vw,4.86rem)] font-black uppercase leading-[.88] tracking-[-.06em]">
               The next great story
