@@ -213,11 +213,7 @@ export default function Home() {
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(5,10,20,0.55)_100%)]" />
 
         {/* editorial running head */}
-        <div aria-hidden="true" className="pointer-events-none absolute inset-x-5 top-[max(6.5rem,13svh)] z-10 hidden items-center sm:flex sm:inset-x-8 md:inset-x-[4vw] md:top-[max(8.5rem,16svh)]">
-          <span className={`${label} uppercase tracking-[0.3em] text-white/45`}>Rare Creative Studios</span>
-          <span className="mx-6 h-px flex-1 bg-gradient-to-r from-white/15 to-transparent" />
-          <span className={`${label} uppercase tracking-[0.3em] text-[#C6A66B]/80`}>Modern PR, reimagined</span>
-        </div>
+       
 
         <div className="relative z-10 mx-auto w-full max-w-[1440px]">
           <span aria-hidden="true" data-reveal style={{ "--d": "0ms" }} className="mb-[2svh] block h-px w-14 bg-[#C6A66B]" />
