@@ -6,8 +6,6 @@ const NAV_LINKS = [
   { label: "Home", path: "/" },
   { label: "About", path: "/about" },
   { label: "Services", path: "/services" },
-  { label: "Work", path: "/work" },
-  { label: "Insights", path: "/insights" },
 ];
 
 /* Shared brand typography. The Navbar is mounted on every page, so Home, Footer and About all use these. */

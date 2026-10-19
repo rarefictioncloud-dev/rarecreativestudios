@@ -431,10 +431,7 @@ export default function Home() {
           We engineer conversations that move brands from visibility to cultural relevance.
         </p>
 
-        <Link to="/contact" className={`group ${mono} mt-6 inline-flex items-center justify-between gap-6 bg-[#0b0b0b] px-5 py-3.5 text-[10px] uppercase tracking-[0.12em] text-white transition-colors hover:bg-[#0a3fdc] md:absolute md:left-[44.9vw] md:top-[23.1vw] md:mt-0 md:h-[2.9vw] md:w-[16.8vw] md:px-[1.7vw] md:py-0 md:text-[0.95vw] ${focus}`}>
-          Let’s make it matter
-          <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 md:h-[1.1vw] md:w-[1.1vw]" strokeWidth={1.4} />
-        </Link>
+
 
         <GlobeArt className="ml-auto mt-10 block h-auto w-[60%] max-w-[260px] md:absolute md:left-[77.7vw] md:top-[1.4vw] md:ml-0 md:mt-0 md:w-[22.3vw] md:max-w-none" />
       </section>
