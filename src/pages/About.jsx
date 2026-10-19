@@ -2,7 +2,9 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { ArrowUpRight } from "lucide-react";
 import RibbonFallback from "../components/hero/RibbonFallback";
 
-/* Fonts (.rcs-display, .rcs-body, .rcs-serif) are injected by Navbar, which is mounted on every page. */
+/* Fonts (.rcs-display, .rcs-body, .rcs-serif) are injected by Navbar, which is mounted on every page.
+   TYPE SCALE = Home page: at md (768px) and up the same small sizes (8px labels, 9-10.5px body, same heading clamps);
+   phones keep larger, readable sizes. */
 
 // Three.js is loaded on demand so the page content never waits for it.
 const RibbonWorld = lazy(() => import("../components/hero/RibbonWorld"));
@@ -16,6 +18,16 @@ const FOUNDER_IMAGE = "https://pub-c068270ff2f94b2691bb54438e646383.r2.dev/DSCF6
 
 const focus =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C6A66B]";
+
+/* Shared type tokens (match Home) */
+const label = "text-[11px] md:text-[8px]";
+const h2Main = "text-[clamp(1.7rem,8vw,2.4rem)] md:text-[clamp(1.45rem,3vw,2.75rem)]";
+const h2Chapter = "text-[clamp(1.6rem,7.4vw,2.2rem)] md:text-[clamp(1.3rem,2.7vw,2.35rem)]";
+const h2Big = "text-[clamp(2.1rem,10vw,3rem)] md:text-[clamp(1.95rem,4vw,3.65rem)]";
+const h2Cta = "text-[clamp(1.8rem,9vw,2.6rem)] md:text-[clamp(1.45rem,3.5vw,3rem)]";
+const bodyDark = "text-[15px] leading-7 md:text-[10.5px] md:leading-relaxed";
+const small = "text-[14px] leading-relaxed md:text-[9px]";
+const itemTitle = "text-[clamp(1.3rem,6vw,1.6rem)] md:text-[clamp(1rem,1.45vw,1.3rem)]";
 
 const FRAMES = ["STRATEGY", "STORY", "INFLUENCE", "FILM", "IMPACT"];
 
@@ -69,42 +81,12 @@ const stages = [
 ];
 
 const capabilities = [
-  {
-    number: "01",
-    title: "Brand Positioning",
-    description:
-      "Define the space a brand should own, the audience it matters to, and the perception it needs to earn.",
-  },
-  {
-    number: "02",
-    title: "Media Strategy & PR",
-    description:
-      "Build a deliberate narrative and place it with the right journalists, creators, platforms, and conversations.",
-  },
-  {
-    number: "03",
-    title: "Story Development",
-    description:
-      "Find the human truth, sharpen the point of view, and turn brand substance into a story people want to carry forward.",
-  },
-  {
-    number: "04",
-    title: "Campaign Execution",
-    description:
-      "Translate strategy into coordinated moments across media, talent, content, and brand experiences.",
-  },
-  {
-    number: "05",
-    title: "Digital Amplification",
-    description:
-      "Extend the life of a story through thoughtful distribution and relevant audience touchpoints.",
-  },
-  {
-    number: "06",
-    title: "Film & Creative Production",
-    description:
-      "Creative direction, cinematography, video editing, post-production, and short-film production.",
-  },
+  { number: "01", title: "Brand Positioning", description: "Define the space a brand should own, the audience it matters to, and the perception it needs to earn." },
+  { number: "02", title: "Media Strategy & PR", description: "Build a deliberate narrative and place it with the right journalists, creators, platforms, and conversations." },
+  { number: "03", title: "Story Development", description: "Find the human truth, sharpen the point of view, and turn brand substance into a story people want to carry forward." },
+  { number: "04", title: "Campaign Execution", description: "Translate strategy into coordinated moments across media, talent, content, and brand experiences." },
+  { number: "05", title: "Digital Amplification", description: "Extend the life of a story through thoughtful distribution and relevant audience touchpoints." },
+  { number: "06", title: "Film & Creative Production", description: "Creative direction, cinematography, video editing, post-production, and short-film production." },
 ];
 
 const production = [
@@ -134,8 +116,8 @@ function PlusIcon({ open }) {
 function Eyebrow({ children, tone = "dark" }) {
   return (
     <p
-      className={`flex items-center gap-3 text-[11px] font-bold uppercase tracking-[.28em] ${
-        tone === "light" ? "text-[#B28F4A]" : "text-[#C6A66B]"
+      className={`flex items-center gap-3 ${label} font-bold uppercase tracking-[.28em] md:tracking-[.3em] ${
+        tone === "light" ? "text-[#8A6A2B] md:text-[#B28F4A]" : "text-[#C6A66B]"
       }`}
     >
       <span aria-hidden="true" className="h-px w-8 bg-current" />
@@ -179,9 +161,7 @@ export default function About() {
     if (rm || navigator.connection?.saveData) return;
     try {
       const c = document.createElement("canvas");
-      setWebgl(
-        Boolean(window.WebGLRenderingContext && (c.getContext("webgl2") || c.getContext("webgl")))
-      );
+      setWebgl(Boolean(window.WebGLRenderingContext && (c.getContext("webgl2") || c.getContext("webgl"))));
     } catch {
       setWebgl(false);
     }
@@ -272,15 +252,15 @@ export default function About() {
       {/* ============ SHARED 3D LAYER (one canvas for the whole page) ============ */}
       <div className="pointer-events-none absolute inset-0 z-0 [clip-path:inset(0)]" aria-hidden="true">
         <div className="fixed inset-0">
-        {webgl ? (
-          <Suspense fallback={<RibbonFallback />}>
-            <RibbonWorld />
-          </Suspense>
-        ) : (
-          <RibbonFallback />
-        )}
-        {/* legibility scrim: stronger on phones where the ribbon is closer to the text */}
-        <div className="absolute inset-0 bg-[#050A14]/55 md:bg-[#050A14]/40" />
+          {webgl ? (
+            <Suspense fallback={<RibbonFallback />}>
+              <RibbonWorld />
+            </Suspense>
+          ) : (
+            <RibbonFallback />
+          )}
+          {/* legibility scrim: stronger on phones where the ribbon is closer to the text */}
+          <div className="absolute inset-0 bg-[#050A14]/55 md:bg-[#050A14]/40" />
         </div>
       </div>
 
@@ -292,7 +272,7 @@ export default function About() {
             aria-hidden="true"
           />
           <div className="relative mx-auto w-full max-w-[1440px]">
-            <h1 className="rcs-display max-w-[1100px] text-[clamp(1.24rem,6.13vw,4.89rem)]">
+            <h1 className="rcs-display max-w-[1100px] text-[clamp(2.1rem,10vw,3.6rem)] md:text-[clamp(1.95rem,5.3vw,4.8rem)]">
               The best PR
               <br />
               isn’t seen.
@@ -304,7 +284,7 @@ export default function About() {
             <span aria-hidden="true" className="mt-8 block h-px w-24 bg-[#C6A66B]" />
           </div>
 
-          <div className="absolute bottom-6 right-5 hidden flex-col items-center gap-3 text-[9px] uppercase tracking-[.25em] text-white/50 sm:flex md:right-14" aria-hidden="true">
+          <div className="absolute bottom-6 right-5 hidden flex-col items-center gap-3 text-[9px] uppercase tracking-[.25em] text-white/50 sm:flex md:right-14 md:text-[8px]" aria-hidden="true">
             Scroll
             <span className="rcs-cue block h-12 w-px bg-[#C6A66B]" />
           </div>
@@ -342,13 +322,13 @@ export default function About() {
               <div className="grid gap-10 lg:grid-cols-[.6fr_1.4fr] lg:gap-20">
                 <div>
                   <Eyebrow tone="light">Our philosophy</Eyebrow>
-                  <p className="mt-5 max-w-xs font-editorial text-xl italic leading-snug text-black/60">
+                  <p className="mt-5 max-w-xs font-editorial text-lg italic leading-snug text-black/60 md:text-[14.5px]">
                     Modern PR, reimagined.
                   </p>
                 </div>
 
                 <div>
-                  <h2 className="rcs-display text-[clamp(1.46rem,5.11vw,4.38rem)]">
+                  <h2 className={`rcs-display ${h2Main}`}>
                     Visibility is easy.
                     <br />
                     <span className="font-editorial font-normal normal-case italic tracking-[-.04em] text-[#0756BD]">
@@ -356,7 +336,7 @@ export default function About() {
                     </span>
                   </h2>
 
-                  <div className="mt-8 max-w-2xl space-y-5 border-t border-[#050A14]/15 pt-6 text-[15px] leading-7 text-black/70 sm:text-base sm:leading-8">
+                  <div className={`mt-8 max-w-2xl space-y-5 border-t border-[#050A14]/15 pt-6 text-black/70 ${bodyDark}`}>
                     <p>
                       We don’t begin with a press release or a list of outlets. We begin with the business, the
                       audience, the cultural context, and the perception the brand needs to earn.
@@ -381,14 +361,14 @@ export default function About() {
           <div className="relative mx-auto max-w-[1440px]">
             <div data-reveal className="rcs-reveal max-w-5xl">
               <Eyebrow>The strategy hierarchy</Eyebrow>
-              <h2 className="rcs-display mt-5 text-[clamp(1.46rem,5.11vw,4.82rem)]">
+              <h2 className={`rcs-display mt-5 ${h2Main}`}>
                 Start at the top.
                 <br />
                 <span className="font-editorial font-normal normal-case italic tracking-[-.04em] text-white/55">
                   Make every move count.
                 </span>
               </h2>
-              <p className="mt-6 max-w-xl text-[15px] leading-7 text-white/70 sm:text-base sm:leading-8">
+              <p className={`mt-6 max-w-xl text-white/70 ${bodyDark}`}>
                 Every campaign begins with a clear strategic objective, not a list of disconnected tactics. Each stage
                 carries the one before it.
               </p>
@@ -402,7 +382,7 @@ export default function About() {
               />
               <span
                 aria-hidden="true"
-                className="absolute left-0 right-0 top-[3.5rem] hidden h-px bg-gradient-to-r from-[#C6A66B] via-[#C6A66B]/40 to-transparent md:block"
+                className="absolute left-0 right-0 top-[3rem] hidden h-px bg-gradient-to-r from-[#C6A66B] via-[#C6A66B]/40 to-transparent md:block"
               />
               {stages.map((s, i) => (
                 <li
@@ -416,12 +396,12 @@ export default function About() {
                       aria-hidden="true"
                       className="absolute left-[16px] top-3 h-3 w-3 rounded-full bg-[#C6A66B] ring-4 ring-[#050A14] md:hidden"
                     />
-                    <p className="rcs-display rcs-outline text-[clamp(4.5rem,13vw,9rem)] leading-none text-[#5271FF]">
+                    <p className="rcs-display rcs-outline text-[clamp(3.5rem,16vw,5rem)] leading-none text-[#5271FF] md:text-[clamp(3.5rem,8vw,6rem)]">
                       {s.number}
                     </p>
-                    <h3 className="rcs-display mt-4 text-3xl sm:text-4xl">{s.title}</h3>
-                    <p className="mt-3 max-w-sm text-sm font-semibold leading-6 text-[#C6A66B]">{s.kicker}</p>
-                    <p className="mt-4 max-w-sm text-[15px] leading-7 text-white/65">{s.body}</p>
+                    <h3 className={`rcs-display mt-4 ${itemTitle}`}>{s.title}</h3>
+                    <p className="mt-3 max-w-sm text-[14px] font-semibold leading-6 text-[#C6A66B] md:text-[9px] md:leading-relaxed">{s.kicker}</p>
+                    <p className={`mt-4 max-w-sm text-white/65 ${small}`}>{s.body}</p>
                   </div>
                 </li>
               ))}
@@ -438,7 +418,7 @@ export default function About() {
               className="rcs-reveal rcs-tilt relative bg-[#ECEBE7] px-5 py-12 text-[#050A14] shadow-[0_40px_120px_rgba(0,0,0,.55)] sm:px-10 sm:py-16 md:px-16 md:py-24"
             >
               <Eyebrow tone="light">What we do</Eyebrow>
-              <h2 className="rcs-display mt-5 text-[clamp(1.46rem,5.11vw,4.38rem)]">
+              <h2 className={`rcs-display mt-5 ${h2Main}`}>
                 One clear
                 <br />
                 <span className="font-editorial font-normal normal-case italic tracking-[-.04em] text-[#0756BD]">point of view.</span>
@@ -452,13 +432,11 @@ export default function About() {
                       i % 2 ? "md:pl-10 lg:pl-20" : ""
                     }`}
                   >
-                    <span className="rcs-display text-[clamp(2.6rem,6vw,4.5rem)] leading-none text-[#B28F4A]">
+                    <span className="rcs-display text-[clamp(2.2rem,10vw,3rem)] leading-none text-[#B28F4A] md:text-[clamp(2rem,4vw,3rem)]">
                       {c.number}
                     </span>
-                    <h3 className="rcs-display text-xl leading-tight sm:text-2xl md:text-3xl">
-                      {c.title}
-                    </h3>
-                    <p className="text-[15px] leading-7 text-black/65 sm:col-start-2 md:col-start-auto">{c.description}</p>
+                    <h3 className={`rcs-display leading-tight ${itemTitle}`}>{c.title}</h3>
+                    <p className="text-[14px] leading-7 text-black/65 sm:col-start-2 md:col-start-auto md:text-[9px] md:leading-relaxed">{c.description}</p>
                   </li>
                 ))}
               </ul>
@@ -484,14 +462,14 @@ export default function About() {
               <span aria-hidden="true" className="absolute bottom-0 right-0 hidden h-8 w-8 border-b border-r border-[#C6A66B]/70 sm:block" />
 
               <Eyebrow>Creative production</Eyebrow>
-              <h2 className="rcs-display mt-5 text-[clamp(1.61rem,6.21vw,5.4rem)]">
+              <h2 className={`rcs-display mt-5 ${h2Big}`}>
                 Stories designed
                 <br />
                 <span className="font-editorial font-normal normal-case italic tracking-[-.04em] text-[#6BA8FF]">to be felt.</span>
               </h2>
 
               <div className="mt-10 grid gap-10 md:grid-cols-[1fr_1fr] md:gap-16">
-                <p className="max-w-md text-[15px] leading-7 text-white/75 sm:text-base sm:leading-8">
+                <p className={`max-w-md text-white/75 ${bodyDark}`}>
                   Creative production translates strategy into visual experiences with a clear point of view. The
                   idea comes first; the craft carries it.
                 </p>
@@ -499,9 +477,9 @@ export default function About() {
                   {production.map((p, i) => (
                     <li
                       key={p}
-                      className="flex items-baseline gap-4 border-b border-white/20 py-3.5 text-base font-medium tracking-[-.01em] text-[#F5F5F2] sm:text-lg"
+                      className="flex items-baseline gap-4 border-b border-white/20 py-3.5 text-[15px] font-medium tracking-[-.01em] text-[#F5F5F2] md:text-[10.5px]"
                     >
-                      <span aria-hidden="true" className="text-[11px] tracking-[.2em] text-[#C6A66B]">
+                      <span aria-hidden="true" className={`${label} tracking-[.2em] text-[#C6A66B]`}>
                         0{i + 1}
                       </span>
                       {p}
@@ -543,11 +521,11 @@ export default function About() {
                       className="h-full w-full object-cover object-top"
                     />
                     <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/40 to-transparent px-5 pb-5 pt-16">
-                      <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-[#C6A66B]">Rare creative studios</p>
-                      <p className="rcs-display mt-1 text-lg leading-tight text-white sm:text-xl">
+                      <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-[#C6A66B] md:text-[8px]">Rare creative studios</p>
+                      <p className="rcs-display mt-1 text-base leading-tight text-white md:text-[clamp(1rem,1.45vw,1.3rem)]">
                         Pallapati Vinayvardhan Reddy
                       </p>
-                      <p className="mt-1 text-[10px] font-semibold uppercase tracking-[.22em] text-white/70">Founder</p>
+                      <p className="mt-1 text-[10px] font-semibold uppercase tracking-[.22em] text-white/70 md:text-[8px]">Founder</p>
                     </figcaption>
                   </div>
                 </figure>
@@ -556,13 +534,13 @@ export default function About() {
                 <div className="min-w-0">
                   <Eyebrow tone="light">Founder’s message</Eyebrow>
 
-                  <h2 className="rcs-display mt-5 text-[clamp(1.39rem,5.4vw,4.09rem)]">
+                  <h2 className={`rcs-display mt-5 ${h2Chapter}`}>
                     Make work
                     <br />
                     <span className="text-black/25">worth remembering.</span>
                   </h2>
 
-                  <div className="mt-8 max-w-2xl space-y-5 border-l border-[#B28F4A] pl-5 text-[15px] leading-7 text-black/75 sm:pl-7 sm:text-base sm:leading-8">
+                  <div className={`mt-8 max-w-2xl space-y-5 border-l border-[#B28F4A] pl-5 text-black/75 sm:pl-7 ${bodyDark}`}>
                     <p>
                       At Rare creative studios, we see every project as an opportunity to think differently, tell better
                       stories, and create work that makes an impact. We bring together creativity, strategy, and
@@ -575,10 +553,10 @@ export default function About() {
                     </p>
                   </div>
 
-                  <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-[#050A14]/15 pt-5 text-[10px] font-semibold uppercase tracking-[.2em] text-black/55">
+                  <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-[#050A14]/15 pt-5 text-[10px] font-semibold uppercase tracking-[.2em] text-black/60 md:text-[8px] md:text-black/55">
                     <span>Pallapati Vinayvardhan Reddy</span>
                     <span aria-hidden="true" className="h-px w-10 bg-[#B28F4A]" />
-                    <span className="text-black/45">Founder / Rare creative studios</span>
+                    <span className="text-black/50">Founder / Rare creative studios</span>
                   </div>
                 </div>
               </div>
@@ -591,7 +569,7 @@ export default function About() {
           <div className="mx-auto grid max-w-[1440px] gap-10 lg:grid-cols-[.72fr_1.28fr] lg:gap-20">
             <div data-reveal className="rcs-reveal lg:sticky lg:top-24 lg:self-start">
               <Eyebrow>Frequently asked questions</Eyebrow>
-              <h2 className="rcs-display mt-5 text-[clamp(1.46rem,5.11vw,4.38rem)]">
+              <h2 className={`rcs-display mt-5 ${h2Main}`}>
                 The right
                 <br />
                 questions.
@@ -612,9 +590,9 @@ export default function About() {
                         aria-expanded={open}
                         aria-controls={panelId}
                         onClick={() => setActiveFaq(open ? -1 : index)}
-                        className={`flex min-h-[72px] w-full items-center justify-between gap-4 py-5 text-left sm:min-h-[96px] ${focus}`}
+                        className={`flex min-h-[72px] w-full items-center justify-between gap-4 py-5 text-left md:min-h-[84px] ${focus}`}
                       >
-                        <span className="min-w-0 flex-1 text-[clamp(1rem,2.2vw,1.55rem)] font-medium leading-snug tracking-[-.02em]">
+                        <span className="min-w-0 flex-1 text-[clamp(1.05rem,4.6vw,1.2rem)] font-medium leading-snug tracking-[-.02em] md:text-[clamp(.9rem,1.45vw,1.15rem)]">
                           {item.question}
                         </span>
                         <PlusIcon open={open} />
@@ -628,7 +606,7 @@ export default function About() {
                       className="rcs-faq-panel"
                     >
                       <div className="overflow-hidden">
-                        <p className="max-w-3xl pb-7 pr-2 text-[15px] leading-7 text-white/70 sm:pr-10 sm:text-base sm:leading-8">
+                        <p className={`max-w-3xl pb-7 pr-2 text-white/70 sm:pr-10 ${bodyDark} md:text-[10px]`}>
                           {item.answer}
                         </p>
                       </div>
@@ -648,21 +626,21 @@ export default function About() {
           />
           <div data-reveal className="rcs-reveal relative mx-auto max-w-[1440px]">
             <Eyebrow>The next move</Eyebrow>
-            <h2 className="rcs-display mt-5 max-w-5xl text-[clamp(1.46rem,5.84vw,5.4rem)]">
+            <h2 className={`rcs-display mt-5 max-w-5xl ${h2Cta}`}>
               Your brand deserves
               <br />
               <span className="font-editorial font-normal normal-case italic tracking-[-.04em] text-[#C6A66B]">a defining moment.</span>
             </h2>
 
             <div className="mt-10 flex flex-col gap-10 sm:flex-row sm:items-end sm:justify-between">
-              <p className="max-w-md text-[15px] leading-7 text-white/75 sm:text-base sm:leading-8">
+              <p className={`max-w-md text-white/75 ${bodyDark}`}>
                 If the ambition is bigger than a mention, let’s start with the story worth telling.
               </p>
               <a
                 href={WHATSAPP_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`group inline-flex shrink-0 items-center gap-5 text-[11px] font-semibold uppercase tracking-[.2em] ${focus}`}
+                className={`group inline-flex shrink-0 items-center gap-5 ${label} font-semibold uppercase tracking-[.2em] ${focus}`}
               >
                 <span className="grid h-16 w-16 place-items-center rounded-full border border-[#C6A66B]/80 text-[#C6A66B] transition-colors duration-300 group-hover:bg-[#C6A66B] group-hover:text-[#050A14]">
                   <ArrowUpRight size={20} strokeWidth={1.6} aria-hidden="true" />
