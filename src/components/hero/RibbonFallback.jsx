@@ -32,7 +32,7 @@ export default function RibbonFallback() {
   }, []);
 
   return (
-    <div ref={ref} className="absolute inset-0 overflow-hidden bg-[#07080b]" aria-hidden="true" style={{ "--p": 0 }}>
+    <div ref={ref} className="absolute inset-0 overflow-hidden bg-[#050A14]" aria-hidden="true" style={{ "--p": 0 }}>
       <div className="absolute left-1/2 top-[40%] h-[70vmin] w-[70vmin] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#0756BD]/25 blur-[60px] md:blur-[100px]" />
 
       <div
@@ -49,7 +49,7 @@ export default function RibbonFallback() {
         style={{ transform: "translateY(calc(var(--p) * -70vh)) rotate(calc(-28deg + var(--p) * 70deg))" }}
       />
       <div
-        className="absolute left-[56%] top-[70%] h-[10vmin] w-[10vmin] rounded-full border-[3px] border-[#d8dee9]"
+        className="absolute left-[56%] top-[70%] h-[10vmin] w-[10vmin] rounded-full border-[3px] border-[#C6A66B]"
         style={{ transform: "translateY(calc(var(--p) * -110vh))" }}
       />
     </div>

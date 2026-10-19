@@ -8,6 +8,9 @@ import * as THREE from "three";
   content; the camera descends along a tall vertical path as the page scrolls.
   The path narrows toward the end so the ribbon "resolves" at the final CTA.
 
+  Premium palette: navy #050A14 background, cobalt glass ribbon, champagne-gold
+  chrome rings and a gold hairline on each sheet (matches Home and Services).
+
   Responsive rules
   - "compact" = phones (< 768px wide) and portrait tablets (< 1024px, taller than wide).
   - Everything the desktop view uses (fov 36, full ribbon, transmission, all sheets,
@@ -15,6 +18,7 @@ import * as THREE from "three";
 */
 const H = 34;
 const STOPS = 14;
+const NAVY = "#050A14";
 
 const isCompact = (w, h) => w < 768 || (w < 1024 && w < h);
 
@@ -54,9 +58,9 @@ const sheetGeo = new THREE.BoxGeometry(7, 9.2, 0.04);
 const ruleGeo = new THREE.BoxGeometry(3.2, 0.04, 0.005);
 const ringGeo = new THREE.TorusGeometry(0.95, 0.022, 10, 56);
 const sheetMat = new THREE.MeshStandardMaterial({ color: "#d9d8d3", roughness: 0.92 });
-const ruleMat = new THREE.MeshBasicMaterial({ color: "#0756BD" });
+const ruleMat = new THREE.MeshBasicMaterial({ color: "#C6A66B" });
 const ringMat = new THREE.MeshStandardMaterial({
-  color: "#e6ebf5",
+  color: "#dcc79a",
   metalness: 1,
   roughness: 0.14,
   envMapIntensity: 1.4,
@@ -182,8 +186,14 @@ function Rig({ progress, mobile }) {
     }
     const viewport = () => (probe && probe.offsetHeight) || window.innerHeight;
 
+    // The journey ends where the page content (<main data-scene-root>) ends, so the footer
+    // never counts as scroll range and the ribbon resolves exactly at the final CTA.
+    const rootEl = document.querySelector("[data-scene-root]");
     const read = () => {
-      const max = document.documentElement.scrollHeight - viewport();
+      const end = rootEl
+        ? rootEl.getBoundingClientRect().bottom + window.scrollY
+        : document.documentElement.scrollHeight;
+      const max = end - viewport();
       target.current = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
     };
     read();
@@ -230,8 +240,8 @@ function Scene({ progress }) {
 
   return (
     <>
-      <color attach="background" args={["#07080b"]} />
-      <fog attach="fog" args={["#07080b", 12, 30]} />
+      <color attach="background" args={[NAVY]} />
+      <fog attach="fog" args={[NAVY, 12, 30]} />
       <ambientLight intensity={0.5} />
       <directionalLight position={[4, 8, 8]} intensity={2} />
       <pointLight position={[-6, -8, 4]} intensity={60} color="#2a6bff" distance={26} />
