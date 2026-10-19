@@ -47,6 +47,8 @@ const TOPICS = [
   "Something else",
 ];
 
+const STEPS = ["Tell us what you’re building.", "We listen, then shape the strategy.", "Together, we make the next move."];
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 function validate(v) {
@@ -59,7 +61,7 @@ function validate(v) {
 }
 
 const inputCls =
-  "block w-full border-0 border-b bg-transparent px-0 py-3 text-base text-[#07080B] placeholder:text-black/40 outline-none transition-[border-color,box-shadow] duration-200 focus:border-[#0756BD] focus:shadow-[0_1px_0_0_#0756BD]";
+  "block w-full border-0 border-b border-black/30 bg-transparent px-0 py-3 text-base text-[#07080B] placeholder:text-black/40 outline-none transition-[border-color,box-shadow] duration-200 focus:border-[#B28F4A] focus:shadow-[0_1px_0_0_#B28F4A]";
 
 function Field({ id, label, error, optional, children }) {
   return (
@@ -75,18 +77,6 @@ function Field({ id, label, error, optional, children }) {
         </p>
       )}
     </div>
-  );
-}
-
-function Layer({ speed, rot = 0, className = "" }) {
-  return (
-    <div
-      aria-hidden="true"
-      data-par={speed}
-      data-rot={rot}
-      className={`pointer-events-none absolute will-change-transform ${className}`}
-      style={{ transform: `rotate(${rot}deg)` }}
-    />
   );
 }
 
@@ -137,41 +127,9 @@ export default function Contact() {
     return () => io.disconnect();
   }, [reduced]);
 
-  /* Scroll parallax for paper layers: one passive listener, one rAF per frame */
-  useEffect(() => {
-    const root = rootRef.current;
-    if (!root || reduced) return;
-    const layers = Array.from(root.querySelectorAll("[data-par]"));
-    let frame = 0;
-    const run = () => {
-      frame = 0;
-      const vh = window.innerHeight;
-      for (const el of layers) {
-        const r = el.parentElement.getBoundingClientRect();
-        if (r.bottom < -vh || r.top > vh * 2) continue;
-        const d = r.top + r.height / 2 - vh / 2;
-        const s = parseFloat(el.dataset.par);
-        const rot = parseFloat(el.dataset.rot || 0);
-        el.style.transform = `translate3d(0, ${(d * s).toFixed(1)}px, 0) rotate(${(rot + d * s * 0.01).toFixed(2)}deg)`;
-      }
-    };
-    const onScroll = () => {
-      if (!frame) frame = requestAnimationFrame(run);
-    };
-    run();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-    };
-  }, [reduced]);
-
   const goToForm = (e) => {
     e.preventDefault();
-    const el = document.getElementById("contact-form");
-    el?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
+    document.getElementById("contact-form")?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
     window.setTimeout(() => document.getElementById("cf-name")?.focus({ preventScroll: true }), reduced ? 0 : 700);
   };
 
@@ -208,24 +166,21 @@ export default function Contact() {
   };
 
   const ctaCls =
-    "inline-flex min-h-[56px] w-full items-center justify-between gap-5 rounded-full bg-[#0756BD] px-7 text-xs font-semibold uppercase tracking-[.12em] text-white transition hover:bg-[#06469a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#6BA8FF] sm:w-fit sm:justify-start";
+    "inline-flex min-h-[56px] w-full items-center justify-between gap-5 rounded-full bg-[#C6A66B] px-7 text-xs font-bold uppercase tracking-[.14em] text-[#07080B] shadow-[0_10px_40px_rgba(198,166,107,.25)] transition hover:bg-[#DDC89D] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#DDC89D] sm:w-fit sm:justify-start";
 
   return (
-    <main ref={rootRef} className="relative overflow-x-clip bg-[#07080B] text-[#F5F5F2]">
+    /* clip-path keeps the FIXED 3D layer inside <main>, so the footer below is never painted over */
+    <main ref={rootRef} className="relative isolate overflow-x-clip bg-[#07080B] text-[#F5F5F2] [clip-path:inset(0)]">
       <style>{`
         .rcs-reveal { opacity: 0; transform: translateY(22px);
           transition: opacity .8s ease, transform .8s cubic-bezier(.2,.7,.2,1); }
-        .rcs-reveal.rcs-tilt { transform: perspective(1200px) rotateX(6deg) translateY(36px); transform-origin: 50% 100%; }
         .rcs-reveal.rcs-in { opacity: 1; transform: none; }
-        .rcs-grain::after { content: ""; pointer-events: none; position: absolute; inset: 0; opacity: .07;
-          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.32'/%3E%3C/svg%3E");
-          mix-blend-mode: soft-light; }
         @media (prefers-reduced-motion: reduce) {
-          .rcs-reveal, .rcs-reveal.rcs-tilt { opacity: 1; transform: none; transition: none; }
+          .rcs-reveal { opacity: 1; transform: none; transition: none; }
         }
       `}</style>
 
-      {/* ============ SHARED 3D LAYER ============ */}
+      {/* ============ SHARED 3D LAYER (unchanged behaviour) ============ */}
       <div className="pointer-events-none fixed inset-0 z-0" aria-hidden="true">
         {webgl ? (
           <Suspense fallback={<PortalFallback />}>
@@ -239,164 +194,93 @@ export default function Contact() {
 
       <div className="relative z-10">
         {/* ================= 1. HERO ================= */}
-        <section className="rcs-grain relative isolate flex min-h-[100svh] items-end overflow-hidden px-5 pb-[max(3rem,env(safe-area-inset-bottom))] pt-32 sm:px-8 md:px-14 md:pb-16">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(4,5,8,0)_0%,rgba(4,5,8,.25)_45%,rgba(7,8,11,.92)_100%)]"
-          />
+        <section className="relative isolate flex min-h-[100svh] items-end overflow-hidden px-5 pb-[max(3rem,env(safe-area-inset-bottom))] pt-32 sm:px-8 md:px-14 md:pb-16">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(4,5,8,0)_0%,rgba(4,5,8,.25)_45%,rgba(7,8,11,.92)_100%)]" />
           <div className="relative mx-auto w-full max-w-[1440px]">
-  
-
-            <h1 className="max-w-[1100px] text-[clamp(1.44rem,6.3vw,4.5rem)] font-black uppercase leading-[.9] tracking-[-.06em] sm:leading-[.86]">
+            <p className="mb-5 flex items-center gap-4 text-[11px] font-bold uppercase tracking-[.4em] text-[#C6A66B]"><span aria-hidden="true" className="h-px w-12 bg-[#C6A66B]" />The next move</p>
+            <h1 className="max-w-[1100px] text-[clamp(1.6rem,6.3vw,4.5rem)] font-black uppercase leading-[.9] tracking-[-.06em] sm:leading-[.86]">
               Let’s make
               <br />
-              <span className="font-editorial font-normal normal-case italic tracking-[-.04em] text-[#6BA8FF]">
-                something matter.
-              </span>
+              <span className="font-editorial font-normal normal-case italic tracking-[-.04em] text-[#C6A66B]">something matter.</span>
             </h1>
-
-            <div className="mt-7 grid max-w-5xl gap-7 border-t border-white/20 pt-6 md:grid-cols-[1fr_auto] md:items-end">
-              <p className="max-w-xl text-[15px] leading-7 text-white/80 sm:text-base sm:leading-8">
-                Every meaningful collaboration begins with a conversation. Tell us what you’re building, where you want
-                to go, and what you want the world to remember.
+            <div className="mt-7 grid max-w-5xl gap-7 border-t border-[#C6A66B]/40 pt-6 md:grid-cols-[1fr_auto] md:items-end">
+              <p className="max-w-xl text-[15px] leading-7 text-white/85 sm:text-base sm:leading-8">
+                Every meaningful collaboration begins with a conversation. Tell us what you’re building, where you want to go, and what you want the world to remember.
               </p>
               <a href="#contact-form" onClick={goToForm} className={ctaCls}>
-                Start a conversation
-                <span aria-hidden="true">↓</span>
+                Start a conversation <span aria-hidden="true">↓</span>
               </a>
             </div>
           </div>
         </section>
 
-        {/* ================= 2. A CONVERSATION WITH INTENT ================= */}
-        <section className="relative px-4 py-16 sm:px-8 sm:py-24 md:px-14 md:py-32">
-          <div className="relative mx-auto max-w-[1440px]">
-            <Layer speed={0.05} rot={-3} className="-left-2 top-8 h-[88%] w-[90%] bg-[#C7CDD6]/35 md:left-6" />
-            <div
-              data-reveal
-              className="rcs-reveal rcs-tilt relative bg-[#F5F5F2] px-5 py-12 text-[#07080B] shadow-[0_40px_120px_rgba(0,0,0,.55)] sm:px-10 sm:py-16 md:ml-[8%] md:px-16 md:py-24"
-            >
-              <h2 className="text-[clamp(1.44rem,4.68vw,3.78rem)] font-black uppercase leading-[.92] tracking-[-.055em]">
-                Good work
-                <br />
-                starts with a
-                <br />
-                <span className="font-editorial font-normal normal-case italic text-[#0756BD]">
-                  good conversation.
-                </span>
+        {/* ================= 2. CONVERSATION + FORM (one split section) ================= */}
+        <section id="contact-form" className="relative scroll-mt-24 px-4 py-16 sm:px-8 sm:py-24 md:px-14 md:py-28">
+          <div className="mx-auto grid max-w-[1280px] gap-6 lg:grid-cols-12 lg:gap-8">
+            <div data-reveal className="rcs-reveal border border-white/10 border-t-2 border-t-[#C6A66B] bg-[#07080B] p-7 sm:p-10 lg:sticky lg:top-28 lg:col-span-5 lg:self-start">
+              <h2 className="text-[clamp(1.5rem,3.6vw,3rem)] font-black uppercase leading-[.92] tracking-[-.05em]">
+                Good work starts with a
+                <span className="mt-1 block font-editorial font-normal normal-case italic text-[#C6A66B]">good conversation.</span>
               </h2>
-
-              <div className="mt-10 grid gap-6 border-t border-black/15 pt-8 text-[15px] leading-7 text-black/70 sm:text-base sm:leading-8 md:ml-auto md:max-w-2xl md:grid-cols-1">
-                <p>
-                  We work with ambitious brands, founders, and teams who understand that meaningful visibility begins
-                  with a clear point of view.
-                </p>
-                <p>
-                  Whether you are shaping a brand narrative, planning a PR campaign, developing a film, or exploring a
-                  larger creative partnership, we want to understand the ambition behind it.
-                </p>
-              </div>
+              <p className="mt-6 text-[15px] leading-7 text-white/75 sm:text-base sm:leading-8">
+                We work with ambitious brands, founders, and teams who understand that meaningful visibility begins with a clear point of view.
+              </p>
+              <p className="mt-4 text-[15px] leading-7 text-white/75 sm:text-base sm:leading-8">
+                Whether you are shaping a brand narrative, planning a PR campaign, developing a film, or exploring a larger creative partnership, we want to understand the ambition behind it.
+              </p>
+              <ol className="mt-8 space-y-3 border-t border-[#C6A66B]/30 pt-6">
+                {STEPS.map((s, i) => (
+                  <li key={s} className="flex gap-4 text-sm text-white/85">
+                    <span className="font-bold tracking-[.14em] text-[#C6A66B]">0{i + 1}</span>
+                    {s}
+                  </li>
+                ))}
+              </ol>
             </div>
-          </div>
-        </section>
 
-        {/* ================= 3. THE FORM ================= */}
-        <section id="contact-form" className="relative scroll-mt-24 px-4 py-12 sm:px-8 sm:py-20 md:px-14 md:py-28">
-          <div className="relative mx-auto max-w-[1100px]">
-            <Layer speed={-0.04} rot={2} className="left-3 top-0 h-[96%] w-[96%] bg-[#6BA8FF]/20" />
-            <div className="relative bg-[#F5F5F2] px-5 py-10 text-[#07080B] shadow-[0_40px_120px_rgba(0,0,0,.55)] sm:px-10 sm:py-14 md:px-16 md:py-16">
-              <h2 className="text-[clamp(1.35rem,3.6vw,2.52rem)] font-black uppercase leading-[.95] tracking-[-.05em]">
-                Tell us about it.
-              </h2>
+            <div data-reveal className="rcs-reveal relative overflow-hidden bg-[#F5F5F2] px-5 py-10 text-[#07080B] shadow-[0_40px_120px_rgba(0,0,0,.55)] ring-1 ring-[#C6A66B]/50 sm:px-10 sm:py-14 lg:col-span-7 lg:px-14">
+              <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#B28F4A] via-[#DDC89D] to-[#B28F4A]" />
+              <p className="mb-3 text-[11px] font-bold uppercase tracking-[.3em] text-[#8A6A2B]">The brief</p>
+              <h2 className="text-[clamp(1.35rem,3.2vw,2.4rem)] font-black uppercase leading-[.95] tracking-[-.05em]">Tell us about it.</h2>
 
               <form onSubmit={onSubmit} noValidate className="mt-10 grid gap-8">
                 <div className="grid gap-8 md:grid-cols-2">
                   <Field id="cf-name" label="Full name" error={errors.name}>
-                    <input
-                      id="cf-name"
-                      name="name"
-                      type="text"
-                      autoComplete="name"
-                      required
-                      value={values.name}
-                      onChange={onChange}
-                      aria-invalid={Boolean(errors.name)}
-                      aria-describedby={errors.name ? "cf-name-error" : undefined}
-                      className={`${inputCls} border-black/30`}
-                    />
+                    <input id="cf-name" name="name" type="text" autoComplete="name" required value={values.name} onChange={onChange} aria-invalid={Boolean(errors.name)} aria-describedby={errors.name ? "cf-name-error" : undefined} className={inputCls} />
                   </Field>
                   <Field id="cf-email" label="Work email" error={errors.email}>
-                    <input
-                      id="cf-email"
-                      name="email"
-                      type="email"
-                      inputMode="email"
-                      autoComplete="email"
-                      required
-                      value={values.email}
-                      onChange={onChange}
-                      aria-invalid={Boolean(errors.email)}
-                      aria-describedby={errors.email ? "cf-email-error" : undefined}
-                      className={`${inputCls} border-black/30`}
-                    />
+                    <input id="cf-email" name="email" type="email" inputMode="email" autoComplete="email" required value={values.email} onChange={onChange} aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? "cf-email-error" : undefined} className={inputCls} />
                   </Field>
                 </div>
 
                 <div className="grid gap-8 md:grid-cols-2">
                   <Field id="cf-company" label="Company or brand" optional>
-                    <input
-                      id="cf-company"
-                      name="company"
-                      type="text"
-                      autoComplete="organization"
-                      value={values.company}
-                      onChange={onChange}
-                      className={`${inputCls} border-black/30`}
-                    />
+                    <input id="cf-company" name="company" type="text" autoComplete="organization" value={values.company} onChange={onChange} className={inputCls} />
                   </Field>
                   <Field id="cf-topic" label="What would you like to discuss?" optional>
-                    <select
-                      id="cf-topic"
-                      name="topic"
-                      value={values.topic}
-                      onChange={onChange}
-                      className={`${inputCls} border-black/30`}
-                    >
+                    <select id="cf-topic" name="topic" value={values.topic} onChange={onChange} className={inputCls}>
                       <option value="">Select a topic</option>
                       {TOPICS.map((t) => (
-                        <option key={t} value={t}>
-                          {t}
-                        </option>
+                        <option key={t} value={t}>{t}</option>
                       ))}
                     </select>
                   </Field>
                 </div>
 
                 <Field id="cf-details" label="Project details" error={errors.details}>
-                  <textarea
-                    id="cf-details"
-                    name="details"
-                    rows={5}
-                    required
-                    value={values.details}
-                    onChange={onChange}
-                    aria-invalid={Boolean(errors.details)}
-                    aria-describedby={errors.details ? "cf-details-error" : undefined}
-                    className={`${inputCls} resize-y border-black/30`}
-                  />
+                  <textarea id="cf-details" name="details" rows={5} required value={values.details} onChange={onChange} aria-invalid={Boolean(errors.details)} aria-describedby={errors.details ? "cf-details-error" : undefined} className={`${inputCls} resize-y`} />
                 </Field>
 
                 <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
                   <button
                     type="submit"
                     disabled={status === "submitting"}
-                    className="inline-flex min-h-[56px] w-full items-center justify-center rounded-full bg-[#0756BD] px-8 text-xs font-semibold uppercase tracking-[.12em] text-white transition hover:bg-[#06469a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0756BD] disabled:cursor-not-allowed disabled:opacity-60 sm:w-fit"
+                    className="inline-flex min-h-[56px] w-full items-center justify-center rounded-full bg-[#07080B] px-8 text-xs font-bold uppercase tracking-[.14em] text-[#C6A66B] ring-1 ring-[#C6A66B] transition hover:bg-[#C6A66B] hover:text-[#07080B] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#8A6A2B] disabled:cursor-not-allowed disabled:opacity-60 sm:w-fit"
                   >
                     {status === "submitting" ? "Sending…" : "Let’s start something"}
                   </button>
-
                   <div aria-live="polite" role="status" className="min-h-[1.5rem] text-sm font-medium">
-                    {status === "success" && <p className="text-[#0756BD]">{message}</p>}
+                    {status === "success" && <p className="text-[#7A5C1E]">{message}</p>}
                     {status === "error" && <p className="text-[#b3261e]">{message}</p>}
                   </div>
                 </div>
@@ -405,53 +289,28 @@ export default function Contact() {
           </div>
         </section>
 
-        {/* ================= 4. MAKE SOMETHING RARE ================= */}
+        {/* ================= 3. CLOSING (solid black, hands over to the footer) ================= */}
         <section className="relative overflow-hidden bg-black px-5 py-24 text-center sm:px-8 sm:py-32 md:px-14 md:py-40">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute left-1/2 top-1/2 h-[120%] w-[min(92vw,1100px)] -translate-x-1/2 -translate-y-1/2 rounded-[50%] border border-[#0756BD]/30"
-          />
+          <span aria-hidden="true" className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#C6A66B] to-transparent" />
+          <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 h-[120%] w-[min(92vw,1100px)] -translate-x-1/2 -translate-y-1/2 rounded-[50%] border border-[#C6A66B]/35" />
+          <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 h-[96%] w-[min(70vw,820px)] -translate-x-1/2 -translate-y-1/2 rounded-[50%] border border-[#C6A66B]/15" />
           <div data-reveal className="rcs-reveal relative mx-auto max-w-[1440px]">
-            <p className="text-[11px] font-bold uppercase tracking-[.4em] text-[#6BA8FF]">The next chapter</p>
-
-            <h2 className="mt-6 text-[clamp(1.26rem,6.3vw,5.85rem)] font-black uppercase leading-[.86] tracking-[-.06em] text-white">
+            <p className="text-[11px] font-bold uppercase tracking-[.4em] text-[#C6A66B]">The next chapter</p>
+            <h2 className="mt-6 text-[clamp(1.5rem,6.3vw,5.85rem)] font-black uppercase leading-[.86] tracking-[-.06em] text-white">
               Make something
               <br />
-              <span className="text-[#0756BD]">Rare.</span>
+              <span className="bg-gradient-to-r from-[#B28F4A] via-[#DDC89D] to-[#B28F4A] bg-clip-text text-transparent">Rare.</span>
             </h2>
-
-            <p className="mx-auto mt-8 max-w-2xl text-[15px] leading-7 text-white/60 sm:text-lg sm:leading-8">
+            <p className="mx-auto mt-8 max-w-2xl text-[15px] leading-7 text-white/70 sm:text-lg sm:leading-8">
               Strategy. Story. Production. Digital. Let’s build the next chapter of your brand.
             </p>
-
             <a
               href="#contact-form"
               onClick={goToForm}
-              className="mt-10 inline-flex min-h-[56px] items-center justify-center gap-4 rounded-full bg-white px-8 text-sm font-extrabold uppercase tracking-[.14em] text-black transition hover:bg-[#F5F5F2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white sm:min-h-[64px] sm:px-10"
+              className="mt-10 inline-flex min-h-[56px] items-center justify-center gap-4 rounded-full bg-[#C6A66B] px-8 text-sm font-extrabold uppercase tracking-[.14em] text-[#07080B] shadow-[0_10px_50px_rgba(198,166,107,.3)] transition hover:bg-[#DDC89D] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#DDC89D] sm:min-h-[64px] sm:px-10"
             >
-              Start a conversation
-              <span aria-hidden="true">↗</span>
+              Start a conversation <span aria-hidden="true">↑</span>
             </a>
-          </div>
-        </section>
-
-        {/* ================= 5. FINAL CONNECTION ================= */}
-        <section className="relative flex min-h-[90svh] items-end overflow-hidden px-5 pb-[max(5rem,env(safe-area-inset-bottom))] pt-24 sm:px-8 md:px-14 md:pb-28">
-          <div data-reveal className="rcs-reveal relative mx-auto w-full max-w-[1440px]">
-            <h2 className="max-w-5xl text-[clamp(1.44rem,5.76vw,4.86rem)] font-black uppercase leading-[.88] tracking-[-.06em]">
-              The next great story
-              <br />
-              <span className="font-editorial font-normal normal-case italic text-[#6BA8FF]">could start here.</span>
-            </h2>
-            <div className="mt-10 flex flex-col gap-8 sm:flex-row sm:items-end sm:justify-between">
-              <p className="max-w-md text-[15px] leading-7 text-white/80 sm:text-base sm:leading-8">
-                Bring the ambition. We’ll help shape the story.
-              </p>
-              <a href="#contact-form" onClick={goToForm} className={ctaCls}>
-                Start a conversation
-                <span aria-hidden="true">↑</span>
-              </a>
-            </div>
           </div>
         </section>
       </div>

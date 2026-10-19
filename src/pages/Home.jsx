@@ -167,13 +167,7 @@ export default function Home() {
           </p>
 
           <div data-reveal className="mt-9 flex flex-wrap items-center gap-x-9 gap-y-4">
-            <Link
-              to="/services"
-              className={`group inline-flex min-h-12 items-center gap-3 rounded-[3px] bg-[#C6A66B] px-6 text-[8px] font-bold uppercase tracking-[0.16em] text-[#050A14] transition-colors hover:bg-[#DDC89D] ${focus}`}
-            >
-              Explore our work
-              <ArrowUpRight size={15} strokeWidth={2} className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-            </Link>
+       
             <Link to="/contact" className={`group inline-flex min-h-12 items-center gap-3 text-[8px] font-semibold uppercase tracking-[0.18em] text-white ${focus}`}>
               Let’s talk
               <ArrowRight size={15} className="transition-transform group-hover:translate-x-1" />
