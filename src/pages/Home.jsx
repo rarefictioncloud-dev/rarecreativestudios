@@ -1,366 +1,315 @@
-import { Component, lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { ArrowDown, ArrowRight, ArrowUpRight } from "lucide-react";
 
-import HeroFallback from "../components/hero/HeroFallback";
+/* Fonts (.rcs-display, .rcs-body, .rcs-serif) are injected by Navbar, which is mounted on every page. */
 
-gsap.registerPlugin(ScrollTrigger);
-// Phones: don't re-measure the page every time the browser toolbar shows/hides while scrolling
-ScrollTrigger.config({ ignoreMobileResize: true });
+const SERVICES = [
+  { number: "01", title: "Narrative Design", description: "We shape the stories, perspectives, and positioning that make your brand matter." },
+  { number: "02", title: "PR & Media Relations", description: "We build credibility through meaningful conversations and strategic media relationships." },
+  { number: "03", title: "Thought Leadership", description: "We turn expertise into influence, helping the right voices lead important conversations." },
+  { number: "04", title: "Creative Campaigns", description: "We transform distinctive ideas into campaigns that connect with people and culture." },
+];
 
-/* ---------- WhatsApp enquiry link ---------- */
+const APPROACH = ["Find the story", "Shape the narrative", "Create the moment"];
 
-const WHATSAPP_NUMBER = "917997658999"; // +91 7997658999
-const WHATSAPP_MESSAGE = "hi , i would like to enquire about rare creative studios";
-const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`;
+const CHAPTERS = [
+  { n: "01", white: "Every great story begins with an", gold: "idea.", text: "We turn perspective into powerful narratives that shape culture.", art: "cubes" },
+  { n: "02", white: "Attention is temporary.", gold: "A story can change everything.", text: "We craft narratives that move beyond the feed and into the real world.", art: "tiers" },
+  { n: "03", white: "We create the conversations", gold: "people remember.", text: "Through strategic storytelling and cultural insight, we position your brand where it matters.", art: "ring" },
+  { n: "04", white: "Visibility gets you noticed.", gold: "Relevance makes you matter.", text: "We create moments that last longer than a headline.", art: "door" },
+];
 
-/* ---------- Lazy-load 3D scene ---------- */
+const focus = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C6A66B]";
+const stone = "bg-gradient-to-b from-[#b4b8c2] via-[#737a89] to-[#262c3b]";
+const rGrad = "bg-[linear-gradient(105deg,#16249a_0%,#4a68ff_42%,#2036c4_68%,#0b1560_100%)]";
 
-const ChessWorld = lazy(() => import("../components/hero/ChessWorld"));
+/* ---------- Hero: monumental cobalt R in a concrete hall (pure CSS, no assets) ---------- */
 
-/* ---------- WebGL Detection ---------- */
+function HeroR() {
+  const mask = "linear-gradient(to bottom, rgba(0,0,0,.7), transparent 40%)";
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 w-full opacity-60 md:w-[64%] md:opacity-100">
+      <div className={`absolute left-[6%] top-0 h-[80%] w-[15%] ${stone}`} />
+      <div className={`absolute right-[4%] top-[8%] h-[70%] w-[30%] rounded-tr-[45%] ${stone} opacity-90`} />
+      <div className="absolute left-[36%] top-0 h-full w-[22%] bg-gradient-to-b from-white/25 via-[#7d93ff]/20 to-transparent blur-3xl" />
 
-const hasWebGL = () => {
-  try {
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("webgl2") || canvas.getContext("webgl");
-    if (context) {
-      const extension = context.getExtension("WEBGL_lose_context");
-      extension?.loseContext();
-    }
-    return Boolean(window.WebGLRenderingContext);
-  } catch {
-    return false;
-  }
-};
-
-/* ---------- Error Boundary ---------- */
-
-class GLBoundary extends Component {
-  state = { failed: false };
-
-  static getDerivedStateFromError() {
-    return { failed: true };
-  }
-
-  componentDidCatch(err) {
-    console.warn("3D hero disabled, using fallback:", err);
-    this.props.onFail?.();
-  }
-
-  render() {
-    return this.state.failed ? this.props.fallback : this.props.children;
-  }
-}
-
-/* ---------- Arrow Link ---------- */
-/* Internal paths use the router; full http(s) URLs open in a new tab. */
-
-function ArrowLink({ href, children, className = "" }) {
-  const external = /^https?:\/\//.test(href);
-
-  const classes = `group inline-flex touch-manipulation items-center gap-4 rounded-full py-1 pr-1 text-base font-semibold tracking-[-0.01em] text-white outline-none transition-transform active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-white/70 md:text-lg ${className}`;
-
-  const content = (
-    <>
-      <span className="relative">
-        {children}
-        <span className="absolute -bottom-1 left-0 h-px w-full origin-left bg-white/40 transition-colors duration-300 group-hover:bg-white" />
-      </span>
-
-      <span className="relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-gradient-to-b from-[#1a73e8] to-[#0756BD] shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_10px_30px_-8px_rgba(7,86,189,0.9)] transition-transform duration-500 group-hover:rotate-45 group-hover:scale-110 md:h-14 md:w-14">
+      <div className="absolute left-1/2 top-[5%] flex -translate-x-1/2 flex-col items-center">
+        <span className={`rcs-display select-none ${rGrad} bg-clip-text text-[clamp(17rem,76svh,40rem)] leading-[0.8] text-transparent drop-shadow-[0_0_70px_rgba(82,113,255,0.5)]`}>R</span>
         <span
-          aria-hidden="true"
-          className="absolute inset-y-0 -left-full w-full -skew-x-12 bg-gradient-to-r from-transparent via-white/45 to-transparent animate-[rcsGlint_4s_ease-in-out_infinite] motion-reduce:animate-none"
-        />
-        <svg viewBox="0 0 16 16" fill="none" className="relative h-4 w-4" aria-hidden="true">
-          <path d="M4.5 11.5l7-7M5.5 4.5h6v6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </span>
-    </>
-  );
-
-  if (external) {
-    return (
-      <a href={href} target="_blank" rel="noopener noreferrer" className={classes}>
-        {content}
-        <span className="sr-only"> (opens in a new tab)</span>
-      </a>
-    );
-  }
-
-  return (
-    <Link to={href} className={classes}>
-      {content}
-    </Link>
-  );
-}
-
-/* ---------- Content Chapters ---------- */
-
-function Chapter({ side = "left", title, children }) {
-  const right = side === "right";
-
-  return (
-    <section className="chapter relative flex min-h-[100svh] items-center px-5 sm:px-8 md:min-h-[110svh] md:px-14">
-      <div className={`relative mx-auto w-full max-w-[1470px] ${right ? "text-right" : ""}`}>
-        <h2
-          className={`reveal font-editorial max-w-[13ch] text-[clamp(2.6rem,6.4vw,6.5rem)] leading-[0.98] drop-shadow-[0_6px_30px_rgba(0,0,0,0.6)] max-md:drop-shadow-[0_2px_26px_rgba(0,0,0,0.95)] max-md:[text-wrap:balance] ${
-            right ? "ml-auto" : ""
-          }`}
+          className={`rcs-display -mt-2 scale-y-[-1] select-none ${rGrad} bg-clip-text text-[clamp(17rem,76svh,40rem)] leading-[0.8] text-transparent opacity-30`}
+          style={{ WebkitMaskImage: mask, maskImage: mask }}
         >
-          {title}
-        </h2>
-
-        <p
-          className={`reveal mt-6 max-w-md text-base leading-relaxed text-white/80 drop-shadow-[0_2px_16px_rgba(0,0,0,0.8)] max-md:text-white/90 max-md:drop-shadow-[0_2px_22px_rgba(0,0,0,1)] md:text-lg ${
-            right ? "ml-auto" : ""
-          }`}
-        >
-          {children}
-        </p>
+          R
+        </span>
       </div>
-    </section>
+
+      <div className="absolute inset-x-0 bottom-0 h-[26%] bg-gradient-to-t from-[#050A14] via-[#0b1740]/60 to-transparent" />
+
+      <svg viewBox="0 0 12 36" className="absolute bottom-[19%] left-[27%] h-[7svh] w-auto fill-[#03060d]">
+        <circle cx="6" cy="4" r="3" />
+        <path d="M2 10h8l1 14H9l-.5 12h-2L6 26l-.5 10h-2L3 24H1z" />
+      </svg>
+    </div>
   );
 }
 
-/* ---------- Homepage ---------- */
+/* ---------- Chapter art (CSS / SVG) ---------- */
+
+function Art({ kind }) {
+  if (kind === "cubes")
+    return (
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_65%_25%,rgba(82,113,255,0.35),transparent_60%)]">
+        <span className="absolute left-[16%] top-[20%] h-16 w-16 rotate-12 bg-gradient-to-br from-[#8da0ff] to-[#1c2fa8] shadow-2xl" />
+        <span className="absolute left-[46%] top-[10%] h-24 w-20 -rotate-6 bg-gradient-to-br from-[#5271FF] to-[#0d1a6b]" />
+        <span className="absolute left-[72%] top-[28%] h-14 w-14 rotate-45 bg-gradient-to-br from-[#cfd5e6] to-[#6b7388]" />
+        <span className="absolute -bottom-6 left-[20%] h-24 w-[70%] -rotate-6 bg-gradient-to-b from-[#9ea3af] to-[#2b3142]" />
+      </div>
+    );
+  if (kind === "tiers")
+    return (
+      <div className="absolute inset-0 grid place-items-center bg-[radial-gradient(ellipse_at_50%_30%,rgba(255,255,255,0.12),transparent_60%)]">
+        <div className="relative h-[70%] w-[64%]">
+          <span className="absolute inset-x-[16%] top-[4%] h-[30%] rounded-[50%] bg-gradient-to-b from-[#7d93ff] to-[#16249a]" />
+          <span className="absolute inset-x-[8%] top-[30%] h-[28%] rounded-[50%] bg-gradient-to-b from-[#d7d9df] to-[#7a8090]" />
+          <span className="absolute inset-x-0 top-[52%] h-[34%] rounded-[50%] bg-gradient-to-b from-[#b9bdc7] to-[#2b3142]" />
+        </div>
+      </div>
+    );
+  if (kind === "ring")
+    return (
+      <div className="absolute inset-0 grid place-items-center overflow-hidden bg-[radial-gradient(ellipse_at_60%_50%,rgba(82,113,255,0.3),transparent_62%)]">
+        <svg viewBox="0 0 400 400" className="rcs-spin h-[120%] max-h-[420px] w-auto">
+          <defs>
+            <path id="rcs-ring" d="M200 200 m-150 0 a150 150 0 1 1 300 0 a150 150 0 1 1 -300 0" />
+            <linearGradient id="rcs-silver" x1="0" x2="1">
+              <stop offset="0" stopColor="#ffffff" />
+              <stop offset="0.5" stopColor="#8f9bb3" />
+              <stop offset="1" stopColor="#e9edf7" />
+            </linearGradient>
+          </defs>
+          <circle cx="200" cy="200" r="104" fill="#2036c4" opacity="0.55" />
+          <text fill="url(#rcs-silver)" fontFamily="Anton, Impact, sans-serif" fontSize="44" letterSpacing="3">
+            <textPath href="#rcs-ring">CONVERSATIONS · CONVERSATIONS ·</textPath>
+          </text>
+        </svg>
+      </div>
+    );
+  return (
+    <div className="absolute inset-0">
+      <span className={`absolute left-[18%] top-0 h-full w-[16%] ${stone}`} />
+      <span className={`absolute right-[8%] top-0 h-full w-[18%] ${stone}`} />
+      <span className="absolute left-[38%] top-[4%] h-[72%] w-[26%] bg-gradient-to-b from-[#1f35d6] to-[#0b1560] shadow-[0_0_60px_rgba(82,113,255,0.6)]" />
+      <span className="absolute bottom-0 left-[24%] h-[26%] w-[52%] bg-[repeating-linear-gradient(to_bottom,#e7e8ec_0,#e7e8ec_3px,#9aa0ad_3px,#9aa0ad_10px)]" />
+      <svg viewBox="0 0 12 36" className="absolute bottom-[26%] left-[49%] h-[17%] w-auto fill-[#03060d]">
+        <circle cx="6" cy="4" r="3" />
+        <path d="M2 10h8l1 14H9l-.5 12h-2L6 26l-.5 10h-2L3 24H1z" />
+      </svg>
+    </div>
+  );
+}
+
+/* ---------- Page ---------- */
 
 export default function Home() {
-  const root = useRef(null);
-  const curtain = useRef(null);
-  const heroTl = useRef(null);
+  const pageRef = useRef(null);
 
-  // Shared scroll progress for the 3D camera.
-  const scroll = useRef({ p: 0 });
-
-  // Shared pointer values for the 3D scene (t = time of last real input).
-  const pointer = useRef({ x: 0, y: 0, t: 0 });
-
-  // Detect WebGL once. Respect data-saving preferences.
-  const [gl] = useState(() => {
-    if (typeof window === "undefined") return false;
-    const saveData = Boolean(navigator.connection?.saveData);
-    return !saveData && hasWebGL();
-  });
-
-  // Mount the 3D scene after the initial render.
-  const [mount3D, setMount3D] = useState(false);
-
-  /* Pointer (mouse / finger drag) + phone tilt */
   useEffect(() => {
-    const onMove = (event) => {
-      pointer.current.x = (event.clientX / window.innerWidth) * 2 - 1;
-      pointer.current.y = -((event.clientY / window.innerHeight) * 2 - 1);
-      pointer.current.t = performance.now();
-    };
+    const root = pageRef.current;
+    if (!root) return;
+    const items = root.querySelectorAll("[data-reveal]");
 
-    // Phones: tilting the device moves the board (Android; iOS needs a permission prompt, so it simply idles)
-    const coarse = window.matchMedia("(pointer: coarse)").matches;
-    const clamp = (v) => Math.max(-1, Math.min(1, v));
-    const onTilt = (e) => {
-      if (e.gamma == null || e.beta == null) return;
-      pointer.current.x = clamp(e.gamma / 25);
-      pointer.current.y = clamp((55 - e.beta) / 30);
-      pointer.current.t = performance.now();
-    };
-
-    window.addEventListener("pointermove", onMove, { passive: true });
-    if (coarse) window.addEventListener("deviceorientation", onTilt, { passive: true });
-
-    return () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("deviceorientation", onTilt);
-    };
-  }, []);
-
-  /* Load 3D during browser idle time */
-  useEffect(() => {
-    if (!gl) return;
-
-    let idleId;
-    let timerId;
-    let cancelled = false;
-
-    const start3D = () => {
-      if (!cancelled) setMount3D(true);
-    };
-
-    if ("requestIdleCallback" in window) {
-      idleId = window.requestIdleCallback(start3D, { timeout: 2500 });
-    } else {
-      timerId = window.setTimeout(start3D, 1000);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || !("IntersectionObserver" in window)) {
+      items.forEach((el) => el.classList.add("rcs-visible"));
+      return;
     }
 
-    return () => {
-      cancelled = true;
-      if (idleId !== undefined && "cancelIdleCallback" in window) window.cancelIdleCallback(idleId);
-      if (timerId !== undefined) window.clearTimeout(timerId);
-    };
-  }, [gl]);
-
-  /* GSAP animations */
-  useLayoutEffect(() => {
-    const ctx = gsap.context(() => {
-      gsap.set(".hl", { yPercent: 110 });
-      gsap.set(".hero-fade", { autoAlpha: 0, y: 24 });
-
-      heroTl.current = gsap
-        .timeline({ paused: true, defaults: { ease: "power4.out" } })
-        .to(".hl", { yPercent: 0, duration: 1.6, stagger: 0.18 }, 0)
-        .to(".hero-fade", { autoAlpha: 1, y: 0, duration: 1.2, stagger: 0.15 }, 0.7);
-
-      // Page progress controls the 3D camera.
-      gsap.to(scroll.current, {
-        p: 1,
-        ease: "none",
-        scrollTrigger: { trigger: root.current, start: "top top", end: "bottom bottom", scrub: 0.8 },
-      });
-
-      // Hero-copy scroll effect.
-      gsap.to(".hero-content", {
-        yPercent: -18,
-        autoAlpha: 0,
-        ease: "none",
-        scrollTrigger: { trigger: ".hero", start: "top top", end: "bottom 35%", scrub: true },
-      });
-
-      // Section reveal animations.
-      gsap.utils.toArray(".chapter, .finale").forEach((element) => {
-        gsap.from(element.querySelectorAll(".reveal"), {
-          y: 50,
-          autoAlpha: 0,
-          duration: 1.1,
-          ease: "power3.out",
-          stagger: 0.12,
-          scrollTrigger: { trigger: element, start: "top 60%", toggleActions: "play none none reverse" },
-        });
-      });
-
-      // Scroll indicator animation.
-      gsap.fromTo(".scroll-dot", { y: 0 }, { y: 36, duration: 1.6, ease: "power1.inOut", repeat: -1, yoyo: true });
-    }, root);
-
-    document.fonts?.ready.then(() => {
-      ScrollTrigger.refresh();
-    });
-
-    return () => {
-      ctx.revert();
-    };
-  }, []);
-
-  /* Start the hero animation immediately */
-  useEffect(() => {
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-    const animationFrame = requestAnimationFrame(() => {
-      if (curtain.current) {
-        gsap.to(curtain.current, { autoAlpha: 0, duration: reduce ? 0 : 1.6, ease: "power2.inOut" });
-      }
-      if (reduce) heroTl.current?.progress(1);
-      else heroTl.current?.play();
-    });
-
-    return () => {
-      cancelAnimationFrame(animationFrame);
-    };
+    const io = new IntersectionObserver(
+      (entries) =>
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add("rcs-visible");
+            io.unobserve(e.target);
+          }
+        }),
+      { threshold: 0.12, rootMargin: "0px 0px -40px 0px" }
+    );
+    items.forEach((el) => io.observe(el));
+    return () => io.disconnect();
   }, []);
 
   return (
-    <main ref={root} className="relative bg-black text-white">
+    <main ref={pageRef} className="rcs-body overflow-clip bg-[#050A14] text-white">
       <style>{`
-        @keyframes rcsSheen {
-          0% { background-position: 100% 0; }
-          100% { background-position: -150% 0; }
-        }
-        @keyframes rcsGlint {
-          0%, 55% { left: -100%; }
-          100% { left: 200%; }
+        [data-reveal] { opacity: 0; transform: translateY(22px); transition: opacity .9s ease, transform .9s cubic-bezier(.2,.65,.25,1); }
+        [data-reveal].rcs-visible { opacity: 1; transform: none; }
+        @keyframes rcs-spin { to { transform: rotate(360deg); } }
+        .rcs-spin { animation: rcs-spin 60s linear infinite; }
+        @media (prefers-reduced-motion: reduce) {
+          [data-reveal] { opacity: 1; transform: none; transition: none; }
+          .rcs-spin { animation: none; }
         }
       `}</style>
 
-      {/* Black curtain */}
-      <div ref={curtain} className="pointer-events-none fixed inset-0 z-[45] bg-black" aria-hidden="true" />
+      {/* ============ HERO ============ */}
+      <section className="relative isolate flex min-h-[100svh] items-end overflow-hidden bg-[radial-gradient(ellipse_at_70%_30%,#0f1d3d_0%,#050A14_62%)] px-5 pb-14 pt-32 sm:px-8 md:px-[4vw] md:pb-16">
+        <HeroR />
+        <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(90deg,#050A14_0%,rgba(5,10,20,0.82)_32%,transparent_62%)]" />
 
-      {/* Fixed 3D stage */}
-      <div className="pointer-events-none fixed inset-x-0 top-0 z-0 h-[100svh] md:h-[100lvh]" aria-hidden="true">
-        <GLBoundary fallback={<HeroFallback />} onFail={() => {}}>
-          {gl && mount3D ? (
-            <Suspense fallback={<HeroFallback />}>
-              <ChessWorld scroll={scroll} pointer={pointer} onReady={() => {}} />
-            </Suspense>
-          ) : (
-            <HeroFallback />
-          )}
-        </GLBoundary>
-      </div>
+        <div className="relative z-10 mx-auto w-full max-w-[1380px]">
+          <h1 data-reveal className="rcs-display max-w-[11ch] text-[clamp(3rem,8.2vw,7.4rem)]">
+            We don’t send press releases.
+            <span className="block text-[#5271FF]">We create moments.</span>
+          </h1>
 
-      <div className="relative z-10">
-        {/* ---------------- Hero ---------------- */}
+          <p data-reveal className="mt-7 max-w-[34ch] text-[15px] leading-relaxed text-white/80 md:text-[17px]">
+            Strategy-led storytelling that turns brands into conversations people remember.
+          </p>
 
-        <section className="hero relative flex min-h-[100svh] items-end px-5 pb-[max(2.5rem,env(safe-area-inset-bottom))] sm:px-8 md:px-14 md:pb-14">
-          <div className="hero-content relative mx-auto w-full max-w-[1470px]">
-            <h1>
-              <span className="block overflow-hidden">
-                <span className="hl font-condensed block text-[clamp(2.2rem,10.8vw,3.4rem)] font-extrabold uppercase leading-[0.88] tracking-[-0.01em] drop-shadow-[0_6px_30px_rgba(0,0,0,0.55)] max-md:[text-wrap:balance] md:text-[clamp(1.4rem,3.5vw,3.8rem)]">
-                  We don't send press releases.
-                </span>
-              </span>
+          <div data-reveal className="mt-9 flex flex-wrap items-center gap-x-9 gap-y-4">
+            <Link
+              to="/services"
+              className={`group inline-flex min-h-12 items-center gap-3 rounded-[3px] bg-[#C6A66B] px-6 text-[11px] font-bold uppercase tracking-[0.16em] text-[#050A14] transition-colors hover:bg-[#DDC89D] ${focus}`}
+            >
+              Explore our work
+              <ArrowUpRight size={15} strokeWidth={2} className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+            </Link>
+            <Link to="/contact" className={`group inline-flex min-h-12 items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-white ${focus}`}>
+              Let’s talk
+              <ArrowRight size={15} className="transition-transform group-hover:translate-x-1" />
+            </Link>
+          </div>
 
-              <span className="block overflow-hidden pb-[0.12em]">
-                <span className="hl font-editorial block bg-[linear-gradient(110deg,#8f99a8_0%,#ffffff_35%,#8f99a8_50%,#ffffff_70%,#8f99a8_100%)] bg-[length:250%_100%] bg-clip-text text-[clamp(2.4rem,11.5vw,3.8rem)] italic leading-[0.95] text-transparent drop-shadow-[0_6px_30px_rgba(0,0,0,0.55)] animate-[rcsSheen_7s_linear_infinite] motion-reduce:animate-none md:text-[clamp(1.8rem,4.2vw,4.5rem)]">
-                  We create moments.
-                </span>
-              </span>
-            </h1>
+          <div className="mt-14 flex items-end justify-between border-t border-white/10 pt-5">
+            <a href="#chapters" className={`group flex items-center gap-3 text-[10px] uppercase tracking-[0.22em] text-white/50 transition-colors hover:text-white ${focus}`}>
+              Scroll to explore
+              <ArrowDown size={13} className="transition-transform group-hover:translate-y-1" />
+            </a>
+            <ul aria-hidden="true" className="hidden text-right text-[10px] uppercase leading-[2] tracking-[0.25em] text-white/55 md:block">
+              {["Ideas", "Stories", "Culture", "Influence", "Impact"].map((w) => (
+                <li key={w}>{w}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </section>
 
-            <div className="mt-8 flex flex-col gap-8 max-md:mt-5 md:mt-10 md:flex-row md:items-end md:justify-between">
-              <p className="hero-fade font-editorial text-2xl text-white/85 drop-shadow-[0_2px_16px_rgba(0,0,0,0.8)] max-md:pr-12 max-md:text-[1.3rem] max-md:leading-snug md:text-3xl">
-                Turning brands into conversations.
-              </p>
+      {/* ============ CHAPTERS ============ */}
+      <section id="chapters" aria-label="How we think" className="border-t border-white/10">
+        {CHAPTERS.map((c) => (
+          <article key={c.n} className="grid border-b border-white/10 md:min-h-[360px] md:grid-cols-[1fr_1.15fr]">
+            <div data-reveal className="flex flex-col justify-between px-5 py-12 sm:px-8 md:px-[4vw] md:py-14">
+              <div>
+                <h2 className="rcs-display max-w-[16ch] text-[clamp(2rem,4.2vw,3.6rem)]">
+                  {c.white} <span className="text-[#C6A66B]">{c.gold}</span>
+                </h2>
+                <p className="mt-5 max-w-[36ch] text-[14px] leading-relaxed text-white/65">{c.text}</p>
+              </div>
+              <div className="mt-10 flex items-center gap-4 text-[11px] tracking-[0.2em] text-white/50" aria-hidden="true">
+                {c.n}
+                <span className="h-px w-24 bg-white/25" />
+              </div>
             </div>
+            <div aria-hidden="true" className="relative min-h-[260px] overflow-hidden bg-[#070d1c] md:min-h-0">
+              <Art kind={c.art} />
+            </div>
+          </article>
+        ))}
+      </section>
+
+      {/* ============ POINT OF VIEW (light) ============ */}
+      <section className="bg-[#ECEBE7] text-[#050A14]">
+        <div className="mx-auto grid max-w-[1500px] lg:grid-cols-[0.8fr_1.3fr_0.6fr]">
+          <div aria-hidden="true" className="relative hidden min-h-[360px] overflow-hidden lg:block">
+            <span className="absolute -left-[30%] top-[6%] h-[120%] w-[130%] rounded-[50%] border-[56px] border-[#c9c8c3] opacity-80" />
+            <span className="absolute bottom-0 left-[44%] h-[46%] w-[28%] bg-gradient-to-b from-[#2038d8] to-[#0b1560]" />
           </div>
 
-          {/* Scroll indicator */}
-          <div
-            className="hero-fade absolute bottom-10 right-5 flex flex-col items-center gap-3 text-xs text-white/50 md:bottom-14 md:right-14"
-            aria-hidden="true"
-          >
-            <span className="[writing-mode:vertical-rl]">Scroll</span>
-            <span className="relative h-14 w-px bg-white/20">
-              <span className="scroll-dot absolute -left-[1.5px] top-0 h-1.5 w-1.5 rounded-full bg-[#2f8bff]" />
-            </span>
+          <div data-reveal className="px-5 py-20 sm:px-8 md:px-[4vw] lg:px-14 lg:py-28">
+            <h2 className="rcs-display max-w-[14ch] text-[clamp(2.2rem,4.6vw,4.2rem)]">
+              PR is no longer about visibility.
+              <span className="block text-[#B28F4A]">It’s about relevance.</span>
+            </h2>
+            <p className="mt-6 max-w-[44ch] text-[15px] leading-relaxed text-[#050A14]/70">
+              We design stories that make brands culturally meaningful, not just momentarily noticed.
+            </p>
+
+            <ol className="mt-8 flex flex-wrap gap-x-8 gap-y-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#050A14]/60">
+              {APPROACH.map((a, i) => (
+                <li key={a}>
+                  <span className="mr-2 text-[#B28F4A]">0{i + 1}</span>
+                  {a}
+                </li>
+              ))}
+            </ol>
+
+            <Link to="/about" className={`group mt-9 inline-flex min-h-11 items-center gap-3 text-[11px] font-bold uppercase tracking-[0.2em] ${focus}`}>
+              Our approach
+              <ArrowRight size={15} className="transition-transform group-hover:translate-x-1" />
+            </Link>
           </div>
-        </section>
 
-        {/* ---------------- Scroll Chapters ---------------- */}
+          <blockquote data-reveal className="flex flex-col justify-center border-t border-[#050A14]/10 px-5 pb-16 sm:px-8 lg:border-l lg:border-t-0 lg:px-10 lg:py-28">
+            <span aria-hidden="true" className="rcs-serif text-6xl leading-none text-[#B28F4A]">“</span>
+            <p className="max-w-[12ch] text-[22px] leading-snug">Relevance creates influence.</p>
+          </blockquote>
+        </div>
+      </section>
 
-        <Chapter title="Strategy before noise.">
-          Every move starts with the position on the board: who is listening, what they trust, and what they will repeat.
-        </Chapter>
+      {/* ============ SERVICES ============ */}
+      <section className="relative isolate overflow-hidden bg-[#050A14] px-5 py-24 sm:px-8 md:px-[4vw] md:py-32">
+        <div aria-hidden="true" className="absolute inset-y-0 right-0 -z-10 w-[70%] bg-[radial-gradient(ellipse_at_85%_60%,rgba(40,70,255,0.55),transparent_55%),radial-gradient(ellipse_at_60%_100%,rgba(82,113,255,0.35),transparent_50%)] blur-2xl" />
 
-        <Chapter side="right" title="Influence is a position, not a volume.">
-          We place brands where conversations already happen, then give people a reason to keep going.
-        </Chapter>
+        <div className="mx-auto grid max-w-[1380px] gap-14 lg:grid-cols-[0.8fr_1.4fr] lg:gap-20">
+          <div data-reveal>
+            <p className="mb-6 text-[10px] font-semibold uppercase tracking-[0.3em] text-[#C6A66B]">Our services</p>
+            <h2 className="rcs-display text-[clamp(3rem,6.2vw,5.6rem)]">
+              Idea.
+              <span className="block text-[#5271FF]">Narrative.</span>
+              Impact.
+            </h2>
+            <p className="mt-6 max-w-[30ch] text-[14px] leading-relaxed text-white/65">
+              A strategic approach to PR, brand positioning and cultural storytelling.
+            </p>
+            <Link
+              to="/services"
+              className={`group mt-8 inline-flex min-h-11 items-center gap-3 rounded-full border border-[#C6A66B]/70 px-6 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#DDC89D] transition-colors hover:bg-[#C6A66B] hover:text-[#050A14] ${focus}`}
+            >
+              Explore services
+              <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
+            </Link>
+          </div>
 
-        <Chapter title="Authority is earned in public.">
-          The strongest piece on the board rarely moves first. It moves when the moment is right, and everyone sees why.
-        </Chapter>
+          <ul className="grid gap-x-10 gap-y-12 sm:grid-cols-2">
+            {SERVICES.map((s) => (
+              <li key={s.number} data-reveal>
+                <Link to="/services" className={`group block border-t border-white/20 pt-5 ${focus}`}>
+                  <span className="text-[11px] tracking-[0.2em] text-[#C6A66B]">{s.number}</span>
+                  <h3 className="rcs-display mt-3 text-[clamp(1.5rem,2.2vw,2rem)] transition-colors group-hover:text-[#5271FF]">{s.title}</h3>
+                  <p className="mt-3 max-w-[34ch] text-[13px] leading-relaxed text-white/60">{s.description}</p>
+                  <ArrowRight size={16} className="mt-5 text-[#C6A66B] transition-transform group-hover:translate-x-2" aria-hidden="true" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
 
-        {/* ---------------- Finale ---------------- */}
-
-        <section className="finale relative flex min-h-[100svh] flex-col items-center justify-end px-5 pb-[max(3.5rem,env(safe-area-inset-bottom))] text-center md:pb-20">
-          <h2 className="reveal font-editorial relative bg-[linear-gradient(110deg,#8f99a8_0%,#ffffff_35%,#8f99a8_50%,#ffffff_70%,#8f99a8_100%)] bg-[length:250%_100%] bg-clip-text text-[clamp(3.4rem,10.5vw,10.5rem)] italic leading-[0.9] text-transparent drop-shadow-[0_6px_30px_rgba(0,0,0,0.55)] animate-[rcsSheen_7s_linear_infinite] motion-reduce:animate-none">
-            Your move.
+      {/* ============ FINAL CTA ============ */}
+      <section className="relative isolate overflow-hidden bg-[#050A14] px-5 py-24 sm:px-8 md:px-[4vw] md:py-32">
+        <div aria-hidden="true" className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_80%_110%,rgba(40,70,255,0.8),transparent_55%),radial-gradient(ellipse_at_20%_0%,rgba(0,35,102,0.8),transparent_55%)]" />
+        <div className="mx-auto flex max-w-[1380px] flex-col gap-12 md:flex-row md:items-end md:justify-between">
+          <h2 data-reveal className="rcs-serif max-w-[16ch] text-[clamp(2.2rem,5.4vw,4.6rem)] uppercase leading-[1.05] text-[#C6A66B]">
+            Your next defining moment starts here.
           </h2>
-
-          <div className="reveal relative mt-8">
-            <ArrowLink href={WHATSAPP_URL}>Start a conversation</ArrowLink>
-          </div>
-        </section>
-      </div>
+          <Link to="/contact" data-reveal className={`group inline-flex shrink-0 items-center gap-5 text-[11px] font-semibold uppercase tracking-[0.2em] ${focus}`}>
+            <span className="grid h-16 w-16 place-items-center rounded-full border border-[#C6A66B]/80 text-[#C6A66B] transition-colors duration-300 group-hover:bg-[#C6A66B] group-hover:text-[#050A14]">
+              <ArrowRight size={20} strokeWidth={1.6} />
+            </span>
+            Start a conversation
+          </Link>
+        </div>
+      </section>
     </main>
   );
 }

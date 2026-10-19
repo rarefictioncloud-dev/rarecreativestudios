@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { ArrowDown, ArrowRight, ArrowUpRight } from "lucide-react";
 import Footer from "../components/layout/Footer";
+
+/* Fonts (.rcs-display, .rcs-body, .rcs-serif) are injected by Navbar, which is mounted on every page. */
 
 /* ---------- data ---------- */
 const SERVICES = [
@@ -19,13 +22,15 @@ const PROCESS = [
   { n: "04", name: "IMPACT", desc: "Attention that turns into conversation, and conversation into momentum." },
 ];
 
-/* ---------- 3D RARE object (CSS 3D) ---------- */
+const FRAMES = ["STRATEGY", "STORY", "CAMPAIGN", "FILM", "IMPACT"];
+const focus = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C6A66B]";
+const SEC = "relative overflow-hidden px-5 py-24 sm:px-8 md:px-[4vw] md:py-32";
+
+/* ---------- hero: extruded RARE in CSS 3D (decorative; real text is HTML) ---------- */
 
 const DEPTH = 16;
-// Type scale reduced by 2rem at desktop sizes (the vw terms carry "- 2rem" so it holds across widths)
-const face = "whitespace-nowrap text-[clamp(2.5rem,calc(22vw_-_2rem),6rem)] font-black leading-[0.8] tracking-tighter md:text-[clamp(3rem,calc(12.5vw_-_2rem),11rem)]";
+const face = "rcs-display whitespace-nowrap text-[clamp(5rem,26vw,9rem)] leading-[0.8] md:text-[clamp(6rem,14vw,13rem)]";
 
-// Extruded "RARE": stacked text layers in CSS 3D. Decorative only; the page's real text is HTML.
 function RareObject() {
   const ref = useRef(null);
 
@@ -53,30 +58,17 @@ function RareObject() {
   return (
     <div aria-hidden="true" className="select-none [perspective:1000px]">
       <div ref={ref} className="relative [transform-style:preserve-3d]" style={{ transform: "rotateX(6deg) rotateY(-18deg)" }}>
-        {/* extrusion depth is in em, so it stays in proportion to the (smaller) lettering */}
         {Array.from({ length: DEPTH }, (_, i) => (
-          <span key={i} className={`absolute left-0 top-0 ${face}`} style={{ transform: `translateZ(${-(DEPTH - i) * 0.02}em)`, color: `hsl(213 92% ${22 + (i / DEPTH) * 16}%)` }}>RARE</span>
+          <span key={i} className={`absolute left-0 top-0 ${face}`} style={{ transform: `translateZ(${-(DEPTH - i) * 0.02}em)`, color: `hsl(228 88% ${16 + (i / DEPTH) * 30}%)` }}>RARE</span>
         ))}
-        <span className={`relative block text-[#090909] ${face}`}>RARE</span>
+        <span className={`relative block text-[#F4F2EC] drop-shadow-[0_0_50px_rgba(82,113,255,0.45)] ${face}`}>RARE</span>
       </div>
     </div>
   );
 }
 
-/* ---------- page ---------- */
-const CSS = `@keyframes rr-marq{to{transform:translateX(-50%)}}`;
-const SEC = "relative overflow-hidden px-[clamp(1.25rem,5vw,4rem)] py-20 md:py-32";
+/* ---------- scroll reveal ---------- */
 
-// Headline scales (each reduced by >= 2rem at desktop widths; phones shrink proportionally)
-const T_BASE = "break-words font-black uppercase leading-[0.9] tracking-tighter";
-const T_SIZE = "text-[clamp(1.6rem,7vw,2.6rem)] md:text-[clamp(2.6rem,5.4vw,5rem)]";
-const T_BIG = "text-[clamp(1.8rem,9vw,3rem)] md:text-[clamp(3rem,7vw,6.5rem)]";
-
-const btn = "inline-block px-7 py-4 text-center text-[0.8rem] font-bold tracking-[0.16em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0756BD] md:text-sm";
-const dark = `${btn} bg-[#090909] text-[#F5F3EE] hover:bg-[#0756BD]`;
-const line = `${btn} border-2 border-[#090909] text-[#090909] hover:bg-[#090909] hover:text-[#F5F3EE]`;
-
-// Scroll-triggered entrance; shows immediately if IntersectionObserver is missing or motion is reduced.
 function Reveal({ as: Tag = "div", className = "", from = "translate-y-8", delay = 0, children }) {
   const ref = useRef(null);
   const [on, setOn] = useState(false);
@@ -94,23 +86,85 @@ function Reveal({ as: Tag = "div", className = "", from = "translate-y-8", delay
   );
 }
 
-const Meta = ({ i, d }) => (
-  <p className="mb-4 flex items-center gap-3 text-xs font-bold tracking-[0.18em]">
-    <span className={d ? "text-[#F5F3EE]" : "text-[#0756BD]"}>{SERVICES[i].n}</span>
-    <span className={d ? "text-[#D8D8D4]" : "text-[#090909]/70"}>{SERVICES[i].label.toUpperCase()}</span>
-  </p>
-);
-const Title = ({ i, big = false, cls = "" }) => (
-  <h2 id={`sv${i}`} className={`${T_BASE} ${big ? T_BIG : T_SIZE} ${cls}`}>
-    {SERVICES[i].name.map((l) => <span key={l} className="block">{l}{" "}</span>)}
-  </h2>
-);
-const Desc = ({ i, d }) => (
-  <p className={`mt-5 max-w-[42ch] text-[0.95rem] leading-relaxed md:text-base ${d ? "text-[#D8D8D4]" : "text-[#090909]/75"}`}>{SERVICES[i].desc}</p>
-);
+/* ---------- service artwork (CSS) ---------- */
 
-const FRAMES = ["STRATEGY", "STORY", "CAMPAIGN", "FILM", "IMPACT"];
-const Sprockets = () => <span className="block h-2 bg-[repeating-linear-gradient(90deg,#F5F3EE_0_10px,transparent_10px_22px)]" />;
+const ART = [
+  // 01 strategy: top-down hierarchy
+  <div key="a" className="absolute inset-0">
+    <span className="absolute left-[34%] top-[12%] h-[24%] w-[28%] bg-[#16249a] [clip-path:polygon(50%_0,100%_100%,0_100%)]" />
+    <span className="absolute left-[25%] top-[38%] h-[24%] w-[46%] bg-[#3a55e8] [clip-path:polygon(20%_0,80%_0,100%_100%,0_100%)]" />
+    <span className="absolute left-[16%] top-[64%] h-[24%] w-[64%] bg-[#8da0ff] [clip-path:polygon(14%_0,86%_0,100%_100%,0_100%)]" />
+    {["Strategy", "Tactics", "Execution"].map((t, k) => (
+      <span key={t} className="absolute right-[5%] text-[10px] font-semibold uppercase tracking-[0.24em] text-[#C6A66B]" style={{ top: `${22 + k * 26}%` }}>{t}</span>
+    ))}
+  </div>,
+  // 02 earned media: front page
+  <div key="b" className="absolute inset-0 grid place-items-center">
+    <div className="w-[62%] -rotate-3 bg-[#ECEBE7] p-4 text-[#050A14] shadow-2xl transition-transform duration-500 group-hover:rotate-0">
+      <p className="border-b-4 border-[#050A14] pb-2 text-center text-[clamp(1rem,2.4vw,1.5rem)] font-black tracking-tighter">THE DAILY STORY</p>
+      <div className="mt-3 grid grid-cols-3 gap-2"><span className="col-span-2 h-20 bg-[#3a55e8]" /><span className="h-20 bg-[#c9c8c3]" /></div>
+      {["100%", "92%", "100%", "68%", "85%"].map((w, k) => <span key={k} className="mt-2 block h-1.5 bg-[#050A14]/80" style={{ width: w }} />)}
+    </div>
+  </div>,
+  // 03 campaigns: tilted billboards
+  <div key="c" className="absolute inset-0">
+    <span className="absolute left-[6%] top-[14%] h-[72%] w-[34%] -rotate-6 bg-gradient-to-br from-[#5271FF] to-[#16249a] transition-transform duration-500 group-hover:-rotate-12" />
+    <span className="rcs-display absolute left-[32%] top-[8%] grid h-[80%] w-[36%] rotate-3 place-items-center bg-[#ECEBE7] text-[clamp(1.4rem,3.4vw,2.6rem)] text-[#050A14] transition-transform duration-500 group-hover:rotate-0">Big idea</span>
+    <span className="absolute right-[6%] top-[20%] h-[64%] w-[28%] rotate-12 bg-gradient-to-br from-[#C6A66B] to-[#7a6232] transition-transform duration-500 group-hover:rotate-[18deg]" />
+  </div>,
+  // 04 storytelling: widescreen frame
+  <div key="d" className="absolute inset-0 grid place-items-center">
+    <div className="relative aspect-[2.39/1] w-[88%] bg-[#02050c] ring-1 ring-white/15 transition-transform duration-500 group-hover:scale-[1.04]">
+      <span className="absolute left-3 top-3 text-[10px] font-bold tracking-widest text-white/50">00:00:12:04</span>
+      <span className="rcs-serif absolute inset-0 grid place-items-center text-[clamp(1.2rem,3.4vw,2.2rem)] italic text-[#C6A66B]">Chapter one.</span>
+      <span className="absolute bottom-0 left-0 h-1.5 w-1/3 bg-[#5271FF] transition-all duration-700 group-hover:w-2/3" />
+    </div>
+  </div>,
+  // 05 film: frames
+  <div key="e" className="absolute inset-0 flex flex-col justify-center gap-2 p-5">
+    <span className="block h-2 bg-[repeating-linear-gradient(90deg,#ECEBE7_0_10px,transparent_10px_22px)]" />
+    <div className="grid grid-cols-4 gap-2">
+      {["ROLL", "FRAME", "CUT", "WRAP"].map((w, k) => (
+        <div key={w} className={`rcs-display grid aspect-[3/4] place-items-center text-[clamp(0.8rem,1.8vw,1.2rem)] transition-transform duration-500 group-hover:-translate-y-1 ${["bg-[#5271FF] text-white", "bg-[#ECEBE7] text-[#050A14]", "bg-[#C6A66B] text-[#050A14]", "border border-white/40 text-white"][k]}`}>{w}</div>
+      ))}
+    </div>
+    <span className="block h-2 bg-[repeating-linear-gradient(90deg,#ECEBE7_0_10px,transparent_10px_22px)]" />
+  </div>,
+  // 06 digital: ripples
+  <div key="f" className="absolute inset-0 grid place-items-center">
+    <div className="relative aspect-square w-[72%]">
+      {[0, 14, 28, 42].map((p, k) => <span key={p} className="absolute rounded-full border border-[#5271FF]/80 transition-transform duration-700 group-hover:scale-105" style={{ inset: `${p}%`, transitionDelay: `${k * 60}ms` }} />)}
+      <span className="absolute inset-[44%] rounded-full bg-[#C6A66B] shadow-[0_0_30px_rgba(198,166,107,0.6)]" />
+    </div>
+  </div>,
+];
+
+function Row({ i, flip = false, light = false, bg = "bg-[#050A14]" }) {
+  const s = SERVICES[i];
+  return (
+    <section aria-labelledby={`sv${i}`} className={`${SEC} ${light ? "bg-[#ECEBE7] text-[#050A14]" : `${bg} text-white`} border-t ${light ? "border-[#050A14]/10" : "border-white/10"}`}>
+      <Reveal className="group mx-auto grid max-w-[1380px] items-center gap-12 md:grid-cols-12 md:gap-16">
+        <div className={`md:col-span-6 ${flip ? "md:order-last" : ""}`}>
+          <p className="mb-6 flex items-center gap-4 text-[11px] font-semibold uppercase tracking-[0.3em]">
+            <span className={light ? "text-[#B28F4A]" : "text-[#C6A66B]"}>{s.n}</span>
+            <span className={light ? "text-[#050A14]/60" : "text-white/55"}>{s.label}</span>
+          </p>
+          <h2 id={`sv${i}`} className="rcs-display text-[clamp(2.8rem,6vw,5.6rem)]">
+            {s.name.map((l) => <span key={l} className="block">{l}</span>)}
+          </h2>
+          <p className={`mt-6 max-w-[42ch] text-[15px] leading-relaxed md:text-[16px] ${light ? "text-[#050A14]/70" : "text-white/65"}`}>{s.desc}</p>
+        </div>
+        <div aria-hidden="true" className="md:col-span-6">
+          <div className={`relative aspect-[4/3] overflow-hidden border ${light ? "border-[#050A14]/15 bg-[#050A14]" : "border-white/10 bg-[radial-gradient(ellipse_at_70%_20%,#13255a_0%,#08122a_70%)]"}`}>
+            {ART[i]}
+          </div>
+        </div>
+      </Reveal>
+    </section>
+  );
+}
+
+/* ---------- page ---------- */
 
 export default function Services() {
   const toServices = () =>
@@ -118,142 +172,100 @@ export default function Services() {
 
   return (
     <>
-    <main className="bg-[#F5F3EE] text-[#090909]">
-      <style>{CSS}</style>
+      <main className="rcs-body bg-[#050A14] text-white">
+        <style>{`@keyframes rr-marq{to{transform:translateX(-50%)}}`}</style>
 
-      {/* HERO */}
-      <header className="relative overflow-hidden px-[clamp(1.25rem,5vw,4rem)] pb-14 pt-28 md:pb-20 md:pt-36">
-        <span aria-hidden="true" className="absolute -right-[18vw] top-16 h-[70vw] w-[70vw] rounded-full bg-[#D8D8D4] md:-right-[6vw] md:top-10 md:h-[42vw] md:w-[42vw]" />
-        <div className="relative grid items-center gap-8 md:grid-cols-12">
-          <div className="flex justify-center md:order-last md:col-span-4 md:justify-end">
-            <RareObject />
-          </div>
-          <div className="md:col-span-8">
-            <h1 className="break-words text-[clamp(1.75rem,8.4vw,3.2rem)] font-black uppercase leading-[0.88] tracking-tighter md:text-[clamp(3rem,6.6vw,6.5rem)]">
-              {["WE MAKE", "BRANDS", "IMPOSSIBLE", "TO IGNORE."].map((l) => <span key={l} className="block">{l}{" "}</span>)}
-            </h1>
-            <p className="mt-6 max-w-[44ch] text-[0.95rem] leading-relaxed md:text-base">
-              We combine strategy, storytelling, PR, and creative production to turn brands into conversations people want to be part of.
-            </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <button type="button" onClick={toServices} className={dark}>EXPLORE OUR SERVICES</button>
-              <Link to="/contact" className={line}>LET'S COLLABORATE</Link>
+        {/* HERO */}
+        <header className="relative isolate overflow-hidden px-5 pb-20 pt-32 sm:px-8 md:px-[4vw] md:pb-28 md:pt-44">
+          <div aria-hidden="true" className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_80%_30%,#13255a_0%,#050A14_62%)]" />
+          <span aria-hidden="true" className="absolute -right-[18vw] top-24 -z-10 h-[70vw] w-[70vw] rounded-full bg-[#5271FF]/10 blur-3xl md:-right-[6vw] md:h-[42vw] md:w-[42vw]" />
+
+          <div className="mx-auto grid max-w-[1380px] items-center gap-10 md:grid-cols-12">
+            <div className="md:col-span-7">
+              <p className="mb-6 text-[10px] font-semibold uppercase tracking-[0.3em] text-[#C6A66B]">Our services</p>
+              <h1 className="rcs-display text-[clamp(3rem,8vw,7.2rem)]">
+                <span className="block">We make brands</span>
+                <span className="block text-[#5271FF]">impossible</span>
+                <span className="block">to ignore.</span>
+              </h1>
+              <p className="mt-7 max-w-[44ch] text-[15px] leading-relaxed text-white/70 md:text-[17px]">
+                We combine strategy, storytelling, PR, and creative production to turn brands into conversations people want to be part of.
+              </p>
+              <div className="mt-9 flex flex-wrap items-center gap-x-9 gap-y-4">
+                <button type="button" onClick={toServices} className={`group inline-flex min-h-12 items-center gap-3 rounded-[3px] bg-[#C6A66B] px-6 text-[11px] font-bold uppercase tracking-[0.16em] text-[#050A14] transition-colors hover:bg-[#DDC89D] ${focus}`}>
+                  Explore our services
+                  <ArrowDown size={15} strokeWidth={2} className="transition-transform group-hover:translate-y-0.5" />
+                </button>
+                <Link to="/contact" className={`group inline-flex min-h-12 items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-white ${focus}`}>
+                  Let’s collaborate
+                  <ArrowRight size={15} className="transition-transform group-hover:translate-x-1" />
+                </Link>
+              </div>
+            </div>
+            <div className="flex justify-center md:col-span-5 md:justify-end">
+              <RareObject />
             </div>
           </div>
+        </header>
+
+        {/* FILM STRIP */}
+        <div aria-hidden="true" className="overflow-hidden border-y border-white/10 bg-[#03060D] py-2">
+          <span className="block h-2 bg-[repeating-linear-gradient(90deg,#ffffff1f_0_10px,transparent_10px_22px)]" />
+          <div className="my-2 flex w-max animate-[rr-marq_32s_linear_infinite] motion-reduce:animate-none">
+            {[...FRAMES, ...FRAMES].map((t, i) => (
+              <div key={i} className={`rcs-display mx-1.5 grid h-[clamp(4rem,10vw,6.5rem)] w-[clamp(8rem,22vw,14rem)] shrink-0 place-items-center text-[clamp(1rem,2.2vw,1.5rem)] ${i % 2 ? "border border-[#C6A66B]/50 text-[#C6A66B]" : "bg-[#5271FF] text-white"}`}>{t}</div>
+            ))}
+          </div>
+          <span className="block h-2 bg-[repeating-linear-gradient(90deg,#ffffff1f_0_10px,transparent_10px_22px)]" />
         </div>
-      </header>
 
-      {/* FILM STRIP */}
-      <div aria-hidden="true" className="overflow-hidden bg-[#090909] py-2">
-        <Sprockets />
-        <div className="my-2 flex w-max animate-[rr-marq_32s_linear_infinite] motion-reduce:animate-none">
-          {[...FRAMES, ...FRAMES].map((t, i) => (
-            <div key={i} className={`mx-1.5 grid h-[clamp(4rem,12vw,7rem)] w-[clamp(7rem,22vw,13rem)] shrink-0 place-items-center text-[clamp(0.8rem,2vw,1.1rem)] font-black tracking-tight ${i % 2 ? "bg-[#F5F3EE] text-[#090909]" : "bg-[#0756BD] text-[#F5F3EE]"}`}>{t}</div>
-          ))}
+        {/* SERVICES */}
+        <div id="services-start">
+          <Row i={0} />
+          <Row i={1} flip bg="bg-[#070E1D]" />
+          <Row i={2} />
+          <Row i={3} flip light />
+          <Row i={4} />
+          <Row i={5} flip bg="bg-[#070E1D]" />
         </div>
-        <Sprockets />
-      </div>
 
-      {/* 01 BRAND STRATEGY: giant outlined number */}
-      <section id="services-start" aria-labelledby="sv0" className={SEC}>
-        <Reveal className="group grid items-end gap-6 md:grid-cols-12">
-          <p aria-hidden="true" className="select-none text-[clamp(5rem,26vw,9rem)] font-black leading-[0.75] text-transparent transition-all duration-500 [-webkit-text-stroke:2px_#090909] group-hover:translate-x-3 group-hover:[-webkit-text-stroke-color:#0756BD] md:col-span-5 md:text-[clamp(8rem,26vw,17rem)]">01</p>
-          <div className="md:col-span-7"><Meta i={0} /><Title i={0} /><Desc i={0} /></div>
-        </Reveal>
-      </section>
-
-      {/* 02 PR: front-page poster */}
-      <section aria-labelledby="sv1" className={`${SEC} pt-0 md:pt-0`}>
-        <Reveal className="group grid items-center gap-10 md:grid-cols-12">
-          <div aria-hidden="true" className="mx-auto w-full max-w-sm -rotate-3 border-2 border-[#090909] bg-[#F5F3EE] p-4 transition-transform duration-500 group-hover:rotate-0 md:col-span-5">
-            <p className="border-b-4 border-[#090909] pb-2 text-center text-[clamp(1.1rem,5vw,1.6rem)] font-black tracking-tighter">THE DAILY STORY</p>
-            <div className="mt-3 grid grid-cols-3 gap-2"><span className="col-span-2 h-24 bg-[#0756BD]" /><span className="h-24 bg-[#D8D8D4]" /></div>
-            {["100%", "92%", "100%", "68%", "85%"].map((w, k) => <span key={k} className="mt-2 block h-1.5 bg-[#090909]/80" style={{ width: w }} />)}
-          </div>
-          <div className="md:col-span-6 md:col-start-7"><Meta i={1} /><Title i={1} /><Desc i={1} /></div>
-        </Reveal>
-      </section>
-
-      {/* 03 CAMPAIGNS: full-width black, tilted billboard panels */}
-      <section aria-labelledby="sv2" className={`${SEC} bg-[#090909] text-[#F5F3EE]`}>
-        <Reveal className="group">
-          <div className="md:flex md:items-end md:justify-between md:gap-12">
-            <div><Meta i={2} d /><Title i={2} big /></div>
-            <Desc i={2} d />
-          </div>
-          <div aria-hidden="true" className="relative mt-12 h-[clamp(11rem,36vw,22rem)]">
-            <span className="absolute left-[4%] top-4 h-[80%] w-[34%] -rotate-6 bg-[#0756BD] transition-transform duration-500 group-hover:-rotate-12" />
-            <span className="absolute left-[31%] top-0 grid h-[92%] w-[36%] rotate-3 place-items-center bg-[#F5F3EE] text-[clamp(1.1rem,5.4vw,3rem)] font-black text-[#090909] transition-transform duration-500 group-hover:rotate-0">BIG IDEA</span>
-            <span className="absolute right-[4%] top-8 h-[75%] w-[30%] rotate-12 bg-[#D8D8D4] transition-transform duration-500 group-hover:rotate-[18deg]" />
-          </div>
-        </Reveal>
-      </section>
-
-      {/* 04 STORYTELLING: widescreen frame */}
-      <section aria-labelledby="sv3" className={`${SEC} bg-[#D8D8D4]`}>
-        <Reveal className="group grid items-center gap-10 md:grid-cols-12">
-          <div className="md:col-span-5"><Meta i={3} /><Title i={3} cls="font-serif italic font-semibold" /><Desc i={3} /></div>
-          <div aria-hidden="true" className="relative aspect-[2.39/1] bg-[#090909] transition-transform duration-500 group-hover:scale-[1.03] md:col-span-7 md:-mr-12">
-            <span className="absolute left-3 top-3 text-[10px] font-bold tracking-widest text-[#D8D8D4]">00:00:12:04</span>
-            <span className="absolute inset-0 grid place-items-center font-serif text-[clamp(1.2rem,4.2vw,2rem)] italic text-[#F5F3EE]">Chapter one.</span>
-            <span className="absolute bottom-0 left-0 h-1.5 w-1/3 bg-[#0756BD] transition-all duration-700 group-hover:w-2/3" />
-          </div>
-        </Reveal>
-      </section>
-
-      {/* 05 VIDEO: film strip frames */}
-      <section aria-labelledby="sv4" className={`${SEC} bg-[#090909] text-[#F5F3EE]`}>
-        <Reveal className="group">
-          <Meta i={4} d /><Title i={4} big /><Desc i={4} d />
-          <div aria-hidden="true" className="mt-12">
-            <Sprockets />
-            <div className="my-2 grid grid-cols-2 gap-2 md:grid-cols-4">
-              {["ROLL", "FRAME", "CUT", "WRAP"].map((w, k) => (
-                <div key={w} className={`grid aspect-[4/3] place-items-center text-[clamp(0.9rem,2.4vw,1.3rem)] font-black transition-transform duration-500 group-hover:-translate-y-1 ${["bg-[#0756BD] text-[#F5F3EE]", "bg-[#F5F3EE] text-[#090909]", "bg-[#D8D8D4] text-[#090909]", "border-2 border-[#F5F3EE]"][k]}`}>{w}</div>
-              ))}
-            </div>
-            <Sprockets />
-          </div>
-        </Reveal>
-      </section>
-
-      {/* 06 DIGITAL: ripples */}
-      <section aria-labelledby="sv5" className={SEC}>
-        <Reveal className="group grid items-center gap-10 md:grid-cols-12">
-          <div className="md:col-span-6"><Meta i={5} /><Title i={5} /><Desc i={5} /></div>
-          <div aria-hidden="true" className="relative mx-auto aspect-square w-[min(80vw,26rem)] md:col-span-6">
-            {[0, 14, 28, 42].map((p, k) => <span key={p} className="absolute rounded-full border-2 border-[#0756BD] transition-transform duration-700 group-hover:scale-105" style={{ inset: `${p}%`, transitionDelay: `${k * 60}ms` }} />)}
-            <span className="absolute inset-[44%] rounded-full bg-[#0756BD]" />
-          </div>
-        </Reveal>
-      </section>
-
-      {/* If your current Services page has an FAQ, paste your existing FAQ component here unchanged. */}
-
-      {/* PROCESS: horizontal on desktop, vertical on mobile */}
-      <section aria-labelledby="proc" className={`${SEC} bg-[#D8D8D4]`}>
-        <Reveal><h2 id="proc" className={`${T_BASE} ${T_SIZE}`}>CREATIVE PROCESS</h2></Reveal>
-        <ol className="mt-14 md:grid md:grid-cols-4">
-          {PROCESS.map((p, i) => (
-            <Reveal as="li" key={p.n} delay={i * 150} from="translate-y-8 md:translate-y-0 md:translate-x-10" className="relative border-l-2 border-[#090909] pb-10 pl-6 md:border-l-0 md:border-t-2 md:pb-0 md:pl-0 md:pr-6 md:pt-6">
-              <span aria-hidden="true" className="absolute -left-[7px] top-0 h-3 w-3 rounded-full bg-[#0756BD] md:-top-[7px] md:left-0" />
-              <p className="text-[clamp(2.2rem,5vw,3.5rem)] font-black leading-none text-[#0756BD]">{p.n}</p>
-              <h3 className="mt-2 text-lg font-black tracking-tight md:text-xl">{p.name}</h3>
-              <p className="mt-2 max-w-[30ch] text-[0.95rem] text-[#090909]/80 md:text-base">{p.desc}</p>
+        {/* PROCESS */}
+        <section aria-labelledby="proc" className={`${SEC} border-t border-white/10 bg-[#070E1D]`}>
+          <div className="mx-auto max-w-[1380px]">
+            <Reveal>
+              <p className="mb-6 text-[10px] font-semibold uppercase tracking-[0.3em] text-[#C6A66B]">How we work</p>
+              <h2 id="proc" className="rcs-display text-[clamp(2.8rem,6vw,5.6rem)]">Creative <span className="text-[#5271FF]">process</span></h2>
             </Reveal>
-          ))}
-        </ol>
-      </section>
+            <ol className="mt-16 md:grid md:grid-cols-4">
+              {PROCESS.map((p, i) => (
+                <Reveal as="li" key={p.n} delay={i * 150} from="translate-y-8 md:translate-y-0 md:translate-x-10" className="relative border-l border-white/20 pb-12 pl-7 md:border-l-0 md:border-t md:pb-0 md:pl-0 md:pr-8 md:pt-8">
+                  <span aria-hidden="true" className="absolute -left-[5px] top-0 h-2.5 w-2.5 rounded-full bg-[#C6A66B] md:-top-[5px] md:left-0" />
+                  <p aria-hidden="true" className="rcs-display text-[clamp(3rem,5.4vw,4.6rem)] text-transparent [-webkit-text-stroke:1px_#5271FF]">{p.n}</p>
+                  <h3 className="rcs-display mt-3 text-[1.6rem]">{p.name}</h3>
+                  <p className="mt-3 max-w-[30ch] text-[14px] leading-relaxed text-white/60">{p.desc}</p>
+                </Reveal>
+              ))}
+            </ol>
+          </div>
+        </section>
 
-      {/* FINAL CTA */}
-      <section aria-labelledby="cta" className={`${SEC} bg-[#0756BD] text-[#F5F3EE]`}>
-        <Reveal>
-          <h2 id="cta" className="break-words text-[clamp(1.7rem,7.6vw,2.8rem)] font-black uppercase leading-[0.9] tracking-tighter md:text-[clamp(2.8rem,6vw,6rem)]">GOT A BIG IDEA? LET'S MAKE IT RARE.</h2>
-          <Link to="/contact" className={`${btn} mt-10 bg-[#F5F3EE] text-[#0756BD] hover:bg-[#090909] hover:text-[#F5F3EE] focus-visible:outline-[#F5F3EE]`}>START A PROJECT</Link>
-        </Reveal>
-      </section>
-    </main>
-    <Footer />
+        {/* FINAL CTA */}
+        <section aria-labelledby="cta" className={`${SEC} isolate border-t border-white/10 bg-[#050A14]`}>
+          <div aria-hidden="true" className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_80%_110%,rgba(40,70,255,0.8),transparent_55%),radial-gradient(ellipse_at_20%_0%,rgba(0,35,102,0.8),transparent_55%)]" />
+          <Reveal className="mx-auto flex max-w-[1380px] flex-col gap-12 md:flex-row md:items-end md:justify-between">
+            <h2 id="cta" className="rcs-serif max-w-[16ch] text-[clamp(2.2rem,5.4vw,4.6rem)] uppercase leading-[1.05] text-[#C6A66B]">
+              Got a big idea? Let’s make it rare.
+            </h2>
+            <Link to="/contact" className={`group inline-flex shrink-0 items-center gap-5 text-[11px] font-semibold uppercase tracking-[0.2em] ${focus}`}>
+              <span className="grid h-16 w-16 place-items-center rounded-full border border-[#C6A66B]/80 text-[#C6A66B] transition-colors duration-300 group-hover:bg-[#C6A66B] group-hover:text-[#050A14]">
+                <ArrowUpRight size={20} strokeWidth={1.6} />
+              </span>
+              Start a project
+            </Link>
+          </Reveal>
+        </section>
+      </main>
+  
     </>
   );
 }

@@ -1,126 +1,122 @@
 import { Link } from "react-router-dom";
 
-/* ------------------------------------------------------------------
-   SET THESE FROM YOUR PROJECT (nothing here is invented):
-   - LOGO_SRC: import your real light/white logo and assign it, e.g.
-       import logo from "../assets/logo-white.svg";  const LOGO_SRC = logo;
-     Until then a plain typographic wordmark is shown.
-   - SOCIALS: [{ label: "Instagram", href: "https://..." }] from your real URLs.
-   - EMAIL: your real address, or leave "" to point people to the Contact page.
-------------------------------------------------------------------- */
 const LOGO_SRC = "";
 const SOCIALS = [];
 const EMAIL = "";
 
-// Route paths as used by the site's router (HashRouter-safe <Link>).
 const EXPLORE = [
   { label: "Home", to: "/" },
   { label: "About", to: "/about" },
   { label: "Services", to: "/services" },
   { label: "Contact", to: "/contact" },
 ];
-const CAPABILITIES = ["Brand Strategy", "PR & Media Relations", "Creative Campaigns", "Storytelling", "Video Production", "Digital Marketing"];
 
-const CSS = `
-@keyframes rcs-frame{to{transform:translateX(220px)}}
-.rcs-frame{animation:rcs-frame 8s steps(11,end) infinite alternate}
-@media (prefers-reduced-motion:reduce){.rcs-frame{animation:none}}`;
+const CAPABILITIES = [
+  "Brand Strategy",
+  "PR & Media Relations",
+  "Creative Campaigns",
+  "Storytelling",
+  "Video Production",
+  "Digital Marketing",
+];
 
-const font = '"Helvetica Now Display","Helvetica Now Text","Helvetica Neue",Helvetica,Arial,sans-serif';
-const focus = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#5271FF]";
-
-// Fluid side padding that also clears phone notches in landscape (equals the original px-[clamp(1.25rem,5vw,4rem)] elsewhere)
-const padX =
-  "pl-[max(env(safe-area-inset-left),clamp(1.25rem,5vw,4rem))] pr-[max(env(safe-area-inset-right),clamp(1.25rem,5vw,4rem))]";
-
-// Links: on phones each one gets a ~44px tap target (underline kept tight to the text); md+ is unchanged
-const link = `relative inline-block break-words text-white/90 transition-colors hover:text-white max-md:py-2.5 after:absolute after:-bottom-0.5 after:left-0 after:h-0.5 after:w-full after:origin-left after:scale-x-0 after:bg-[#5271FF] after:transition-transform after:duration-300 max-md:after:bottom-2 hover:after:scale-x-100 focus-visible:after:scale-x-100 ${focus}`;
-const h3 = "mb-5 text-xs font-bold tracking-[0.18em] text-[#75849B] max-md:mb-3";
+const focus = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C6A66B]";
+const padX = "pl-[max(env(safe-area-inset-left),clamp(1.25rem,4vw,4rem))] pr-[max(env(safe-area-inset-right),clamp(1.25rem,4vw,4rem))]";
+const heading = "mb-5 text-[10px] font-semibold uppercase tracking-[0.3em] text-[#C6A66B]";
+const link = `relative inline-block py-1.5 text-[13px] text-white/65 transition-colors hover:text-white ${focus}`;
 
 export default function Footer() {
   const year = new Date().getFullYear();
+
   return (
-    <footer style={{ fontFamily: font }} className="overflow-hidden bg-black text-white">
-      <style>{CSS}</style>
-
-      {/* 1 — Closing statement */}
-      <section aria-labelledby="footer-statement" className={`${padX} pb-16 pt-20 md:pb-24 md:pt-32`}>
-        <span aria-hidden="true" className="mb-8 block h-1 w-16 bg-[#FAD430]" />
-        <div className="grid gap-10 lg:grid-cols-12 lg:items-end">
-          <h2 id="footer-statement" className="break-words text-[clamp(2.2rem,10.5vw,9rem)] font-bold uppercase leading-[0.9] tracking-tighter lg:col-span-8 lg:text-[clamp(2.2rem,calc(10.5vw_-_2rem),7rem)]">
-            <span className="block">LET'S MAKE{" "}</span>
-            <span className="block">SOMETHING{" "}</span>
-            <span className="block">RARE<span className="text-[#FAD430]">.</span></span>
-          </h2>
-          <div className="lg:col-span-4">
-            <p className="max-w-[36ch] break-words text-base leading-relaxed text-white/80 md:text-lg">
-              Have an idea, a story, or a brand ready for its next chapter? Let's create something worth talking about.
-            </p>
-            {/* Phones: full-width, thumb-friendly button that can never overflow; sm+ is the original inline button */}
-            <Link
-              to="/contact"
-              className={`mt-8 inline-flex min-h-12 w-full touch-manipulation items-center justify-between gap-3 bg-[#5271FF] px-5 py-4 text-[clamp(0.95rem,4.2vw,1.2rem)] font-bold leading-none text-white transition-colors hover:bg-white hover:text-black active:bg-white active:text-black sm:w-auto sm:justify-start sm:px-7 ${focus}`}
-            >
-              START A CONVERSATION <span aria-hidden="true">↗</span>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* 2 — Main footer */}
-      <div className={`border-t border-[#75849B]/30 ${padX} py-12 md:py-20`}>
-        {/* Phones: Explore + Capabilities sit side by side (2 columns) instead of one long stack */}
-        <div className="grid grid-cols-2 gap-x-6 gap-y-10 md:gap-12 lg:grid-cols-12">
+    <footer className="rcs-body overflow-hidden bg-[#03060D] text-white">
+      <div className={`${padX} mx-auto max-w-[1500px] pt-16 md:pt-24`}>
+        <div className="grid grid-cols-2 gap-x-6 gap-y-12 lg:grid-cols-12">
+          {/* Brand */}
           <div className="col-span-2 lg:col-span-5">
             {LOGO_SRC ? (
               <img src={LOGO_SRC} alt="Rare Creative Studios" className="h-10 w-auto max-w-full md:h-12" loading="lazy" />
             ) : (
-              <p className="text-2xl font-bold leading-none tracking-tighter">RARE <span className="block text-xs font-bold tracking-[0.18em] text-[#75849B]">CREATIVE STUDIOS</span></p>
+              <div className="flex items-center gap-3">
+                <span className="rcs-display text-[44px] leading-none">R</span>
+                <span className="flex flex-col leading-none">
+                  <span className="text-[14px] font-bold uppercase tracking-[0.16em]">Rare</span>
+                  <span className="mt-1 text-[8px] font-semibold uppercase tracking-[0.3em] text-white/50">Creative Studios</span>
+                </span>
+              </div>
             )}
-            <p className="mt-6 max-w-[40ch] break-words text-base leading-relaxed text-white/80">
+            <p className="mt-6 max-w-[38ch] text-[13px] leading-relaxed text-white/55">
               Strategy, storytelling, PR, and creative production for brands ready to make a lasting impression.
             </p>
-            <p className="mt-5 text-xs font-bold leading-relaxed tracking-[0.18em] text-[#FAD430]">CREATIVE THINKING. RARE EXECUTION.</p>
           </div>
 
-          <nav aria-label="Explore" className="min-w-0 lg:col-span-2 lg:col-start-7">
-            <h3 className={h3}>EXPLORE</h3>
-            <ul className="space-y-3 max-md:space-y-0">
-              {EXPLORE.map((l) => <li key={l.to}><Link to={l.to} className={link}>{l.label}</Link></li>)}
+          {/* Explore */}
+          <nav aria-label="Explore" className="lg:col-span-2 lg:col-start-7">
+            <h3 className={heading}>Explore</h3>
+            <ul>
+              {EXPLORE.map((item) => (
+                <li key={item.to}>
+                  <Link to={item.to} className={link}>
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </nav>
 
-          <div className="min-w-0 lg:col-span-3">
-            <h3 className={h3}>CAPABILITIES</h3>
-            <ul className="space-y-3 break-words text-white/80 max-md:space-y-2.5 max-md:text-[0.95rem] max-md:leading-snug">
-              {CAPABILITIES.map((c) => <li key={c}>{c}</li>)}
+          {/* Capabilities */}
+          <div className="lg:col-span-2">
+            <h3 className={heading}>Capabilities</h3>
+            <ul className="text-[13px] leading-[2] text-white/55">
+              {CAPABILITIES.map((c) => (
+                <li key={c}>{c}</li>
+              ))}
             </ul>
           </div>
 
-          <div className="col-span-2 lg:col-span-12 lg:-mt-2">
-            <h3 className={h3}>CONNECT</h3>
-            <ul className="flex flex-wrap gap-x-8 gap-y-3 max-md:gap-y-0">
-              {EMAIL && <li><a href={`mailto:${EMAIL}`} className={link}>{EMAIL}</a></li>}
-              {SOCIALS.map((s) => <li key={s.href}><a href={s.href} target="_blank" rel="noopener noreferrer" className={link}>{s.label}</a></li>)}
-              {!EMAIL && SOCIALS.length === 0 && <li><Link to="/contact" className={link}>Tell us about your project</Link></li>}
+          {/* Connect */}
+          <div className="col-span-2 lg:col-span-2">
+            <h3 className={heading}>Connect</h3>
+            <ul>
+              {EMAIL && (
+                <li>
+                  <a href={`mailto:${EMAIL}`} className={link}>
+                    {EMAIL}
+                  </a>
+                </li>
+              )}
+              {SOCIALS.map((s) => (
+                <li key={s.href}>
+                  <a href={s.href} target="_blank" rel="noopener noreferrer" className={link}>
+                    {s.label}
+                  </a>
+                </li>
+              ))}
+              {!EMAIL && SOCIALS.length === 0 && (
+                <li>
+                  <Link to="/letsconnect" className={link}>
+                    Tell us about your project
+                  </Link>
+                </li>
+              )}
             </ul>
           </div>
-        </div>
-
-        {/* 3 — Creative detail: film frames with a single moving yellow frame */}
-        <div aria-hidden="true" className="relative mt-14 h-3 w-[232px] max-w-full max-md:mt-12">
-          <div className="flex gap-2">
-            {Array.from({ length: 12 }, (_, i) => <span key={i} className="block h-3 w-3 border border-[#75849B]/60 bg-[#002366]" />)}
-          </div>
-          <span className="rcs-frame absolute left-0 top-0 block h-3 w-3 bg-[#FAD430]" />
         </div>
       </div>
 
-      {/* 4 — Bottom bar (clears the iPhone home bar) */}
-      <div className={`border-t border-[#75849B]/30 ${padX} pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-6`}>
-        <div className="flex flex-col gap-2 text-xs leading-relaxed tracking-[0.14em] text-[#75849B] md:flex-row md:items-center md:justify-between">
-          <p>© {year} RARE CREATIVE STUDIOS</p>
-          <p>INDEPENDENT THINKING. DISTINCTIVE WORK.</p>
+      {/* Outlined wordmark */}
+      <p
+        aria-hidden="true"
+        className="rcs-display mt-14 select-none whitespace-nowrap text-center text-[clamp(3rem,15vw,13rem)] leading-[0.85] text-transparent [-webkit-text-stroke:1px_rgba(255,255,255,0.14)] md:mt-20"
+      >
+        Rare Creative Studios
+      </p>
+
+      {/* Bottom bar */}
+      <div className={`${padX} border-t border-white/10 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-6`}>
+        <div className="mx-auto flex max-w-[1500px] flex-col gap-2 text-[10px] uppercase tracking-[0.18em] text-white/40 md:flex-row md:items-center md:justify-between">
+          <p>© {year} Rare Creative Studios</p>
+          <p>Independent thinking. Distinctive work.</p>
         </div>
       </div>
     </footer>

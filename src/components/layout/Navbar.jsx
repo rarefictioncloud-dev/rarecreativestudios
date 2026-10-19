@@ -1,181 +1,137 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { ArrowUpRight, Menu, X } from "lucide-react";
 
 const NAV_LINKS = [
-
+  { label: "Home", path: "/" },
   { label: "About", path: "/about" },
   { label: "Services", path: "/services" },
-  { label: "Contact", path: "/contact" }
-
+  { label: "Contact", path: "/contact" },
 ];
+
+/* Shared brand typography. The Navbar is mounted on every page, so Home, Footer and About all use these. */
+const FONT_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Anton&family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+  .rcs-display { font-family: "Anton", "Bebas Neue", "Arial Narrow", Impact, sans-serif; font-weight: 400; text-transform: uppercase; letter-spacing: .005em; line-height: .95; }
+  .rcs-body { font-family: "DM Sans", "Helvetica Neue", Arial, sans-serif; }
+  .rcs-serif { font-family: "Playfair Display", Georgia, serif; }
+  .font-editorial { font-family: "Helvetica Now Display", "Helvetica Neue", "Playfair Display", Georgia, serif; }
+  .rcs-editorial-italic { font-family: "Playfair Display", Georgia, serif; font-style: italic; font-weight: 400; }
+`;
+
+const focus = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C6A66B]";
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
-  const location = useLocation();
+  const [scrolled, setScrolled] = useState(false);
+  const { pathname } = useLocation();
 
-  const closeMenu = () => setOpen(false);
+  useEffect(() => setOpen(false), [pathname]);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 px-4 pt-5 sm:px-6 md:pt-7">
+    <header
+      className={`rcs-body fixed inset-x-0 top-0 z-50 transition-all duration-500 ${
+        scrolled || open ? "border-b border-white/10 bg-[#050A14]/85 backdrop-blur-xl" : "border-b border-transparent"
+      }`}
+    >
+      <style>{FONT_CSS}</style>
+
       <nav
-        className="
-          relative mx-auto flex h-[58px] max-w-[1080px]
-          items-center justify-between
-          rounded-full border border-white/[0.12]
-          bg-[#090909]/90 px-4
-          shadow-[0_8px_35px_rgba(0,0,0,0.35)]
-          backdrop-blur-2xl
-          transition-all duration-300
-          sm:px-6 md:h-[64px] md:px-7
-        "
+        aria-label="Primary"
+        className="mx-auto flex h-[72px] max-w-[1380px] items-center justify-between px-5 sm:px-8 md:h-20 md:px-[4vw]"
       >
-        {/* BRAND LOGO */}
-        <Link
-          to="/"
-          onClick={closeMenu}
-          aria-label="Rare Creative Studios home"
-          className="group flex shrink-0 items-center"
-        >
-          <span className="text-[14px] font-black uppercase tracking-[-0.075em] sm:text-[16px]">
-            <span className="text-white">RARE</span>
-            <span className="text-[#0756BD]"> CREATIVE STUDIOS</span>
-            <span className="text-[#0756BD]">.</span>
+        {/* Wordmark */}
+        <Link to="/" aria-label="Rare Creative Studios home" className={`flex items-center gap-3 ${focus}`}>
+          <span className="rcs-display text-[34px] leading-none text-white">R</span>
+          <span className="flex flex-col leading-none">
+            <span className="text-[13px] font-bold uppercase tracking-[0.16em] text-white">Rare</span>
+            <span className="mt-1 text-[7px] font-semibold uppercase tracking-[0.3em] text-white/50">Creative Studios</span>
           </span>
         </Link>
 
-        {/* DESKTOP NAVIGATION */}
-        <div className="ml-auto hidden items-center gap-1 md:flex">
+        {/* Desktop links */}
+        <ul className="hidden items-center gap-10 md:flex">
           {NAV_LINKS.map((item) => {
-            const active = location.pathname === item.path;
-
+            const active = pathname === item.path;
             return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`
-                  relative rounded-full px-3.5 py-2
-                  text-[13px] font-medium
-                  transition-all duration-300
-                  lg:px-4 lg:text-sm
-                  ${
-                    active
-                      ? "bg-white/[0.09] text-white"
-                      : "text-white/60 hover:bg-white/[0.05] hover:text-white"
-                  }
-                `}
-              >
-                {item.label}
-
-                {active && (
-                  <span className="absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-[#0756BD]" />
-                )}
-              </Link>
+              <li key={item.path}>
+                <Link
+                  to={item.path}
+                  aria-current={active ? "page" : undefined}
+                  className={`relative py-2 text-[11px] font-medium uppercase tracking-[0.2em] transition-colors duration-300 ${
+                    active ? "text-white" : "text-white/55 hover:text-white"
+                  } ${focus}`}
+                >
+                  {item.label}
+                  <span
+                    className={`absolute -bottom-0.5 left-0 h-px w-full origin-left bg-[#C6A66B] transition-transform duration-300 ${
+                      active ? "scale-x-100" : "scale-x-0"
+                    }`}
+                  />
+                </Link>
+              </li>
             );
           })}
+        </ul>
 
-          {/* CONTACT CTA */}
-          <Link
-            to="/letsconnect"
-            className="
-              group ml-3 flex items-center gap-2
-              rounded-full bg-[#0756BD]
-              px-4 py-2.5 text-[13px] font-semibold
-              text-white
-              transition-all duration-300
-              hover:bg-white hover:text-black
-              active:scale-95
-              lg:ml-4 lg:px-5 lg:text-sm
-            "
-          >
-            Let's connect
+        {/* Single connect action */}
+        <Link
+          to="/letsconnect"
+          className={`group hidden items-center gap-2 rounded-full border border-[#C6A66B]/70 px-5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#DDC89D] transition-all duration-300 hover:bg-[#C6A66B] hover:text-[#050A14] md:inline-flex ${focus}`}
+        >
+          Let’s connect
+          <ArrowUpRight size={14} strokeWidth={1.8} className="transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+        </Link>
 
-            <ArrowUpRight
-              size={15}
-              className="transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
-            />
-          </Link>
-        </div>
-
-        {/* MOBILE MENU BUTTON */}
+        {/* Mobile toggle */}
         <button
           type="button"
-          onClick={() => setOpen((previous) => !previous)}
+          onClick={() => setOpen((v) => !v)}
           aria-label={open ? "Close navigation" : "Open navigation"}
           aria-expanded={open}
-          className="
-            flex h-9 w-9 items-center justify-center
-            rounded-full border border-white/10
-            bg-white/[0.04] text-white
-            transition-colors duration-300
-            hover:bg-[#0756BD] md:hidden
-          "
+          aria-controls="rcs-mobile-nav"
+          className={`grid h-11 w-11 place-items-center rounded-full border border-white/20 text-white md:hidden ${focus}`}
         >
-          {open ? <X size={19} /> : <Menu size={19} />}
+          {open ? <X size={18} /> : <Menu size={18} />}
         </button>
       </nav>
 
-      {/* MOBILE NAVIGATION */}
+      {/* Mobile panel */}
       <div
-        className={`
-          mx-auto mt-2 max-w-[1080px] overflow-hidden
-          rounded-[24px] border border-white/10
-          bg-[#090909]/95 shadow-2xl backdrop-blur-2xl
-          transition-all duration-300 ease-out md:hidden
-          ${
-            open
-              ? "visible translate-y-0 opacity-100"
-              : "invisible -translate-y-2 opacity-0"
-          }
-        `}
-        style={{
-          maxHeight: open ? "400px" : "0px",
-        }}
+        id="rcs-mobile-nav"
+        className={`overflow-hidden transition-[max-height,opacity] duration-500 md:hidden ${open ? "max-h-[460px] opacity-100" : "invisible max-h-0 opacity-0"}`}
       >
-        <div className="p-3">
-          {NAV_LINKS.map((item) => {
-            const active = location.pathname === item.path;
-
-            return (
+        <ul className="px-5 pb-6 pt-2 sm:px-8">
+          {NAV_LINKS.map((item) => (
+            <li key={item.path} className="border-b border-white/10">
               <Link
-                key={item.path}
                 to={item.path}
-                onClick={closeMenu}
-                className={`
-                  flex min-h-12 items-center justify-between
-                  rounded-xl px-4 text-sm font-medium
-                  transition-colors duration-200
-                  ${
-                    active
-                      ? "bg-[#0756BD]/10 text-white"
-                      : "text-white/65 hover:bg-white/[0.04] hover:text-white"
-                  }
-                `}
+                aria-current={pathname === item.path ? "page" : undefined}
+                className={`rcs-display flex min-h-14 items-center justify-between text-[28px] ${
+                  pathname === item.path ? "text-[#C6A66B]" : "text-white"
+                } ${focus}`}
               >
                 {item.label}
-
-                {active && (
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#0756BD]" />
-                )}
+                <ArrowUpRight size={18} strokeWidth={1.6} className="text-white/40" />
               </Link>
-            );
-          })}
-
-          <Link
-            to="/letsconnect"
-            onClick={closeMenu}
-            className="
-              mt-2 flex h-11 items-center justify-center gap-2
-              rounded-full bg-[#0756BD]
-              text-sm font-semibold text-white
-              transition-colors duration-300
-              hover:bg-white hover:text-black
-            "
-          >
-            Let's connect
-            <ArrowUpRight size={16} />
-          </Link>
-        </div>
+            </li>
+          ))}
+          <li className="pt-5">
+            <Link
+              to="/letsconnect"
+              className={`inline-flex min-h-12 items-center gap-2 rounded-full border border-[#C6A66B]/70 px-6 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#DDC89D] ${focus}`}
+            >
+              Let’s connect <ArrowUpRight size={14} />
+            </Link>
+          </li>
+        </ul>
       </div>
     </header>
   );
