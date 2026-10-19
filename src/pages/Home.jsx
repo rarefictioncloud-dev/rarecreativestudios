@@ -1,139 +1,248 @@
 import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import { ArrowDown, ArrowRight } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUpRight } from "lucide-react";
 
-/* Fonts (.rcs-display, .rcs-body, .rcs-serif) are injected by Navbar, which is mounted on every page.
-   TYPE RULE: readable typography at every breakpoint, with a restrained editorial hierarchy.
-   This pass refines spacing, legibility, depth, texture, rules and motion; palette and core copy stay intact. */
+/* ------------------------------------------------------------------
+   NO IMAGE FILES NEEDED. Every collage (portrait, chess king, building,
+   globe) is drawn in SVG/CSS inside this file.
+   Navbar and Footer are NOT part of this file.
+
+   Desktop sizing is in vw, derived from the 1024px-wide reference,
+   so the layout scales exactly like the picture. Phones stack.
+------------------------------------------------------------------- */
+
+const BLUE = "#0a3fdc";
+const MONO_SVG = "'IBM Plex Mono','Courier New',monospace";
+
+const TICKER = ["Brand Strategy", "Media Relations", "Thought Leadership", "Creative Campaigns", "Digital Amplification"];
+
+const STATS = [
+  { value: "250+", label: "Brand stories\ncreated" },
+  { value: "100+", label: "Media placements\nworldwide" },
+  { value: "40+", label: "Industry leaders\npositioned" },
+  { value: "∞", label: "Ideas still\nin progress" },
+];
 
 const SERVICES = [
-  { number: "01", title: "Narrative Design", description: "We shape the stories, perspectives, and positioning that make your brand matter." },
-  { number: "02", title: "PR & Media Relations", description: "We build credibility through meaningful conversations and strategic media relationships." },
-  { number: "03", title: "Thought Leadership", description: "We turn expertise into influence, helping the right voices lead important conversations." },
-  { number: "04", title: "Creative Campaigns", description: "We transform distinctive ideas into campaigns that connect with people and culture." },
+  { n: "01", title: "Brand Positioning", text: "Define what you stand for — and why it matters." },
+  { n: "02", title: "Media Strategy", text: "Earn attention in the right places." },
+  { n: "03", title: "Story Development", text: "Turn expertise into compelling narratives." },
+  { n: "04", title: "Campaign Execution", text: "Ideas that cut through and stay with people." },
+  { n: "05", title: "Digital Amplification", text: "Extend reach. Deepen impact." },
 ];
 
-const APPROACH = ["Find the story", "Shape the narrative", "Create the moment"];
+const focus = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0a3fdc]";
+const disp = "rcs-d";
+const mono = "rcs-m";
+const body = "rcs-b";
 
-const CHAPTERS = [
-  { n: "01", white: "Every great story begins with an", gold: "idea.", text: "We turn perspective into powerful narratives that shape culture.", art: "cubes" },
-  { n: "02", white: "Attention is temporary.", gold: "A story can change everything.", text: "We craft narratives that move beyond the feed and into the real world.", art: "tiers" },
-  { n: "03", white: "We create the conversations", gold: "people remember.", text: "Through strategic storytelling and cultural insight, we position your brand where it matters.", art: "ring" },
-  { n: "04", white: "Visibility gets you noticed.", gold: "Relevance makes you matter.", text: "We create moments that last longer than a headline.", art: "door" },
-];
+const NOISE =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")";
 
-const focus = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C6A66B]";
-const stone = "bg-gradient-to-b from-[#b4b8c2] via-[#737a89] to-[#262c3b]";
-const rGrad = "bg-[linear-gradient(105deg,#16249a_0%,#4a68ff_42%,#2036c4_68%,#0b1560_100%)]";
-const label = "text-[10px] md:text-[10px]"; // restrained editorial labels, kept readable across breakpoints
-const seams = "bg-[repeating-linear-gradient(to_bottom,transparent_0,transparent_46px,rgba(5,10,20,0.32)_46px,rgba(5,10,20,0.32)_47px)]";
+/* ---------- shared SVG filters: torn paper edges + soft shadow ---------- */
 
-/* ---------- Hero: monumental cobalt R in a concrete hall (pure CSS, no assets) ---------- */
-
-function HeroR() {
-  const mask = "linear-gradient(to bottom, rgba(0,0,0,.7), transparent 40%)";
-  const size = "text-[clamp(9rem,34svh,18rem)] md:text-[clamp(14rem,64svh,36rem)]";
+function ArtDefs() {
   return (
-    /* Phones: the R owns the top of the screen so it never sits behind the headline. Desktop: unchanged position. */
-    <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-[max(5.5rem,11svh)] h-[50%] w-full md:inset-x-auto md:bottom-0 md:right-0 md:h-auto md:w-[64%]">
-      {/* concrete walls: panel seams + a lit edge */}
-      <div className={`absolute left-[4%] top-0 h-[74%] w-[17%] ${stone} md:left-[6%] md:h-[80%] md:w-[15%]`}>
-        <span className={`absolute inset-0 ${seams}`} />
-        <span className="absolute inset-y-0 right-0 w-px bg-white/30" />
-      </div>
-      <div className={`absolute right-[2%] top-[8%] h-[62%] w-[32%] rounded-tr-[45%] ${stone} opacity-90 md:right-[4%] md:h-[70%] md:w-[30%]`}>
-        <span className={`absolute inset-0 rounded-tr-[45%] ${seams}`} />
-      </div>
-
-      {/* shaft of light from above + soft glow behind the letter */}
-      <div className="absolute left-[24%] top-[-10%] h-[112%] w-[52%] bg-gradient-to-b from-[#aebaff]/35 via-[#7d93ff]/10 to-transparent blur-2xl [clip-path:polygon(40%_0,60%_0,100%_100%,0_100%)]" />
-      <div className="absolute left-[36%] top-0 h-full w-[22%] bg-gradient-to-b from-white/25 via-[#7d93ff]/20 to-transparent blur-3xl" />
-
-      <div className="absolute left-1/2 top-[4%] flex -translate-x-1/2 flex-col items-center md:top-[3%]">
-        <span className={`rcs-display select-none ${rGrad} bg-clip-text ${size} leading-[0.8] text-transparent [-webkit-text-stroke:1px_rgba(170,190,255,0.35)] drop-shadow-[0_0_70px_rgba(82,113,255,0.5)]`}>R</span>
-        <span
-          className={`rcs-display -mt-2 scale-y-[-1] select-none ${rGrad} bg-clip-text ${size} leading-[0.8] text-transparent opacity-30`}
-          style={{ WebkitMaskImage: mask, maskImage: mask }}
-        >
-          R
-        </span>
-      </div>
-
-      {/* polished floor: depth fade, faint grid and a pool of light under the letter */}
-      <div className="absolute inset-x-0 bottom-0 h-[26%] bg-gradient-to-t from-[#050A14] via-[#0b1740]/60 to-transparent" />
-      <div className="absolute inset-x-[6%] bottom-0 h-[26%] bg-[repeating-linear-gradient(90deg,rgba(125,147,255,0.14)_0,rgba(125,147,255,0.14)_1px,transparent_1px,transparent_72px)] [mask-image:linear-gradient(to_top,#000,transparent)]" />
-      <div className="absolute bottom-[8%] left-[18%] h-[10%] w-[64%] rounded-[50%] bg-[radial-gradient(ellipse,rgba(125,147,255,0.35),transparent_70%)] blur-xl" />
-
-      {/* scale figure + contact shadow */}
-      <span className="absolute bottom-[23%] left-[26%] h-[1.2svh] w-[5svh] rounded-[50%] bg-black/70 blur-[3px] md:bottom-[18.2%]" />
-      <svg viewBox="0 0 12 36" className="absolute bottom-[24%] left-[27%] h-[6svh] w-auto fill-[#03060d] md:bottom-[19%] md:h-[7svh]">
-        <circle cx="6" cy="4" r="3" />
-        <path d="M2 10h8l1 14H9l-.5 12h-2L6 26l-.5 10h-2L3 24H1z" />
-      </svg>
-    </div>
+    <svg width="0" height="0" aria-hidden="true" className="absolute">
+      <defs>
+        <filter id="rcs-torn" x="-6%" y="-6%" width="112%" height="112%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.035 0.055" numOctaves="3" seed="4" result="n" />
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="9" />
+        </filter>
+        <filter id="rcs-blur" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="5" />
+        </filter>
+      </defs>
+    </svg>
   );
 }
 
-/* ---------- Chapter art (CSS / SVG) ---------- */
+const Note = ({ x, y, w, h, rot, lines, size = 11 }) => (
+  <g transform={`rotate(${rot} ${x + w / 2} ${y + h / 2})`}>
+    <rect x={x + 3} y={y + 4} width={w} height={h} fill="#000" opacity="0.18" filter="url(#rcs-blur)" />
+    <rect x={x} y={y} width={w} height={h} fill="#dddcd8" />
+    <rect x={x} y={y} width={w} height={h} fill="none" stroke="#bdbcb8" strokeWidth="0.8" />
+    <text x={x + 12} y={y + 22} fontFamily={MONO_SVG} fontSize={size} letterSpacing="1.4" fill="#2a2a2a">
+      {lines.map((l, i) => (
+        <tspan key={l} x={x + 12} dy={i === 0 ? 0 : size + 6}>{l}</tspan>
+      ))}
+    </text>
+  </g>
+);
 
-function Art({ kind }) {
-  if (kind === "cubes")
-    return (
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_65%_25%,rgba(82,113,255,0.35),transparent_60%)]">
-        <span className="absolute left-[16%] top-[20%] h-16 w-16 rotate-12 bg-gradient-to-br from-[#8da0ff] to-[#1c2fa8] shadow-[0_30px_50px_-18px_rgba(0,0,0,0.9)]" />
-        <span className="absolute left-[46%] top-[10%] h-24 w-20 -rotate-6 bg-gradient-to-br from-[#5271FF] to-[#0d1a6b] shadow-[0_30px_50px_-18px_rgba(0,0,0,0.9)]" />
-        <span className="absolute left-[72%] top-[28%] h-14 w-14 rotate-45 bg-gradient-to-br from-[#cfd5e6] to-[#6b7388] shadow-[0_30px_50px_-18px_rgba(0,0,0,0.9)]" />
-        <span className="absolute -bottom-6 left-[20%] h-24 w-[70%] -rotate-6 bg-gradient-to-b from-[#9ea3af] to-[#2b3142]" />
-      </div>
-    );
-  if (kind === "tiers")
-    return (
-      <div className="absolute inset-0 grid place-items-center bg-[radial-gradient(ellipse_at_50%_30%,rgba(255,255,255,0.12),transparent_60%)]">
-        <div className="relative h-[70%] w-[64%]">
-          <span className="absolute inset-x-[16%] top-[4%] h-[30%] rounded-[50%] bg-gradient-to-b from-[#7d93ff] to-[#16249a] shadow-[0_18px_30px_-14px_rgba(0,0,0,0.8)]" />
-          <span className="absolute inset-x-[8%] top-[30%] h-[28%] rounded-[50%] bg-gradient-to-b from-[#d7d9df] to-[#7a8090] shadow-[0_18px_30px_-14px_rgba(0,0,0,0.8)]" />
-          <span className="absolute inset-x-0 top-[52%] h-[34%] rounded-[50%] bg-gradient-to-b from-[#b9bdc7] to-[#2b3142] shadow-[0_24px_40px_-14px_rgba(0,0,0,0.9)]" />
-        </div>
-      </div>
-    );
-  if (kind === "ring")
-    return (
-      <div className="absolute inset-0 grid place-items-center overflow-hidden bg-[radial-gradient(ellipse_at_60%_50%,rgba(82,113,255,0.3),transparent_62%)]">
-        <svg viewBox="0 0 400 400" className="rcs-spin h-[120%] max-h-[420px] w-auto">
-          <defs>
-            <path id="rcs-ring" d="M200 200 m-150 0 a150 150 0 1 1 300 0 a150 150 0 1 1 -300 0" />
-            <linearGradient id="rcs-silver" x1="0" x2="1">
-              <stop offset="0" stopColor="#ffffff" />
-              <stop offset="0.5" stopColor="#8f9bb3" />
-              <stop offset="1" stopColor="#e9edf7" />
-            </linearGradient>
-          </defs>
-          <circle cx="200" cy="200" r="104" fill="#2036c4" opacity="0.55" />
-          <circle cx="200" cy="200" r="172" fill="none" stroke="#C6A66B" strokeOpacity="0.28" strokeWidth="1" />
-          <text fill="url(#rcs-silver)" fontFamily="Anton, Impact, sans-serif" fontSize="44" letterSpacing="3">
-            <textPath href="#rcs-ring">CONVERSATIONS · CONVERSATIONS ·</textPath>
-          </text>
-        </svg>
-      </div>
-    );
+/* ---------- Hero collage: portrait, torn blue paper, tower, note ---------- */
+
+function PortraitArt({ className = "" }) {
   return (
-    <div className="absolute inset-0">
-      <span className={`absolute left-[18%] top-0 h-full w-[16%] ${stone}`} />
-      <span className={`absolute right-[8%] top-0 h-full w-[18%] ${stone}`} />
-      <span className="absolute left-[38%] top-[4%] h-[72%] w-[26%] bg-gradient-to-b from-[#1f35d6] to-[#0b1560] shadow-[0_0_60px_rgba(82,113,255,0.6)]" />
-      <span className="absolute bottom-0 left-[24%] h-[26%] w-[52%] bg-[repeating-linear-gradient(to_bottom,#e7e8ec_0,#e7e8ec_3px,#9aa0ad_3px,#9aa0ad_10px)]" />
-      <svg viewBox="0 0 12 36" className="absolute bottom-[26%] left-[49%] h-[17%] w-auto fill-[#03060d]">
-        <circle cx="6" cy="4" r="3" />
-        <path d="M2 10h8l1 14H9l-.5 12h-2L6 26l-.5 10h-2L3 24H1z" />
-      </svg>
-    </div>
+    <svg viewBox="0 0 484 437" className={className} aria-hidden="true" role="presentation">
+      <defs>
+        <linearGradient id="rcs-skin" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#f2f1ee" />
+          <stop offset="0.55" stopColor="#bcbbb7" />
+          <stop offset="1" stopColor="#6a6967" />
+        </linearGradient>
+        <linearGradient id="rcs-jacket" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#050505" />
+          <stop offset="0.5" stopColor="#2b2b2b" />
+          <stop offset="1" stopColor="#060606" />
+        </linearGradient>
+        <linearGradient id="rcs-tower" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#d8d7d3" />
+          <stop offset="1" stopColor="#5d5c5a" />
+        </linearGradient>
+        <pattern id="rcs-win" width="10" height="13" patternUnits="userSpaceOnUse">
+          <rect width="10" height="13" fill="url(#rcs-tower)" />
+          <rect x="2" y="3" width="4.5" height="7" fill="#2a2a29" />
+        </pattern>
+      </defs>
+
+      <g filter="url(#rcs-torn)">
+        <polygon points="262,14 372,2 384,118 292,160" fill="#b9b8b4" />
+        <polygon points="26,48 128,38 140,140 122,205 92,232 58,170" fill={BLUE} />
+        <rect x="352" y="132" width="104" height="214" fill="url(#rcs-win)" />
+        <rect x="352" y="132" width="104" height="214" fill="#000" opacity="0.12" />
+      </g>
+      {/* scribbled map fragment on the grey paper */}
+      <path d="M300 42c10-6 14 6 24 0s12 8 24 2M308 62c8 4 12-4 22 2s14-6 24 0" stroke="#4a4a48" strokeWidth="1" fill="none" />
+
+      {/* figure */}
+      <path d="M118 150C112 70 170 20 240 30c80 10 112 80 90 160-12 45-30 60-44 72l-24-62-92 15c-20-15-45-25-52-65z" fill="#101010" />
+      <path d="M52 437c8-77 58-147 123-175l125-10c70 18 120 78 136 185z" fill="url(#rcs-jacket)" />
+      <path d="M178 215l60-10 24 57-62 28z" fill="url(#rcs-skin)" />
+      <ellipse cx="215" cy="135" rx="52" ry="68" transform="rotate(-12 215 135)" fill="url(#rcs-skin)" />
+      <path d="M160 108C170 55 230 45 268 88c-28-16-68-12-108 20z" fill="#101010" />
+      <path d="M185 126q10-6 20 0M229 119q10-6 20 0" stroke="#1d1d1d" strokeWidth="2.4" fill="none" strokeLinecap="round" />
+      <path d="M222 136q-5 18 4 23" stroke="#5a5a58" strokeWidth="1.6" fill="none" />
+      <path d="M205 173q15-9 31-2-15 13-31 2z" fill="#4a4a48" />
+      <path d="M118 160c-18 20-22 50-10 78M330 120c14 24 12 60-6 92" stroke="#101010" strokeWidth="7" fill="none" strokeLinecap="round" />
+      <circle cx="160" cy="168" r="16" fill="none" stroke="#111" strokeWidth="2.2" />
+      <circle cx="276" cy="146" r="13" fill="none" stroke="#111" strokeWidth="2.2" />
+      <path d="M150 300c40-30 100-38 150-18" stroke="#3a3a3a" strokeWidth="2" fill="none" />
+
+      {/* thin orbit line + sticky note + tape */}
+      <path d="M8 392C70 300 230 250 392 268" stroke="#262626" strokeWidth="1.2" fill="none" />
+      <Note x={24} y={236} w={104} h={80} rot={-6} lines={["IDEAS", "INTO", "INFLUENCE"]} />
+      <polygon points="262,392 318,370 346,398 292,430" fill="#a7a6a3" opacity="0.9" />
+      <text x="378" y="388" fontFamily={MONO_SVG} fontSize="10" letterSpacing="1.5" fill="#1b1b1b">
+        <tspan x="378">STRATEGY</tspan>
+        <tspan x="396" dy="14">STORY</tspan>
+        <tspan x="390" dy="14">CULTURE</tspan>
+      </text>
+    </svg>
   );
+}
+
+/* ---------- Chess king on torn paper with handwritten notes ---------- */
+
+function ChessArt({ className = "" }) {
+  return (
+    <svg viewBox="0 0 420 365" className={className} aria-hidden="true" role="presentation">
+      <defs>
+        <linearGradient id="rcs-king" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#050505" />
+          <stop offset="0.3" stopColor="#4a4a4a" />
+          <stop offset="0.42" stopColor="#101010" />
+          <stop offset="1" stopColor="#020202" />
+        </linearGradient>
+      </defs>
+      <g filter="url(#rcs-torn)">
+        <polygon points="22,22 150,8 162,205 40,220" fill="#bcbbb7" />
+        <polygon points="326,56 412,72 406,205 298,192" fill="#b3b2ae" />
+        <polygon points="300,232 420,214 406,352 290,346" fill="#c9c8c4" />
+        <polygon points="262,118 362,150 330,212" fill="#8c8b88" />
+      </g>
+      <polygon points="215,292 320,238 376,262 306,322 236,326" fill="#222" opacity="0.55" filter="url(#rcs-blur)" />
+
+      {/* king */}
+      <g>
+        <rect x="200" y="14" width="20" height="52" rx="3" fill="url(#rcs-king)" />
+        <rect x="186" y="26" width="48" height="18" rx="3" fill="url(#rcs-king)" />
+        <path d="M176 118c-2-30 12-50 34-50s36 20 34 50z" fill="url(#rcs-king)" />
+        <rect x="160" y="116" width="100" height="16" rx="8" fill="url(#rcs-king)" />
+        <path d="M184 132c-6 52-34 100-46 154h144c-12-54-40-102-46-154z" fill="url(#rcs-king)" />
+        <rect x="124" y="284" width="172" height="20" rx="10" fill="url(#rcs-king)" />
+        <rect x="114" y="302" width="192" height="24" rx="12" fill="url(#rcs-king)" />
+        <path d="M200 150c-4 40-20 84-32 128" stroke="#7a7a7a" strokeWidth="2" opacity="0.6" fill="none" />
+      </g>
+
+      {/* blue scribbles + handwriting */}
+      <ellipse cx="205" cy="112" rx="128" ry="50" transform="rotate(-18 205 112)" fill="none" stroke={BLUE} strokeWidth="2" />
+      <ellipse cx="225" cy="100" rx="110" ry="40" transform="rotate(-24 225 100)" fill="none" stroke={BLUE} strokeWidth="1.4" opacity="0.8" />
+      <text transform="rotate(-14 24 250)" x="22" y="250" fontFamily="Caveat, 'Comic Sans MS', cursive" fontSize="22" letterSpacing="1" fill={BLUE}>
+        <tspan x="22">STRATEGY</tspan>
+        <tspan x="22" dy="23">LED</tspan>
+        <tspan x="22" dy="23">STORYTELLING</tspan>
+        <tspan x="22" dy="23">THAT</tspan>
+        <tspan x="22" dy="23">TRAVELS.</tspan>
+      </text>
+      <path d="M52 340c40-14 78-20 108-24M62 350c30-8 70-12 98-16" stroke={BLUE} strokeWidth="2" fill="none" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/* ---------- Building: low-angle cladding in a torn opening ---------- */
+
+function BuildingArt({ className = "" }) {
+  return (
+    <svg viewBox="0 0 400 280" className={className} aria-hidden="true" role="presentation">
+      <defs>
+        <linearGradient id="rcs-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#8f8e8b" />
+          <stop offset="1" stopColor="#b9b8b4" />
+        </linearGradient>
+        <pattern id="rcs-panel" width="30" height="26" patternUnits="userSpaceOnUse" patternTransform="skewY(16)">
+          <rect width="30" height="26" fill="#d2d1ce" />
+          <path d="M30 0V26M0 26H30" stroke="#8b8a87" strokeWidth="1.4" />
+        </pattern>
+      </defs>
+      <g filter="url(#rcs-torn)">
+        <polygon points="10,44 400,0 400,280 0,280" fill="#cfceca" />
+        <polygon points="14,150 118,64 252,34 332,62 386,150 396,280 26,280" fill="url(#rcs-sky)" />
+      </g>
+      <path d="M118 66C160 18 244 20 300 54c-44-14-98 6-150 50z" fill="#0d0d0d" />
+      <polygon points="150,100 304,50 396,150 396,280 196,280" fill="url(#rcs-panel)" />
+      <polygon points="150,100 304,50 316,64 168,116" fill="#f0efec" opacity="0.7" />
+      <polygon points="14,150 150,178 196,280 26,280" fill="#171717" />
+      <polygon points="40,215 120,198 138,250 52,262" fill="#3b3b3b" />
+      <path d="M262 150c20-24 40-30 62-14s14 52 44 40M248 176c24-30 50-40 74-22s20 60 52 50" stroke={BLUE} strokeWidth="2" fill="none" />
+      <Note x={14} y={24} w={112} h={124} rot={-3} lines={["A", "DIFFERENT", "POINT", "OF VIEW"]} size={12} />
+    </svg>
+  );
+}
+
+/* ---------- Globe on torn paper with blue tear ---------- */
+
+function GlobeArt({ className = "" }) {
+  return (
+    <svg viewBox="0 0 229 240" className={className} aria-hidden="true" role="presentation">
+      <defs>
+        <radialGradient id="rcs-globe" cx="0.35" cy="0.3" r="0.8">
+          <stop offset="0" stopColor="#7d7d7b" />
+          <stop offset="0.45" stopColor="#262626" />
+          <stop offset="1" stopColor="#050505" />
+        </radialGradient>
+      </defs>
+      <g filter="url(#rcs-torn)">
+        <polygon points="4,40 70,18 90,140 10,150" fill="#bdbcb8" />
+      </g>
+      <circle cx="104" cy="118" r="88" fill="url(#rcs-globe)" />
+      <g fill="#a2a2a0" opacity="0.5">
+        <path d="M54 80c14-14 34-14 42 0 4 14-12 20-8 34s-22 12-28 0-18-20-6-34zM116 62c14-8 36-4 40 12s-14 16-8 30-24 10-30-4 0-30-2-38zM112 138c18-4 34 6 28 22s-26 18-30 4 2-22 2-26zM74 148c8 2 12 12 6 22s-14 4-14-8 2-12 8-14z" />
+      </g>
+      <circle cx="104" cy="118" r="88" fill="none" stroke="#3a3a3a" strokeWidth="1.5" />
+      <g filter="url(#rcs-torn)">
+        <polygon points="14,212 229,176 229,240 4,240" fill={BLUE} />
+      </g>
+      <Note x={128} y={12} w={92} h={72} rot={6} lines={["GLOBAL", "PERSPECTIVE.", "CULTURAL", "IMPACT."]} size={9} />
+    </svg>
+  );
+}
+
+function Label({ children, className = "" }) {
+  return <p className={`${mono} text-[10px] uppercase tracking-[0.14em] text-black/80 md:text-[0.9vw] ${className}`}>{children}</p>;
 }
 
 /* ---------- Page ---------- */
-
-const NOISE =
-  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")";
 
 export default function Home() {
   const pageRef = useRef(null);
@@ -142,12 +251,10 @@ export default function Home() {
     const root = pageRef.current;
     if (!root) return;
     const items = root.querySelectorAll("[data-reveal]");
-
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || !("IntersectionObserver" in window)) {
       items.forEach((el) => el.classList.add("rcs-visible"));
       return;
     }
-
     const io = new IntersectionObserver(
       (entries) =>
         entries.forEach((e) => {
@@ -156,249 +263,180 @@ export default function Home() {
             io.unobserve(e.target);
           }
         }),
-      { threshold: 0.12, rootMargin: "0px 0px -40px 0px" }
+      { threshold: 0.1, rootMargin: "0px 0px -40px 0px" }
     );
     items.forEach((el) => io.observe(el));
     return () => io.disconnect();
   }, []);
 
   return (
-    <main ref={pageRef} className="rcs-home rcs-body overflow-clip bg-[#050A14] text-white">
+    <main ref={pageRef} className="rcs-home relative overflow-clip bg-[#e7e6e2] text-[#0b0b0b]">
       <style>{`
-        .rcs-home ::selection { background: #C6A66B; color: #050A14; }
-        .rcs-home { scroll-behavior: smooth; }
-        .rcs-home { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
-        .rcs-home h1, .rcs-home h2, .rcs-home h3 { letter-spacing: -0.035em; }
-        .rcs-home p { text-wrap: pretty; }
+        @import url('https://fonts.googleapis.com/css2?family=Anton&family=Caveat:wght@500&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+        .rcs-home ::selection { background: ${BLUE}; color: #fff; }
+        .rcs-home { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+        .rcs-home .rcs-d { font-family: 'Anton', 'Impact', 'Arial Narrow', sans-serif; font-weight: 400; letter-spacing: -0.012em; }
+        .rcs-home .rcs-m { font-family: 'IBM Plex Mono', 'Courier New', monospace; }
+        .rcs-home .rcs-b { font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; }
+        .rcs-home h1, .rcs-home h2, .rcs-home h3 { font-weight: 400; }
         .rcs-home a { -webkit-tap-highlight-color: transparent; }
-        .rcs-home .rcs-grain { isolation: isolate; }
-        .rcs-home .rcs-grain::after { border-radius: inherit; }
-        .rcs-home article, .rcs-home section { scroll-margin-top: 1rem; }
+        .rcs-home .rcs-paper { position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: .09; mix-blend-mode: multiply; background-image: ${NOISE}; }
 
-        /* staggered, quiet reveals */
-        [data-reveal] { opacity: 0; transform: translateY(22px); transition: opacity .9s ease var(--d, 0ms), transform .9s cubic-bezier(.2,.65,.25,1) var(--d, 0ms); }
+        [data-reveal] { opacity: 0; transform: translateY(14px); transition: opacity .8s ease var(--d, 0ms), transform .8s cubic-bezier(.2,.65,.25,1) var(--d, 0ms); }
         [data-reveal].rcs-visible { opacity: 1; transform: none; }
-        .rcs-rule { transform: scaleX(0); transform-origin: left; transition: transform 1.3s cubic-bezier(.2,.65,.25,1) .35s; }
-        .rcs-visible .rcs-rule, .rcs-rule.rcs-visible { transform: scaleX(1); }
+        .rcs-link { background: linear-gradient(currentColor, currentColor) 0 100% / 100% 1px no-repeat; }
+        .rcs-draw path { stroke-dasharray: 260; stroke-dashoffset: 260; animation: rcs-draw 1.4s .6s cubic-bezier(.2,.65,.25,1) forwards; }
+        @keyframes rcs-draw { to { stroke-dashoffset: 0; } }
+        .rcs-row:hover .rcs-circle { background: ${BLUE}; color: #fff; }
+        .rcs-row:hover .rcs-rowtitle { color: ${BLUE}; }
 
-        /* film grain (very light): gives the flat gradients a printed, tactile finish */
-        .rcs-grain { position: relative; }
-        .rcs-grain::after { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: .1; mix-blend-mode: overlay; background-image: ${NOISE}; }
-        .rcs-grain-light::after { filter: invert(1); mix-blend-mode: multiply; opacity: .07; }
-
-        /* link underline that draws in; list-row hairline that fills with gold */
-        .rcs-link { background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat; transition: background-size .5s cubic-bezier(.2,.65,.25,1); }
-        .rcs-link:hover, .rcs-link:focus-visible { background-size: 100% 1px; }
-        .rcs-sweep { position: relative; }
-        .rcs-sweep::before { content: ""; position: absolute; left: 0; top: -1px; height: 1px; width: 100%; background: #C6A66B; transform: scaleX(0); transform-origin: left; transition: transform .7s cubic-bezier(.2,.65,.25,1); }
-        .rcs-sweep:hover::before, .rcs-sweep:focus-visible::before { transform: scaleX(1); }
-
-        @keyframes rcs-spin { to { transform: rotate(360deg); } }
-        .rcs-spin { animation: rcs-spin 60s linear infinite; }
         @media (prefers-reduced-motion: reduce) {
           .rcs-home { scroll-behavior: auto; }
           [data-reveal] { opacity: 1; transform: none; transition: none; }
-          .rcs-rule { transform: none; transition: none; }
-          .rcs-spin { animation: none; }
-          .rcs-link, .rcs-sweep::before { transition: none; }
+          .rcs-draw path { animation: none; stroke-dashoffset: 0; }
         }
       `}</style>
+      <span aria-hidden="true" className="rcs-paper" />
+      <ArtDefs />
 
       {/* ============ HERO ============ */}
-      <section className="rcs-grain relative isolate flex h-[100svh] min-h-[560px] items-end overflow-hidden bg-[radial-gradient(ellipse_at_70%_30%,#0f1d3d_0%,#050A14_62%)] px-5 pb-[max(1rem,3svh)] pt-[max(5.5rem,11svh)] sm:px-8 md:px-[4vw]">
-        <HeroR />
-        {/* phones: fade up from the bottom so the type sits on solid navy; desktop: original left-to-right fade */}
-        <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,10,20,0)_34%,rgba(5,10,20,0.88)_58%,#050A14_74%)] md:bg-[linear-gradient(90deg,#050A14_0%,rgba(5,10,20,0.82)_32%,transparent_62%)]" />
-        {/* edge vignette: pulls the eye to the letter */}
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(5,10,20,0.55)_100%)]" />
-
-        {/* editorial running head */}
-       
-
-        <div className="relative z-10 mx-auto w-full max-w-[1440px]">
-          <span aria-hidden="true" data-reveal style={{ "--d": "0ms" }} className="mb-[2svh] block h-px w-14 bg-[#C6A66B]" />
-          <h1 data-reveal style={{ "--d": "80ms" }} className="rcs-display max-w-[11ch] text-[clamp(1.9rem,min(11.5vw,7.4svh),3.6rem)] [text-wrap:balance] md:text-[clamp(1.9rem,min(5.3vw,8.4svh),4.8rem)]">
-            We don’t send press releases.
-            <span className="block text-[#5271FF]">We create moments.</span>
+      <section className="relative z-[1] overflow-hidden px-5 pb-0 pt-[6.5rem] sm:px-8 md:h-[48.5vw] md:p-0">
+        <div className="md:absolute md:left-[6.8vw] md:top-[10.2vw]">
+          <h1 data-reveal className={`${disp} text-black`}>
+            <span className="block text-[clamp(2.6rem,11vw,3.6rem)] leading-[1.02] md:text-[5.4vw] md:leading-[6.2vw]">We don’t send</span>
+            <span className="ml-[10vw] block text-[clamp(3rem,12.6vw,4.2rem)] uppercase leading-[1.02] md:ml-[5.6vw] md:text-[6vw] md:leading-[6.9vw]" style={{ color: BLUE }}>Press releases.</span>
+            <span className="mt-2 block text-[clamp(2.6rem,11vw,3.6rem)] leading-[1.02] md:ml-[0.5vw] md:mt-0 md:text-[5.4vw] md:leading-[6.8vw]">We create</span>
+            <span className="ml-[10vw] block text-[clamp(3.2rem,13vw,4.4rem)] uppercase leading-[1.02] md:ml-[6.2vw] md:text-[6.2vw] md:leading-[6.2vw]" style={{ color: BLUE }}>Moments.</span>
           </h1>
+        </div>
 
-          <p data-reveal style={{ "--d": "220ms" }} className="mt-[2.2svh] max-w-[34ch] text-[15px] leading-relaxed text-white/85 md:text-[15px] md:text-white/80">
-            Strategy-led storytelling that turns brands into conversations people remember.
-          </p>
+        {/* hand-drawn underline under MOMENTS */}
+        <svg aria-hidden="true" viewBox="0 0 110 30" className="rcs-draw absolute left-[33vw] top-[21.5rem] hidden h-auto w-[10.3vw] fill-none sm:block md:top-[34.7vw]" stroke={BLUE} strokeWidth="2.4" strokeLinecap="round">
+          <path d="M3 22 C28 11 62 8 100 9" />
+          <path d="M12 27 C42 17 82 15 106 6" />
+        </svg>
 
-          <div data-reveal style={{ "--d": "340ms" }} className="mt-[2.6svh] flex flex-wrap items-center gap-x-9 gap-y-4">
-            <Link
-              to="/contact"
-              className={`group inline-flex min-h-12 items-center gap-3 rounded-full border border-[#C6A66B]/70 px-6 text-[11px] font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:bg-[#C6A66B] hover:text-[#050A14] md:min-h-12 md:rounded-none md:border-0 md:border-b md:border-[#C6A66B]/60 md:px-0 md:text-[10px] md:hover:border-[#C6A66B] md:hover:bg-transparent md:hover:text-white ${focus}`}
-            >
-              Let’s talk
-              <ArrowRight size={15} className="transition-transform duration-500 ease-[cubic-bezier(.2,.65,.25,1)] group-hover:translate-x-1" />
-            </Link>
-          </div>
+        <p data-reveal style={{ "--d": "200ms" }} className={`${body} mt-6 text-[14px] font-medium leading-[1.3] md:absolute md:left-[13.2vw] md:top-[36.5vw] md:mt-0 md:text-[1.27vw]`}>
+          Rare Creative Studios<br />Modern PR, Reimagined.
+        </p>
 
-          <div data-reveal style={{ "--d": "460ms" }} className="mt-[3svh] flex items-end justify-between border-t border-white/10 pt-[1.4svh]">
-            <a href="#chapters" className={`group flex min-h-11 items-center gap-3 ${label} uppercase tracking-[0.22em] text-white/60 transition-colors hover:text-white md:text-white/50 ${focus}`}>
-              Scroll to explore
-              <ArrowDown size={13} className="transition-transform duration-300 group-hover:translate-y-1" />
-            </a>
-            <ul aria-hidden="true" className="hidden text-right text-[8px] uppercase leading-[2] tracking-[0.25em] text-white/55 md:block">
-              {["Ideas", "Stories", "Culture", "Influence", "Impact"].map((w) => (
-                <li key={w}>{w}</li>
-              ))}
-            </ul>
-          </div>
+        <a href="#perspective" data-reveal style={{ "--d": "300ms" }} className={`group mt-8 flex items-center gap-4 md:absolute md:left-[6.7vw] md:top-[43vw] md:mt-0 md:gap-[1.2vw] ${focus}`}>
+          <span className="grid h-11 w-11 place-items-center rounded-full border text-[#0a3fdc] transition-colors group-hover:bg-[#0a3fdc] group-hover:text-white md:h-[3vw] md:w-[3vw]" style={{ borderColor: BLUE }}>
+            <ArrowDown className="h-4 w-4 md:h-[1.1vw] md:w-[1.1vw]" strokeWidth={1.4} />
+          </span>
+          <span className={`${mono} text-[10px] uppercase leading-[1.5] tracking-[0.12em] md:text-[0.95vw]`}>Explore<br />the studio</span>
+        </a>
+
+        <div className="relative mt-8 md:absolute md:bottom-0 md:right-0 md:mt-0 md:w-[47.3vw]">
+          <PortraitArt className="ml-auto block h-auto w-full max-w-[520px] md:max-w-none" />
         </div>
       </section>
 
-      {/* ============ CHAPTERS ============ */}
-      <section id="chapters" aria-label="How we think" className="scroll-mt-4 border-t border-white/10">
-        {CHAPTERS.map((c, i) => {
-          const flip = i % 2 === 1; // desktop rhythm: art side alternates
-          return (
-            <article
-              key={c.n}
-              className={`group relative grid min-h-[100svh] grid-rows-[42svh_1fr] border-b border-white/10 md:grid-rows-none ${flip ? "md:grid-cols-[1.15fr_1fr]" : "md:grid-cols-[1fr_1.15fr]"}`}
-            >
-              {/* phones: image first, then the line */}
-              <div aria-hidden="true" className={`rcs-grain relative order-first overflow-hidden bg-[#070d1c] ${flip ? "md:order-first" : "md:order-last"}`}>
-                <div className="absolute inset-0 transition-transform duration-[1400ms] ease-out md:group-hover:scale-[1.035]">
-                  <Art kind={c.art} />
-                </div>
-                <span className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_50%,rgba(5,10,20,0.7)_100%)]" />
-                <span className="absolute inset-4 border border-white/10" />
-                <span className={`absolute bottom-6 left-6 z-[2] ${label} uppercase tracking-[0.25em] text-white/50`}>Fig. {c.n}</span>
-                <span className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#050A14] to-transparent md:hidden" />
-              </div>
+      {/* ============ TICKER ============ */}
+      <div className="relative z-[1] overflow-x-auto bg-[#0047ee] text-white [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <ul className={`${mono} flex min-w-max items-center justify-between gap-6 px-5 py-3 text-[11px] uppercase tracking-[0.12em] sm:px-8 md:min-w-0 md:px-[5.2vw] md:py-[0.95vw] md:text-[1.1vw]`}>
+          {TICKER.map((t, i) => (
+            <li key={t} className="flex items-center gap-6 md:gap-[2.2vw]">
+              {i > 0 && <span aria-hidden="true" className="text-white/80">/</span>}
+              {t}
+            </li>
+          ))}
+        </ul>
+      </div>
 
-              <div data-reveal className="relative flex flex-col justify-between overflow-hidden px-5 py-10 sm:px-8 md:px-[5vw] md:py-16">
-                {/* oversized outlined numeral: depth behind the line */}
-                <span aria-hidden="true" className="rcs-display pointer-events-none absolute -bottom-[0.12em] right-3 select-none text-[clamp(8rem,22vw,17rem)] leading-none text-transparent [-webkit-text-stroke:1px_rgba(198,166,107,0.16)] md:right-[3vw]">
-                  {c.n}
+      {/* ============ 01 PERSPECTIVE + 02 NUMBERS ============ */}
+      <section id="perspective" className="relative z-[1] border-b border-black/10 px-5 py-14 sm:px-8 md:h-[41.2vw] md:p-0">
+        <div className="md:absolute md:left-[5.2vw] md:top-[3.7vw]" data-reveal>
+          <Label>01 / Our perspective</Label>
+          <h2 className={`${disp} mt-5 text-[clamp(2.8rem,13vw,4rem)] leading-[1.02] md:mt-[1.5vw] md:text-[4.6vw] md:leading-[4.5vw]`}>
+            Anyone can<br />publish news.
+            <span className="mt-1 block md:mt-[0.9vw]" style={{ color: BLUE }}>Not everyone<br />can make it<br />matter.</span>
+          </h2>
+        </div>
+
+        <p data-reveal className={`${body} mt-6 max-w-[34ch] text-[14px] leading-[1.4] md:absolute md:left-[5.2vw] md:top-[31vw] md:mt-0 md:max-w-[25vw] md:text-[1.27vw] md:leading-[1.35]`}>
+          PR is no longer about visibility. It’s about relevance — and the conversations that shape what’s next.
+        </p>
+
+        <Link to="/about" className={`group ${mono} mt-6 flex items-center gap-4 text-[10px] uppercase tracking-[0.12em] md:absolute md:left-[5.2vw] md:top-[37.6vw] md:mt-0 md:gap-[1.2vw] md:text-[0.95vw] ${focus}`} style={{ color: BLUE }}>
+          <span aria-hidden="true" className="h-px w-12 bg-[#0a3fdc] md:w-[4.3vw]" />
+          <span className="rcs-link pb-0.5">Read our manifesto</span>
+          <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 md:h-[1.1vw] md:w-[1.1vw]" strokeWidth={1.4} />
+        </Link>
+
+        <div className="mt-10 md:absolute md:left-[34.7vw] md:top-[3.6vw] md:mt-0 md:w-[41vw]">
+          <ChessArt className="mx-auto block h-auto w-full max-w-[460px] md:max-w-none" />
+        </div>
+
+        <div className="mt-12 md:absolute md:left-[78.9vw] md:top-[3.7vw] md:mt-0 md:w-[17.8vw]">
+          <Label>02 / By the numbers</Label>
+          <ul className="mt-4 grid grid-cols-2 gap-x-6 md:mt-[2vw] md:block">
+            {STATS.map((s, i) => (
+              <li key={s.value} data-reveal style={{ "--d": `${i * 90}ms` }} className="flex items-center gap-4 border-b border-black/25 py-5 last:border-b-0 md:h-[8.3vw] md:gap-[1.9vw] md:py-0">
+                <span className={`${disp} min-w-[4.6rem] text-[2.4rem] leading-none md:min-w-[6vw] md:text-[3.7vw]`}>
+                  {s.value === "∞" ? (
+                    <svg viewBox="0 0 64 30" className="h-[1.6rem] w-auto md:h-[2.3vw]" fill="none" stroke="#0b0b0b" strokeWidth="8" strokeLinecap="round" aria-label="infinity">
+                      <path d="M32 15C26 4 6 4 6 15c0 11 20 11 26 0 6-11 26-11 26 0 0 11-20 11-26 0z" />
+                    </svg>
+                  ) : (
+                    s.value
+                  )}
                 </span>
-                <div className="relative">
-                  <span aria-hidden="true" className="rcs-rule mb-6 block h-px w-12 bg-[#C6A66B]" />
-                  <h2 className="rcs-display max-w-[16ch] text-[clamp(1.6rem,7.4vw,2.2rem)] [text-wrap:balance] md:text-[clamp(1.6rem,2.8vw,2.65rem)]">
-                    {c.white} <span className="text-[#C6A66B]">{c.gold}</span>
-                  </h2>
-                  <p className="mt-4 max-w-[36ch] text-[15px] leading-relaxed text-white/70 md:mt-5 md:text-[14px] md:text-white/65">{c.text}</p>
-                </div>
-                <div className={`relative mt-8 flex items-center gap-4 ${label} tracking-[0.2em] text-[#C6A66B] md:mt-10 md:text-white/50`} aria-hidden="true">
-                  {c.n} <span className="text-white/25">/</span> 04
-                  <span className="h-px w-24 bg-[#C6A66B]/40 md:bg-white/25" />
-                </div>
-              </div>
-            </article>
-          );
-        })}
-      </section>
-
-      {/* ============ POINT OF VIEW (light) ============ */}
-      <section className="rcs-grain rcs-grain-light relative flex min-h-[100svh] items-center bg-[#ECEBE7] text-[#050A14]">
-        <div className="relative z-[2] mx-auto grid w-full max-w-[1520px] lg:grid-cols-[0.8fr_1.3fr_0.6fr]">
-          <div aria-hidden="true" className="relative h-36 overflow-hidden sm:h-44 lg:h-auto lg:min-h-[360px]">
-            <span className="absolute -left-[30%] top-[6%] h-[120%] w-[130%] rounded-[50%] border-[28px] border-[#c9c8c3] opacity-80 lg:border-[56px]" />
-            <span className="absolute -left-[22%] top-[12%] h-[108%] w-[114%] rounded-[50%] border border-[#B28F4A]/45" />
-            <span className="absolute bottom-0 left-[44%] h-[46%] w-[28%] bg-gradient-to-b from-[#2038d8] to-[#0b1560] shadow-[0_24px_50px_-16px_rgba(11,21,96,0.55)] max-lg:left-[62%] max-lg:h-[70%] max-lg:w-[14%]" />
-          </div>
-
-          <div data-reveal className="px-5 py-14 sm:px-8 md:px-[4vw] lg:px-14 lg:py-28">
-            <span aria-hidden="true" className="rcs-rule mb-6 block h-px w-14 bg-[#B28F4A]" />
-            <h2 className="rcs-display max-w-[14ch] text-[clamp(1.7rem,8vw,2.4rem)] [text-wrap:balance] md:text-[clamp(1.8rem,3.1vw,3rem)]">
-              PR is no longer about visibility.
-              <span className="block text-[#B28F4A]">It’s about relevance.</span>
-            </h2>
-            <p className="mt-5 max-w-[44ch] text-[15px] leading-relaxed text-[#050A14]/75 md:mt-6 md:text-[14px] md:text-[#050A14]/70">
-              We design stories that make brands culturally meaningful, not just momentarily noticed.
-            </p>
-
-            {/* the three steps as a ruled editorial row */}
-            <ol className={`mt-8 grid gap-y-0 ${label} font-semibold uppercase tracking-[0.18em] text-[#050A14]/70 sm:grid-cols-3 sm:gap-x-6 md:mt-9 md:text-[#050A14]/60`}>
-              {APPROACH.map((a, i) => (
-                <li key={a} className="border-t border-[#050A14]/20 py-3 sm:pb-0">
-                  <span className="mb-1 block text-[#8A6A2B] md:text-[#B28F4A]">0{i + 1}</span>
-                  {a}
-                </li>
-              ))}
-            </ol>
-
-            <Link to="/about" className={`group mt-9 inline-flex min-h-12 items-center gap-3 ${label} rcs-link pb-1 font-bold uppercase tracking-[0.2em] md:mt-10 md:min-h-11 ${focus}`}>
-              Our approach
-              <ArrowRight size={15} className="transition-transform duration-500 ease-[cubic-bezier(.2,.65,.25,1)] group-hover:translate-x-1" />
-            </Link>
-          </div>
-
-          <blockquote data-reveal style={{ "--d": "160ms" }} className="flex flex-col justify-center border-t border-[#050A14]/10 px-5 pb-14 pt-8 sm:px-8 lg:border-l lg:border-t-0 lg:px-10 lg:py-28">
-            <span aria-hidden="true" className="rcs-serif text-[3.4rem] leading-none text-[#B28F4A]">“</span>
-            <p className="max-w-[14ch] text-xl leading-snug md:text-[18px]">Relevance creates influence.</p>
-          </blockquote>
-        </div>
-      </section>
-
-      {/* ============ SERVICES ============ */}
-      <section className="rcs-grain relative isolate flex min-h-[100svh] items-center overflow-hidden bg-[#050A14] px-5 py-20 sm:px-8 md:px-[5vw] md:py-28">
-        <div aria-hidden="true" className="absolute inset-y-0 right-0 -z-10 w-full bg-[radial-gradient(ellipse_at_85%_60%,rgba(40,70,255,0.5),transparent_55%),radial-gradient(ellipse_at_60%_100%,rgba(82,113,255,0.3),transparent_50%)] blur-2xl md:w-[70%]" />
-        {/* column hairlines: the editorial grid made visible */}
-        <div aria-hidden="true" className="absolute inset-y-0 left-1/2 -z-10 hidden w-px -translate-x-[16vw] bg-gradient-to-b from-transparent via-white/10 to-transparent lg:block" />
-
-        <div className="relative mx-auto grid w-full max-w-[1440px] gap-12 lg:grid-cols-[0.8fr_1.4fr] lg:gap-20">
-          <div data-reveal>
-            <p className={`mb-5 flex items-center gap-4 ${label} font-semibold uppercase tracking-[0.3em] text-[#C6A66B] md:mb-6`}>
-              <span aria-hidden="true" className="rcs-rule h-px w-10 bg-[#C6A66B]" />
-              Our services
-            </p>
-            <h2 className="rcs-display text-[clamp(2.3rem,11.5vw,3.2rem)] md:text-[clamp(2.2rem,4vw,4rem)]">
-              Idea.
-              <span className="block text-[#5271FF]">Narrative.</span>
-              Impact.
-            </h2>
-            <p className="mt-5 max-w-[30ch] text-[15px] leading-relaxed text-white/70 md:mt-6 md:text-[14px] md:text-white/65">
-              A strategic approach to PR, brand positioning and cultural storytelling.
-            </p>
-            <Link
-              to="/services"
-              className={`group mt-7 inline-flex min-h-12 items-center gap-3 rounded-full border border-[#C6A66B]/70 px-6 ${label} font-semibold uppercase tracking-[0.18em] text-[#DDC89D] transition-colors hover:bg-[#C6A66B] hover:text-[#050A14] md:mt-8 md:min-h-11 ${focus}`}
-            >
-              Explore services
-              <ArrowRight size={14} className="transition-transform duration-500 ease-[cubic-bezier(.2,.65,.25,1)] group-hover:translate-x-1" />
-            </Link>
-          </div>
-
-          <ul className="grid gap-x-10 gap-y-2 sm:grid-cols-2 md:gap-y-12">
-            {SERVICES.map((s, i) => (
-              <li key={s.number} data-reveal style={{ "--d": `${i * 90}ms` }}>
-                <Link to="/services" className={`rcs-sweep group block border-t border-white/20 py-6 md:pb-0 md:pt-5 ${focus}`}>
-                  <span className={`${label} tracking-[0.2em] text-[#C6A66B]`}>{s.number}</span>
-                  <h3 className="rcs-display mt-2 text-[clamp(1.3rem,6vw,1.6rem)] transition-all duration-300 group-hover:translate-x-1 group-hover:text-[#5271FF] md:mt-3 md:text-[clamp(1.15rem,1.5vw,1.45rem)]">{s.title}</h3>
-                  <p className="mt-3 max-w-[34ch] text-[14px] leading-relaxed text-white/65 md:text-[13px] md:text-white/60">{s.description}</p>
-                  <ArrowRight size={18} className="mt-4 text-[#C6A66B] transition-transform duration-500 ease-[cubic-bezier(.2,.65,.25,1)] group-hover:translate-x-2 md:mt-5 md:h-4 md:w-4" aria-hidden="true" />
-                </Link>
+                <span className={`${mono} whitespace-pre-line text-[9px] uppercase leading-[1.45] tracking-[0.1em] md:text-[0.82vw]`}>{s.label}</span>
               </li>
             ))}
           </ul>
         </div>
       </section>
 
-      {/* ============ FINAL CTA ============ */}
-      <section className="rcs-grain relative isolate flex min-h-[100svh] items-center overflow-hidden bg-[#050A14] px-5 py-20 sm:px-8 md:px-[5vw] md:py-28">
-        <div aria-hidden="true" className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_80%_110%,rgba(40,70,255,0.75),transparent_55%),radial-gradient(ellipse_at_20%_0%,rgba(0,35,102,0.8),transparent_55%)]" />
-        {/* hairline frame + outlined wordmark: the last page of the issue */}
-        <div aria-hidden="true" className="pointer-events-none absolute inset-4 -z-10 border border-[#C6A66B]/20 md:inset-8" />
-        <span aria-hidden="true" className="rcs-display pointer-events-none absolute -bottom-[0.18em] left-1/2 -z-10 -translate-x-1/2 select-none whitespace-nowrap text-[clamp(8rem,30vw,28rem)] leading-none text-transparent [-webkit-text-stroke:1px_rgba(198,166,107,0.14)]">
-          RARE
-        </span>
-
-        <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-10 md:flex-row md:items-end md:justify-between md:gap-12">
-          <h2 data-reveal className="rcs-serif max-w-[16ch] text-[clamp(1.8rem,9vw,2.6rem)] uppercase leading-[1.05] text-[#C6A66B] [text-wrap:balance] md:text-[clamp(1.45rem,3.5vw,3rem)]">
-            Your next defining moment starts here.
+      {/* ============ 03 WHAT WE DO ============ */}
+      <section className="relative z-[1] border-b border-black/10 px-5 py-14 sm:px-8 md:h-[23vw] md:p-0">
+        <div className="md:absolute md:left-[5.2vw] md:top-[2.1vw]" data-reveal>
+          <Label>03 / What we do</Label>
+          <h2 className={`${disp} mt-5 text-[clamp(3.2rem,15vw,4.6rem)] uppercase leading-[0.98] md:mt-[0.9vw] md:text-[6vw] md:leading-[5.9vw]`}>
+            Idea.<br />Narrative.<br /><span style={{ color: BLUE }}>Impact.</span>
           </h2>
-          <Link to="/contact" data-reveal style={{ "--d": "180ms" }} className={`group inline-flex shrink-0 items-center gap-5 ${label} font-semibold uppercase tracking-[0.2em] ${focus}`}>
-            <span className="relative grid h-16 w-16 place-items-center rounded-full border border-[#C6A66B]/80 text-[#C6A66B] transition-colors duration-300 group-hover:bg-[#C6A66B] group-hover:text-[#050A14]">
-              <span aria-hidden="true" className="absolute -inset-2 rounded-full border border-[#C6A66B]/25 transition-transform duration-500 group-hover:scale-110" />
-              <ArrowRight size={20} strokeWidth={1.6} className="transition-transform duration-300 group-hover:translate-x-0.5" />
-            </span>
-            Start a conversation
-          </Link>
         </div>
+
+        <ul className={`${body} mt-8 md:absolute md:left-[36.5vw] md:top-[1.1vw] md:mt-0 md:w-[59.2vw]`}>
+          {SERVICES.map((s, i) => (
+            <li key={s.n} data-reveal style={{ "--d": `${i * 70}ms` }} className="border-b border-black/20 last:border-b-0">
+              <Link to="/services" className={`rcs-row flex items-center gap-4 py-4 md:h-[4.3vw] md:gap-0 md:py-0 ${focus}`}>
+                <span className={`${body} w-9 text-[13px] font-semibold md:w-[4.4vw] md:text-[1.3vw]`} style={{ color: BLUE }}>{s.n}</span>
+                <span className="flex flex-1 flex-col gap-1 md:flex-row md:items-center md:gap-0">
+                  <span className="rcs-rowtitle text-[15px] font-semibold transition-colors md:w-[20.6vw] md:text-[1.46vw]">{s.title}</span>
+                  <span className="text-[13px] text-black/80 md:flex-1 md:text-[1.12vw]">{s.text}</span>
+                </span>
+                <span className="rcs-circle grid h-8 w-8 shrink-0 place-items-center rounded-full border text-[#0a3fdc] transition-colors md:h-[2.2vw] md:w-[2.2vw]" style={{ borderColor: BLUE }}>
+                  <ArrowRight className="h-4 w-4 md:h-[1.1vw] md:w-[1.1vw]" strokeWidth={1.4} />
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {/* ============ 04 THE DIFFERENCE ============ */}
+      <section className="relative z-[1] px-5 pb-16 pt-10 sm:px-8 md:h-[27.3vw] md:p-0">
+        <BuildingArt className="mx-auto block h-auto w-full max-w-[480px] md:absolute md:left-[2.7vw] md:top-0 md:mx-0 md:w-[39vw] md:max-w-none" />
+
+        <div className="mt-8 md:absolute md:left-[44.9vw] md:top-[2.4vw] md:mt-0" data-reveal>
+          <Label>04 / The difference</Label>
+          <h2 className={`${disp} mt-4 text-[clamp(2.6rem,12vw,3.6rem)] leading-[1.02] md:mt-[1.2vw] md:text-[4.4vw] md:leading-[4.3vw]`}>
+            Stop chasing<br />clips. Start<br /><span style={{ color: BLUE }}>building a legacy.</span>
+          </h2>
+        </div>
+
+        <p data-reveal className={`${body} mt-5 max-w-[36ch] text-[14px] leading-[1.35] md:absolute md:left-[44.9vw] md:top-[19.3vw] md:mt-0 md:max-w-[30vw] md:text-[1.27vw]`}>
+          We engineer conversations that move brands from visibility to cultural relevance.
+        </p>
+
+        <Link to="/contact" className={`group ${mono} mt-6 inline-flex items-center justify-between gap-6 bg-[#0b0b0b] px-5 py-3.5 text-[10px] uppercase tracking-[0.12em] text-white transition-colors hover:bg-[#0a3fdc] md:absolute md:left-[44.9vw] md:top-[23.1vw] md:mt-0 md:h-[2.9vw] md:w-[16.8vw] md:px-[1.7vw] md:py-0 md:text-[0.95vw] ${focus}`}>
+          Let’s make it matter
+          <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 md:h-[1.1vw] md:w-[1.1vw]" strokeWidth={1.4} />
+        </Link>
+
+        <GlobeArt className="ml-auto mt-10 block h-auto w-[60%] max-w-[260px] md:absolute md:left-[77.7vw] md:top-[1.4vw] md:ml-0 md:mt-0 md:w-[22.3vw] md:max-w-none" />
       </section>
     </main>
   );
