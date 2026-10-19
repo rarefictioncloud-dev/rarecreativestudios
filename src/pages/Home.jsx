@@ -157,35 +157,35 @@ export default function Home() {
         <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(90deg,#050A14_0%,rgba(5,10,20,0.82)_32%,transparent_62%)]" />
 
         <div className="relative z-10 mx-auto w-full max-w-[1380px]">
-          <h1 data-reveal className="rcs-display max-w-[11ch] text-[clamp(3rem,8.2vw,7.4rem)]">
+          <h1 data-reveal className="rcs-display max-w-[11ch] text-[clamp(1.95rem,5.3vw,4.8rem)]">
             We don’t send press releases.
             <span className="block text-[#5271FF]">We create moments.</span>
           </h1>
 
-          <p data-reveal className="mt-7 max-w-[34ch] text-[15px] leading-relaxed text-white/80 md:text-[17px]">
+          <p data-reveal className="mt-7 max-w-[34ch] text-[10.5px] leading-relaxed text-white/80 md:text-[12px]">
             Strategy-led storytelling that turns brands into conversations people remember.
           </p>
 
           <div data-reveal className="mt-9 flex flex-wrap items-center gap-x-9 gap-y-4">
             <Link
               to="/services"
-              className={`group inline-flex min-h-12 items-center gap-3 rounded-[3px] bg-[#C6A66B] px-6 text-[11px] font-bold uppercase tracking-[0.16em] text-[#050A14] transition-colors hover:bg-[#DDC89D] ${focus}`}
+              className={`group inline-flex min-h-12 items-center gap-3 rounded-[3px] bg-[#C6A66B] px-6 text-[8px] font-bold uppercase tracking-[0.16em] text-[#050A14] transition-colors hover:bg-[#DDC89D] ${focus}`}
             >
               Explore our work
               <ArrowUpRight size={15} strokeWidth={2} className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
             </Link>
-            <Link to="/contact" className={`group inline-flex min-h-12 items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-white ${focus}`}>
+            <Link to="/contact" className={`group inline-flex min-h-12 items-center gap-3 text-[8px] font-semibold uppercase tracking-[0.18em] text-white ${focus}`}>
               Let’s talk
               <ArrowRight size={15} className="transition-transform group-hover:translate-x-1" />
             </Link>
           </div>
 
           <div className="mt-14 flex items-end justify-between border-t border-white/10 pt-5">
-            <a href="#chapters" className={`group flex items-center gap-3 text-[10px] uppercase tracking-[0.22em] text-white/50 transition-colors hover:text-white ${focus}`}>
+            <a href="#chapters" className={`group flex items-center gap-3 text-[8px] uppercase tracking-[0.22em] text-white/50 transition-colors hover:text-white ${focus}`}>
               Scroll to explore
               <ArrowDown size={13} className="transition-transform group-hover:translate-y-1" />
             </a>
-            <ul aria-hidden="true" className="hidden text-right text-[10px] uppercase leading-[2] tracking-[0.25em] text-white/55 md:block">
+            <ul aria-hidden="true" className="hidden text-right text-[8px] uppercase leading-[2] tracking-[0.25em] text-white/55 md:block">
               {["Ideas", "Stories", "Culture", "Influence", "Impact"].map((w) => (
                 <li key={w}>{w}</li>
               ))}
@@ -200,12 +200,12 @@ export default function Home() {
           <article key={c.n} className="grid border-b border-white/10 md:min-h-[360px] md:grid-cols-[1fr_1.15fr]">
             <div data-reveal className="flex flex-col justify-between px-5 py-12 sm:px-8 md:px-[4vw] md:py-14">
               <div>
-                <h2 className="rcs-display max-w-[16ch] text-[clamp(2rem,4.2vw,3.6rem)]">
+                <h2 className="rcs-display max-w-[16ch] text-[clamp(1.3rem,2.7vw,2.35rem)]">
                   {c.white} <span className="text-[#C6A66B]">{c.gold}</span>
                 </h2>
-                <p className="mt-5 max-w-[36ch] text-[14px] leading-relaxed text-white/65">{c.text}</p>
+                <p className="mt-5 max-w-[36ch] text-[10px] leading-relaxed text-white/65">{c.text}</p>
               </div>
-              <div className="mt-10 flex items-center gap-4 text-[11px] tracking-[0.2em] text-white/50" aria-hidden="true">
+              <div className="mt-10 flex items-center gap-4 text-[8px] tracking-[0.2em] text-white/50" aria-hidden="true">
                 {c.n}
                 <span className="h-px w-24 bg-white/25" />
               </div>
@@ -226,15 +226,15 @@ export default function Home() {
           </div>
 
           <div data-reveal className="px-5 py-20 sm:px-8 md:px-[4vw] lg:px-14 lg:py-28">
-            <h2 className="rcs-display max-w-[14ch] text-[clamp(2.2rem,4.6vw,4.2rem)]">
+            <h2 className="rcs-display max-w-[14ch] text-[clamp(1.45rem,3vw,2.75rem)]">
               PR is no longer about visibility.
               <span className="block text-[#B28F4A]">It’s about relevance.</span>
             </h2>
-            <p className="mt-6 max-w-[44ch] text-[15px] leading-relaxed text-[#050A14]/70">
+            <p className="mt-6 max-w-[44ch] text-[10.5px] leading-relaxed text-[#050A14]/70">
               We design stories that make brands culturally meaningful, not just momentarily noticed.
             </p>
 
-            <ol className="mt-8 flex flex-wrap gap-x-8 gap-y-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#050A14]/60">
+            <ol className="mt-8 flex flex-wrap gap-x-8 gap-y-2 text-[8px] font-semibold uppercase tracking-[0.18em] text-[#050A14]/60">
               {APPROACH.map((a, i) => (
                 <li key={a}>
                   <span className="mr-2 text-[#B28F4A]">0{i + 1}</span>
@@ -243,15 +243,15 @@ export default function Home() {
               ))}
             </ol>
 
-            <Link to="/about" className={`group mt-9 inline-flex min-h-11 items-center gap-3 text-[11px] font-bold uppercase tracking-[0.2em] ${focus}`}>
+            <Link to="/about" className={`group mt-9 inline-flex min-h-11 items-center gap-3 text-[8px] font-bold uppercase tracking-[0.2em] ${focus}`}>
               Our approach
               <ArrowRight size={15} className="transition-transform group-hover:translate-x-1" />
             </Link>
           </div>
 
           <blockquote data-reveal className="flex flex-col justify-center border-t border-[#050A14]/10 px-5 pb-16 sm:px-8 lg:border-l lg:border-t-0 lg:px-10 lg:py-28">
-            <span aria-hidden="true" className="rcs-serif text-6xl leading-none text-[#B28F4A]">“</span>
-            <p className="max-w-[12ch] text-[22px] leading-snug">Relevance creates influence.</p>
+            <span aria-hidden="true" className="rcs-serif text-[2.4rem] leading-none text-[#B28F4A]">“</span>
+            <p className="max-w-[12ch] text-[14.5px] leading-snug">Relevance creates influence.</p>
           </blockquote>
         </div>
       </section>
@@ -262,18 +262,18 @@ export default function Home() {
 
         <div className="mx-auto grid max-w-[1380px] gap-14 lg:grid-cols-[0.8fr_1.4fr] lg:gap-20">
           <div data-reveal>
-            <p className="mb-6 text-[10px] font-semibold uppercase tracking-[0.3em] text-[#C6A66B]">Our services</p>
-            <h2 className="rcs-display text-[clamp(3rem,6.2vw,5.6rem)]">
+            <p className="mb-6 text-[8px] font-semibold uppercase tracking-[0.3em] text-[#C6A66B]">Our services</p>
+            <h2 className="rcs-display text-[clamp(1.95rem,4vw,3.65rem)]">
               Idea.
               <span className="block text-[#5271FF]">Narrative.</span>
               Impact.
             </h2>
-            <p className="mt-6 max-w-[30ch] text-[14px] leading-relaxed text-white/65">
+            <p className="mt-6 max-w-[30ch] text-[10px] leading-relaxed text-white/65">
               A strategic approach to PR, brand positioning and cultural storytelling.
             </p>
             <Link
               to="/services"
-              className={`group mt-8 inline-flex min-h-11 items-center gap-3 rounded-full border border-[#C6A66B]/70 px-6 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#DDC89D] transition-colors hover:bg-[#C6A66B] hover:text-[#050A14] ${focus}`}
+              className={`group mt-8 inline-flex min-h-11 items-center gap-3 rounded-full border border-[#C6A66B]/70 px-6 text-[8px] font-semibold uppercase tracking-[0.18em] text-[#DDC89D] transition-colors hover:bg-[#C6A66B] hover:text-[#050A14] ${focus}`}
             >
               Explore services
               <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
@@ -284,9 +284,9 @@ export default function Home() {
             {SERVICES.map((s) => (
               <li key={s.number} data-reveal>
                 <Link to="/services" className={`group block border-t border-white/20 pt-5 ${focus}`}>
-                  <span className="text-[11px] tracking-[0.2em] text-[#C6A66B]">{s.number}</span>
-                  <h3 className="rcs-display mt-3 text-[clamp(1.5rem,2.2vw,2rem)] transition-colors group-hover:text-[#5271FF]">{s.title}</h3>
-                  <p className="mt-3 max-w-[34ch] text-[13px] leading-relaxed text-white/60">{s.description}</p>
+                  <span className="text-[8px] tracking-[0.2em] text-[#C6A66B]">{s.number}</span>
+                  <h3 className="rcs-display mt-3 text-[clamp(1rem,1.45vw,1.3rem)] transition-colors group-hover:text-[#5271FF]">{s.title}</h3>
+                  <p className="mt-3 max-w-[34ch] text-[9px] leading-relaxed text-white/60">{s.description}</p>
                   <ArrowRight size={16} className="mt-5 text-[#C6A66B] transition-transform group-hover:translate-x-2" aria-hidden="true" />
                 </Link>
               </li>
@@ -299,10 +299,10 @@ export default function Home() {
       <section className="relative isolate overflow-hidden bg-[#050A14] px-5 py-24 sm:px-8 md:px-[4vw] md:py-32">
         <div aria-hidden="true" className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_80%_110%,rgba(40,70,255,0.8),transparent_55%),radial-gradient(ellipse_at_20%_0%,rgba(0,35,102,0.8),transparent_55%)]" />
         <div className="mx-auto flex max-w-[1380px] flex-col gap-12 md:flex-row md:items-end md:justify-between">
-          <h2 data-reveal className="rcs-serif max-w-[16ch] text-[clamp(2.2rem,5.4vw,4.6rem)] uppercase leading-[1.05] text-[#C6A66B]">
+          <h2 data-reveal className="rcs-serif max-w-[16ch] text-[clamp(1.45rem,3.5vw,3rem)] uppercase leading-[1.05] text-[#C6A66B]">
             Your next defining moment starts here.
           </h2>
-          <Link to="/contact" data-reveal className={`group inline-flex shrink-0 items-center gap-5 text-[11px] font-semibold uppercase tracking-[0.2em] ${focus}`}>
+          <Link to="/contact" data-reveal className={`group inline-flex shrink-0 items-center gap-5 text-[8px] font-semibold uppercase tracking-[0.2em] ${focus}`}>
             <span className="grid h-16 w-16 place-items-center rounded-full border border-[#C6A66B]/80 text-[#C6A66B] transition-colors duration-300 group-hover:bg-[#C6A66B] group-hover:text-[#050A14]">
               <ArrowRight size={20} strokeWidth={1.6} />
             </span>
