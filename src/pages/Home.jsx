@@ -26,7 +26,8 @@ import { ArrowDown, ArrowRight, ArrowUpRight, Megaphone, Newspaper, PenLine, Sha
    (except the decorative numbered list on the hero's right wall).
    ==================================================================== */
 
-const CONTACT_EMAIL = "REPLACE-ME@yourdomain.com"; // <- replace with the real studio email
+const CONTACT_EMAIL = "info@rarecreativestudios.com"; 
+
 
 const COBALT = "#0b3fd9";
 const focus = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0b3fd9]";
