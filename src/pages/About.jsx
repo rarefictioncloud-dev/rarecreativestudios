@@ -2,9 +2,9 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { ArrowUpRight } from "lucide-react";
 import RibbonFallback from "../components/hero/RibbonFallback";
 
-/* Fonts (.rcs-display, .rcs-body, .rcs-serif) are injected by Navbar, which is mounted on every page.
-   TYPE SCALE = Home page: at md (768px) and up the same small sizes (8px labels, 9-10.5px body, same heading clamps);
-   phones keep larger, readable sizes. */
+/* Fonts (.rcs-display, .rcs-body, .rcs-nav-mono) are injected by Navbar, which is mounted on every page.
+   THEME = Home: cobalt #124CCF, ivory #F5F2EA, Playfair serif headlines, Manrope body, mono labels.
+   TYPE SCALE = Home: at md (768px) and up the same small sizes; phones keep larger, readable sizes. */
 
 // Three.js is loaded on demand so the page content never waits for it.
 const RibbonWorld = lazy(() => import("../components/hero/RibbonWorld"));
@@ -17,7 +17,7 @@ const WHATSAPP_URL = `https://wa.me/917997658999?text=${encodeURIComponent(
 const FOUNDER_IMAGE = "https://pub-c068270ff2f94b2691bb54438e646383.r2.dev/DSCF6122.JPG";
 
 const focus =
-  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C6A66B]";
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#6B93FF]";
 
 /* Shared type tokens (match Home) */
 const label = "text-[11px] md:text-[8px]";
@@ -60,24 +60,9 @@ const faqs = [
 ];
 
 const stages = [
-  {
-    number: "01",
-    title: "Strategy",
-    kicker: "Narrative design, brand positioning, and perception.",
-    body: "Define the territory your brand should own and the feeling it should leave behind.",
-  },
-  {
-    number: "02",
-    title: "Influence",
-    kicker: "Thought leadership, media relationships, and cultural relevance.",
-    body: "Give the story a voice through considered media, creators, leadership, and cultural placements.",
-  },
-  {
-    number: "03",
-    title: "Execution",
-    kicker: "Targeted media relations, campaign delivery, and amplification.",
-    body: "Bring the plan to life with precise delivery, coherent creative, and purposeful distribution.",
-  },
+  { number: "01", title: "Strategy", kicker: "Narrative design, brand positioning, and perception.", body: "Define the territory your brand should own and the feeling it should leave behind." },
+  { number: "02", title: "Influence", kicker: "Thought leadership, media relationships, and cultural relevance.", body: "Give the story a voice through considered media, creators, leadership, and cultural placements." },
+  { number: "03", title: "Execution", kicker: "Targeted media relations, campaign delivery, and amplification.", body: "Bring the plan to life with precise delivery, coherent creative, and purposeful distribution." },
 ];
 
 const capabilities = [
@@ -89,37 +74,21 @@ const capabilities = [
   { number: "06", title: "Film & Creative Production", description: "Creative direction, cinematography, video editing, post-production, and short-film production." },
 ];
 
-const production = [
-  "Creative direction",
-  "Concept development",
-  "Cinematography",
-  "Video editing",
-  "Post-production",
-  "Short-film production",
-];
+const production = ["Creative direction", "Concept development", "Cinematography", "Video editing", "Post-production", "Short-film production"];
 
 function PlusIcon({ open }) {
   return (
-    <span
-      aria-hidden="true"
-      className={`relative flex h-11 w-11 shrink-0 items-center justify-center transition-transform duration-300 ${
-        open ? "rotate-45 text-[#C6A66B]" : "text-white/75"
-      }`}
-    >
+    <span aria-hidden="true" className={`relative flex h-11 w-11 shrink-0 items-center justify-center transition-transform duration-300 ${open ? "rotate-45 text-[#6B93FF]" : "text-white/75"}`}>
       <span className="absolute h-[2px] w-5 bg-current" />
       <span className="absolute h-5 w-[2px] bg-current" />
     </span>
   );
 }
 
-/* Small label with a gold hairline, shared by every section */
+/* Small mono label with a hairline, shared by every section */
 function Eyebrow({ children, tone = "dark" }) {
   return (
-    <p
-      className={`flex items-center gap-3 ${label} font-bold uppercase tracking-[.28em] md:tracking-[.3em] ${
-        tone === "light" ? "text-[#8A6A2B] md:text-[#B28F4A]" : "text-[#C6A66B]"
-      }`}
-    >
+    <p className={`rcs-nav-mono flex items-center gap-3 ${label} font-medium uppercase tracking-[.28em] md:tracking-[.3em] ${tone === "light" ? "text-[#124CCF]" : "text-[#6B93FF]"}`}>
       <span aria-hidden="true" className="h-px w-8 bg-current" />
       {children}
     </p>
@@ -128,15 +97,7 @@ function Eyebrow({ children, tone = "dark" }) {
 
 /* Decorative paper layer. Moves at its own speed (see parallax effect). */
 function Layer({ speed, rot = 0, className = "" }) {
-  return (
-    <div
-      aria-hidden="true"
-      data-par={speed}
-      data-rot={rot}
-      className={`pointer-events-none absolute will-change-transform ${className}`}
-      style={{ transform: `rotate(${rot}deg)` }}
-    />
-  );
+  return <div aria-hidden="true" data-par={speed} data-rot={rot} className={`pointer-events-none absolute will-change-transform ${className}`} style={{ transform: `rotate(${rot}deg)` }} />;
 }
 
 export default function About() {
@@ -222,10 +183,15 @@ export default function About() {
   }, [reduced]);
 
   return (
-    <main ref={rootRef} data-scene-root className="rcs-body relative overflow-x-clip bg-[#050A14] text-[#F5F5F2]">
+    <main ref={rootRef} data-scene-root className="rcs-about rcs-body relative overflow-x-clip bg-[#050A14] text-[#F5F2EA]">
       <style>{`
-        .rcs-reveal { opacity: 0; transform: translateY(22px);
-          transition: opacity .8s ease, transform .8s cubic-bezier(.2,.7,.2,1); }
+        /* Home theme: editorial serif headlines, Manrope body */
+        .rcs-about { font-family: 'Manrope', 'Helvetica Neue', Arial, sans-serif; }
+        .rcs-about .rcs-display { font-family: 'Playfair Display', Georgia, serif; font-weight: 900; letter-spacing: -0.045em; line-height: .92; }
+        .rcs-about .font-editorial { font-family: 'Playfair Display', Georgia, serif; }
+        .rcs-about ::selection { background: #124CCF; color: #fff; }
+
+        .rcs-reveal { opacity: 0; transform: translateY(22px); transition: opacity .8s ease, transform .8s cubic-bezier(.2,.7,.2,1); }
         .rcs-reveal.rcs-tilt { transform: perspective(1200px) rotateX(8deg) translateY(40px); transform-origin: 50% 100%; }
         .rcs-reveal.rcs-in { opacity: 1; transform: none; }
 
@@ -238,8 +204,7 @@ export default function About() {
         @keyframes rcs-cue { 0% { transform: scaleY(0); } 50% { transform: scaleY(1); } 100% { transform: scaleY(1); opacity: 0; } }
         @keyframes rr-marq { to { transform: translateX(-50%); } }
 
-        .rcs-faq-panel { display: grid; grid-template-rows: 0fr; visibility: hidden;
-          transition: grid-template-rows .35s ease, visibility 0s linear .35s; }
+        .rcs-faq-panel { display: grid; grid-template-rows: 0fr; visibility: hidden; transition: grid-template-rows .35s ease, visibility 0s linear .35s; }
         .rcs-faq-panel[data-open="true"] { grid-template-rows: 1fr; visibility: visible; transition-delay: 0s; }
 
         @media (prefers-reduced-motion: reduce) {
@@ -267,26 +232,22 @@ export default function About() {
       <div className="relative z-10">
         {/* ================= 1. HERO ================= */}
         <section className="rcs-grain relative isolate flex min-h-[92svh] items-end overflow-hidden px-5 pb-[max(3rem,env(safe-area-inset-bottom))] pt-32 sm:px-8 md:min-h-[100svh] md:px-14 md:pb-16">
-          <div
-            className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(4,5,8,.1)_0%,rgba(4,5,8,.2)_45%,#050A14_100%)]"
-            aria-hidden="true"
-          />
+          <div className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(4,5,8,.1)_0%,rgba(4,5,8,.2)_45%,#050A14_100%)]" aria-hidden="true" />
           <div className="relative mx-auto w-full max-w-[1440px]">
-            <h1 className="rcs-display max-w-[1100px] text-[clamp(2.1rem,10vw,3.6rem)] md:text-[clamp(1.95rem,5.3vw,4.8rem)]">
+            <p className={`rcs-nav-mono mb-6 ${label} uppercase tracking-[.3em] text-white/70`}>Strategy / Story / Culture</p>
+            <h1 className="rcs-display max-w-[1100px] uppercase text-[clamp(2.1rem,10vw,3.6rem)] md:text-[clamp(1.95rem,5.3vw,4.8rem)]">
               The best PR
               <br />
               isn’t seen.
               <br />
-              <span className="font-editorial font-normal normal-case italic tracking-[-.04em] text-[#C6A66B]">
-                It’s felt.
-              </span>
+              <span className="font-editorial font-black normal-case italic tracking-[-.04em] text-[#6B93FF]">It’s felt.</span>
             </h1>
-            <span aria-hidden="true" className="mt-8 block h-px w-24 bg-[#C6A66B]" />
+            <span aria-hidden="true" className="mt-8 block h-px w-24 bg-[#6B93FF]" />
           </div>
 
           <div className="absolute bottom-6 right-5 hidden flex-col items-center gap-3 text-[9px] uppercase tracking-[.25em] text-white/50 sm:flex md:right-14 md:text-[8px]" aria-hidden="true">
             Scroll
-            <span className="rcs-cue block h-12 w-px bg-[#C6A66B]" />
+            <span className="rcs-cue block h-12 w-px bg-[#6B93FF]" />
           </div>
         </section>
 
@@ -298,7 +259,7 @@ export default function About() {
               <div
                 key={i}
                 className={`rcs-display mx-1.5 grid h-[clamp(3.2rem,8vw,5rem)] w-[clamp(7rem,20vw,12rem)] shrink-0 place-items-center text-[clamp(.65rem,1.45vw,1rem)] ${
-                  i % 2 ? "border border-[#C6A66B]/50 text-[#C6A66B]" : "bg-[#0756BD] text-white"
+                  i % 2 ? "border border-[#6B93FF]/50 text-[#6B93FF]" : "bg-[#124CCF] text-white"
                 }`}
               >
                 {t}
@@ -311,43 +272,27 @@ export default function About() {
         {/* ================= 2. PHILOSOPHY ================= */}
         <section id="our-philosophy" className="relative px-4 py-16 sm:px-8 sm:py-24 md:px-14 md:py-32">
           <div className="relative mx-auto max-w-[1440px]">
-            {/* back sheets drifting at different speeds */}
-            <Layer speed={0.05} rot={-4} className="-left-2 top-6 h-[85%] w-[92%] bg-[#c7cdd6]/40 md:left-4" />
-            <Layer speed={-0.04} rot={2.5} className="left-3 top-0 h-[90%] w-[94%] bg-[#6BA8FF]/20 md:left-10" />
+            <Layer speed={0.05} rot={-4} className="-left-2 top-6 h-[85%] w-[92%] bg-[#C6CBD3]/40 md:left-4" />
+            <Layer speed={-0.04} rot={2.5} className="left-3 top-0 h-[90%] w-[94%] bg-[#245DFF]/25 md:left-10" />
 
-            <div
-              data-reveal
-              className="rcs-reveal rcs-tilt relative bg-[#ECEBE7] px-5 py-12 text-[#050A14] shadow-[0_40px_120px_rgba(0,0,0,.55)] sm:px-10 sm:py-16 md:px-16 md:py-24"
-            >
+            <div data-reveal className="rcs-reveal rcs-tilt relative bg-[#F5F2EA] px-5 py-12 text-[#111111] shadow-[0_40px_120px_rgba(0,0,0,.55)] sm:px-10 sm:py-16 md:px-16 md:py-24">
               <div className="grid gap-10 lg:grid-cols-[.6fr_1.4fr] lg:gap-20">
                 <div>
                   <Eyebrow tone="light">Our philosophy</Eyebrow>
-                  <p className="mt-5 max-w-xs font-editorial text-lg italic leading-snug text-black/60 md:text-[14.5px]">
-                    Modern PR, reimagined.
-                  </p>
+                  <p className="mt-5 max-w-xs font-editorial text-lg italic leading-snug text-black/60 md:text-[14.5px]">Modern PR, reimagined.</p>
                 </div>
 
                 <div>
-                  <h2 className={`rcs-display ${h2Main}`}>
+                  <h2 className={`rcs-display uppercase ${h2Main}`}>
                     Visibility is easy.
                     <br />
-                    <span className="font-editorial font-normal normal-case italic tracking-[-.04em] text-[#0756BD]">
-                      Relevance is earned.
-                    </span>
+                    <span className="font-editorial font-black normal-case italic tracking-[-.04em] text-[#124CCF]">Relevance is earned.</span>
                   </h2>
 
-                  <div className={`mt-8 max-w-2xl space-y-5 border-t border-[#050A14]/15 pt-6 text-black/70 ${bodyDark}`}>
-                    <p>
-                      We don’t begin with a press release or a list of outlets. We begin with the business, the
-                      audience, the cultural context, and the perception the brand needs to earn.
-                    </p>
-                    <p>
-                      From there, we design the narrative, identify the right voices and moments, and bring the story
-                      to life through precise execution.
-                    </p>
-                    <p className="font-semibold text-black">
-                      The goal is not noise. It is meaningful attention that lasts.
-                    </p>
+                  <div className={`mt-8 max-w-2xl space-y-5 border-t border-[#111111]/15 pt-6 text-black/70 ${bodyDark}`}>
+                    <p>We don’t begin with a press release or a list of outlets. We begin with the business, the audience, the cultural context, and the perception the brand needs to earn.</p>
+                    <p>From there, we design the narrative, identify the right voices and moments, and bring the story to life through precise execution.</p>
+                    <p className="font-semibold text-black">The goal is not noise. It is meaningful attention that lasts.</p>
                   </div>
                 </div>
               </div>
@@ -357,50 +302,31 @@ export default function About() {
 
         {/* ================= 3. STRATEGY ================= */}
         <section className="relative overflow-hidden border-t border-white/10 bg-[#050A14]/55 px-5 py-20 sm:px-8 sm:py-28 md:px-14 md:py-36">
-          <Layer speed={0.06} rot={8} className="-right-10 top-10 h-64 w-44 bg-[#d9d8d3]/15 sm:h-80 sm:w-56" />
+          <Layer speed={0.06} rot={8} className="-right-10 top-10 h-64 w-44 bg-[#F5F2EA]/10 sm:h-80 sm:w-56" />
           <div className="relative mx-auto max-w-[1440px]">
             <div data-reveal className="rcs-reveal max-w-5xl">
               <Eyebrow>The strategy hierarchy</Eyebrow>
-              <h2 className={`rcs-display mt-5 ${h2Main}`}>
+              <h2 className={`rcs-display mt-5 uppercase ${h2Main}`}>
                 Start at the top.
                 <br />
-                <span className="font-editorial font-normal normal-case italic tracking-[-.04em] text-white/55">
-                  Make every move count.
-                </span>
+                <span className="font-editorial font-black normal-case italic tracking-[-.04em] text-white/55">Make every move count.</span>
               </h2>
               <p className={`mt-6 max-w-xl text-white/70 ${bodyDark}`}>
-                Every campaign begins with a clear strategic objective, not a list of disconnected tactics. Each stage
-                carries the one before it.
+                Every campaign begins with a clear strategic objective, not a list of disconnected tactics. Each stage carries the one before it.
               </p>
             </div>
 
             {/* connected stages: a descending staircase joined by one line */}
             <ol className="relative mt-14 grid gap-12 md:mt-20 md:grid-cols-3 md:gap-8">
-              <span
-                aria-hidden="true"
-                className="absolute bottom-0 left-[22px] top-0 w-px bg-gradient-to-b from-[#C6A66B] via-[#C6A66B]/40 to-transparent md:hidden"
-              />
-              <span
-                aria-hidden="true"
-                className="absolute left-0 right-0 top-[3rem] hidden h-px bg-gradient-to-r from-[#C6A66B] via-[#C6A66B]/40 to-transparent md:block"
-              />
+              <span aria-hidden="true" className="absolute bottom-0 left-[22px] top-0 w-px bg-gradient-to-b from-[#6B93FF] via-[#6B93FF]/40 to-transparent md:hidden" />
+              <span aria-hidden="true" className="absolute left-0 right-0 top-[3rem] hidden h-px bg-gradient-to-r from-[#6B93FF] via-[#6B93FF]/40 to-transparent md:block" />
               {stages.map((s, i) => (
-                <li
-                  key={s.number}
-                  data-reveal
-                  className="rcs-reveal relative pl-14 md:pl-0"
-                  style={{ transitionDelay: `${i * 90}ms` }}
-                >
+                <li key={s.number} data-reveal className="rcs-reveal relative pl-14 md:pl-0" style={{ transitionDelay: `${i * 90}ms` }}>
                   <div className={i === 1 ? "md:mt-16" : i === 2 ? "md:mt-32" : ""}>
-                    <span
-                      aria-hidden="true"
-                      className="absolute left-[16px] top-3 h-3 w-3 rounded-full bg-[#C6A66B] ring-4 ring-[#050A14] md:hidden"
-                    />
-                    <p className="rcs-display rcs-outline text-[clamp(3.5rem,16vw,5rem)] leading-none text-[#5271FF] md:text-[clamp(3.5rem,8vw,6rem)]">
-                      {s.number}
-                    </p>
-                    <h3 className={`rcs-display mt-4 ${itemTitle}`}>{s.title}</h3>
-                    <p className="mt-3 max-w-sm text-[14px] font-semibold leading-6 text-[#C6A66B] md:text-[9px] md:leading-relaxed">{s.kicker}</p>
+                    <span aria-hidden="true" className="absolute left-[16px] top-3 h-3 w-3 rounded-full bg-[#6B93FF] ring-4 ring-[#050A14] md:hidden" />
+                    <p className="rcs-display rcs-outline text-[clamp(3.5rem,16vw,5rem)] leading-none text-[#245DFF] md:text-[clamp(3.5rem,8vw,6rem)]">{s.number}</p>
+                    <h3 className={`rcs-display mt-4 uppercase ${itemTitle}`}>{s.title}</h3>
+                    <p className="mt-3 max-w-sm text-[14px] font-semibold leading-6 text-[#6B93FF] md:text-[9px] md:leading-relaxed">{s.kicker}</p>
                     <p className={`mt-4 max-w-sm text-white/65 ${small}`}>{s.body}</p>
                   </div>
                 </li>
@@ -412,30 +338,23 @@ export default function About() {
         {/* ================= 4. CAPABILITIES ================= */}
         <section className="relative px-4 py-16 sm:px-8 sm:py-24 md:px-14 md:py-32">
           <div className="relative mx-auto max-w-[1440px]">
-            <Layer speed={0.05} rot={3} className="left-2 top-10 h-[92%] w-[96%] bg-[#C7CDD6]/35 md:left-8" />
-            <div
-              data-reveal
-              className="rcs-reveal rcs-tilt relative bg-[#ECEBE7] px-5 py-12 text-[#050A14] shadow-[0_40px_120px_rgba(0,0,0,.55)] sm:px-10 sm:py-16 md:px-16 md:py-24"
-            >
+            <Layer speed={0.05} rot={3} className="left-2 top-10 h-[92%] w-[96%] bg-[#C6CBD3]/35 md:left-8" />
+            <div data-reveal className="rcs-reveal rcs-tilt relative bg-[#F5F2EA] px-5 py-12 text-[#111111] shadow-[0_40px_120px_rgba(0,0,0,.55)] sm:px-10 sm:py-16 md:px-16 md:py-24">
               <Eyebrow tone="light">What we do</Eyebrow>
-              <h2 className={`rcs-display mt-5 ${h2Main}`}>
+              <h2 className={`rcs-display mt-5 uppercase ${h2Main}`}>
                 One clear
                 <br />
-                <span className="font-editorial font-normal normal-case italic tracking-[-.04em] text-[#0756BD]">point of view.</span>
+                <span className="font-editorial font-black normal-case italic tracking-[-.04em] text-[#124CCF]">point of view.</span>
               </h2>
 
-              <ul className="mt-12 border-t border-[#050A14]/15 md:mt-16">
+              <ul className="mt-12 border-t border-[#111111]/15 md:mt-16">
                 {capabilities.map((c, i) => (
                   <li
                     key={c.number}
-                    className={`grid gap-2 border-b border-[#050A14]/15 py-7 sm:grid-cols-[minmax(4.5rem,.25fr)_1fr] md:grid-cols-[minmax(6rem,.2fr)_.9fr_1.1fr] md:items-baseline md:gap-8 md:py-9 ${
-                      i % 2 ? "md:pl-10 lg:pl-20" : ""
-                    }`}
+                    className={`grid gap-2 border-b border-[#111111]/15 py-7 sm:grid-cols-[minmax(4.5rem,.25fr)_1fr] md:grid-cols-[minmax(6rem,.2fr)_.9fr_1.1fr] md:items-baseline md:gap-8 md:py-9 ${i % 2 ? "md:pl-10 lg:pl-20" : ""}`}
                   >
-                    <span className="rcs-display text-[clamp(2.2rem,10vw,3rem)] leading-none text-[#B28F4A] md:text-[clamp(2rem,4vw,3rem)]">
-                      {c.number}
-                    </span>
-                    <h3 className={`rcs-display leading-tight ${itemTitle}`}>{c.title}</h3>
+                    <span className="rcs-display text-[clamp(2.2rem,10vw,3rem)] leading-none text-[#124CCF] md:text-[clamp(2rem,4vw,3rem)]">{c.number}</span>
+                    <h3 className={`rcs-display uppercase leading-tight ${itemTitle}`}>{c.title}</h3>
                     <p className="text-[14px] leading-7 text-black/65 sm:col-start-2 md:col-start-auto md:text-[9px] md:leading-relaxed">{c.description}</p>
                   </li>
                 ))}
@@ -445,43 +364,34 @@ export default function About() {
         </section>
 
         {/* ================= 5. CREATIVE PRODUCTION ================= */}
-        <section className="relative overflow-hidden border-t border-white/10 bg-[#050A14]/80 px-5 py-24 sm:px-8 sm:py-32 md:px-14 md:py-44">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_70%_40%,rgba(7,86,189,.28),transparent_60%)]"
-          />
-          <Layer speed={0.07} rot={-9} className="-left-12 top-16 h-72 w-48 bg-[#d9d8d3]/10 sm:h-96 sm:w-64" />
-          <Layer speed={-0.05} rot={6} className="-right-10 bottom-10 h-64 w-44 bg-[#C7CDD6]/10 sm:h-80 sm:w-56" />
+        <section className="relative overflow-hidden border-t border-white/10 bg-[#071C50]/85 px-5 py-24 sm:px-8 sm:py-32 md:px-14 md:py-44">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_70%_40%,rgba(36,93,255,.3),transparent_60%)]" />
+          <Layer speed={0.07} rot={-9} className="-left-12 top-16 h-72 w-48 bg-[#F5F2EA]/10 sm:h-96 sm:w-64" />
+          <Layer speed={-0.05} rot={6} className="-right-10 bottom-10 h-64 w-44 bg-[#C6CBD3]/10 sm:h-80 sm:w-56" />
 
           <div data-reveal className="rcs-reveal relative mx-auto max-w-[1440px]">
             {/* viewfinder corners */}
-            <div className="relative border-[#C7CDD6]/0 px-0 py-2 sm:px-10 sm:py-10">
-              <span aria-hidden="true" className="absolute left-0 top-0 hidden h-8 w-8 border-l border-t border-[#C6A66B]/70 sm:block" />
-              <span aria-hidden="true" className="absolute right-0 top-0 hidden h-8 w-8 border-r border-t border-[#C6A66B]/70 sm:block" />
-              <span aria-hidden="true" className="absolute bottom-0 left-0 hidden h-8 w-8 border-b border-l border-[#C6A66B]/70 sm:block" />
-              <span aria-hidden="true" className="absolute bottom-0 right-0 hidden h-8 w-8 border-b border-r border-[#C6A66B]/70 sm:block" />
+            <div className="relative px-0 py-2 sm:px-10 sm:py-10">
+              <span aria-hidden="true" className="absolute left-0 top-0 hidden h-8 w-8 border-l border-t border-[#6B93FF]/70 sm:block" />
+              <span aria-hidden="true" className="absolute right-0 top-0 hidden h-8 w-8 border-r border-t border-[#6B93FF]/70 sm:block" />
+              <span aria-hidden="true" className="absolute bottom-0 left-0 hidden h-8 w-8 border-b border-l border-[#6B93FF]/70 sm:block" />
+              <span aria-hidden="true" className="absolute bottom-0 right-0 hidden h-8 w-8 border-b border-r border-[#6B93FF]/70 sm:block" />
 
               <Eyebrow>Creative production</Eyebrow>
-              <h2 className={`rcs-display mt-5 ${h2Big}`}>
+              <h2 className={`rcs-display mt-5 uppercase ${h2Big}`}>
                 Stories designed
                 <br />
-                <span className="font-editorial font-normal normal-case italic tracking-[-.04em] text-[#6BA8FF]">to be felt.</span>
+                <span className="font-editorial font-black normal-case italic tracking-[-.04em] text-[#8FB0FF]">to be felt.</span>
               </h2>
 
               <div className="mt-10 grid gap-10 md:grid-cols-[1fr_1fr] md:gap-16">
                 <p className={`max-w-md text-white/75 ${bodyDark}`}>
-                  Creative production translates strategy into visual experiences with a clear point of view. The
-                  idea comes first; the craft carries it.
+                  Creative production translates strategy into visual experiences with a clear point of view. The idea comes first; the craft carries it.
                 </p>
                 <ul className="border-t border-white/20">
                   {production.map((p, i) => (
-                    <li
-                      key={p}
-                      className="flex items-baseline gap-4 border-b border-white/20 py-3.5 text-[15px] font-medium tracking-[-.01em] text-[#F5F5F2] md:text-[10.5px]"
-                    >
-                      <span aria-hidden="true" className={`${label} tracking-[.2em] text-[#C6A66B]`}>
-                        0{i + 1}
-                      </span>
+                    <li key={p} className="flex items-baseline gap-4 border-b border-white/20 py-3.5 text-[15px] font-medium tracking-[-.01em] text-[#F5F2EA] md:text-[10.5px]">
+                      <span aria-hidden="true" className={`rcs-nav-mono ${label} tracking-[.2em] text-[#8FB0FF]`}>0{i + 1}</span>
                       {p}
                     </li>
                   ))}
@@ -494,38 +404,22 @@ export default function About() {
         {/* ================= 5b. FOUNDER'S MESSAGE ================= */}
         <section className="relative px-4 py-16 sm:px-8 sm:py-24 md:px-14 md:py-32">
           <div className="relative mx-auto max-w-[1440px]">
-            <Layer speed={0.05} rot={-2.5} className="-left-2 top-8 h-[90%] w-[94%] bg-[#C7CDD6]/35 md:left-6" />
-            <div
-              data-reveal
-              className="rcs-reveal rcs-tilt relative overflow-hidden bg-[#ECEBE7] px-5 py-12 text-[#050A14] shadow-[0_40px_120px_rgba(0,0,0,.55)] sm:px-10 sm:py-16 md:px-16 md:py-24"
-            >
+            <Layer speed={0.05} rot={-2.5} className="-left-2 top-8 h-[90%] w-[94%] bg-[#C6CBD3]/35 md:left-6" />
+            <div data-reveal className="rcs-reveal rcs-tilt relative overflow-hidden bg-[#F5F2EA] px-5 py-12 text-[#111111] shadow-[0_40px_120px_rgba(0,0,0,.55)] sm:px-10 sm:py-16 md:px-16 md:py-24">
               {/* oversized ghost lettering */}
-              <span
-                aria-hidden="true"
-                className="rcs-display pointer-events-none absolute -bottom-6 right-[-4%] select-none text-[clamp(8rem,34vw,32rem)] leading-none text-black/[0.045]"
-              >
-                Rare
-              </span>
+              <span aria-hidden="true" className="rcs-display pointer-events-none absolute -bottom-6 right-[-4%] select-none text-[clamp(8rem,34vw,32rem)] uppercase leading-none text-black/[0.045]">Rare</span>
 
               <div className="relative grid items-start gap-12 lg:grid-cols-[minmax(0,.62fr)_minmax(0,1.38fr)] lg:gap-20">
                 {/* portrait */}
                 <figure className="relative mx-auto w-full max-w-sm lg:mx-0 lg:max-w-none">
-                  <span aria-hidden="true" className="absolute -left-3 -top-3 h-16 w-16 border-l border-t border-[#B28F4A] sm:h-24 sm:w-24" />
+                  <span aria-hidden="true" className="absolute -left-3 -top-3 h-16 w-16 border-l border-t border-[#124CCF] sm:h-24 sm:w-24" />
                   <span aria-hidden="true" className="absolute -bottom-3 -right-3 h-16 w-16 border-b border-r border-black/25 sm:h-24 sm:w-24" />
-                  <div className="relative aspect-[4/5] overflow-hidden bg-[#c7cdd6]">
-                    <img
-                      src={FOUNDER_IMAGE}
-                      alt="Pallapati Vinayvardhan Reddy, Founder of Rare creative studios"
-                      loading="lazy"
-                      decoding="async"
-                      className="h-full w-full object-cover object-top"
-                    />
+                  <div className="relative aspect-[4/5] overflow-hidden bg-[#C6CBD3]">
+                    <img src={FOUNDER_IMAGE} alt="Pallapati Vinayvardhan Reddy, Founder of Rare creative studios" loading="lazy" decoding="async" className="h-full w-full object-cover object-top" />
                     <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/40 to-transparent px-5 pb-5 pt-16">
-                      <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-[#C6A66B] md:text-[8px]">Rare creative studios</p>
-                      <p className="rcs-display mt-1 text-base leading-tight text-white md:text-[clamp(1rem,1.45vw,1.3rem)]">
-                        Pallapati Vinayvardhan Reddy
-                      </p>
-                      <p className="mt-1 text-[10px] font-semibold uppercase tracking-[.22em] text-white/70 md:text-[8px]">Founder</p>
+                      <p className="rcs-nav-mono text-[10px] font-medium uppercase tracking-[.22em] text-[#8FB0FF] md:text-[8px]">Rare creative studios</p>
+                      <p className="rcs-display mt-1 text-base leading-tight text-white md:text-[clamp(1rem,1.45vw,1.3rem)]">Pallapati Vinayvardhan Reddy</p>
+                      <p className="rcs-nav-mono mt-1 text-[10px] uppercase tracking-[.22em] text-white/70 md:text-[8px]">Founder</p>
                     </figcaption>
                   </div>
                 </figure>
@@ -533,29 +427,20 @@ export default function About() {
                 {/* message */}
                 <div className="min-w-0">
                   <Eyebrow tone="light">Founder’s message</Eyebrow>
-
-                  <h2 className={`rcs-display mt-5 ${h2Chapter}`}>
+                  <h2 className={`rcs-display mt-5 uppercase ${h2Chapter}`}>
                     Make work
                     <br />
-                    <span className="text-black/25">worth remembering.</span>
+                    <span className="text-[#124CCF]">worth remembering.</span>
                   </h2>
 
-                  <div className={`mt-8 max-w-2xl space-y-5 border-l border-[#B28F4A] pl-5 text-black/75 sm:pl-7 ${bodyDark}`}>
-                    <p>
-                      At Rare creative studios, we see every project as an opportunity to think differently, tell better
-                      stories, and create work that makes an impact. We bring together creativity, strategy, and
-                      execution to help brands communicate with clarity and connect with the people who matter to
-                      them.
-                    </p>
-                    <p>
-                      For us, it’s never just about creating content. It’s about understanding the story behind a
-                      brand and finding the right way to bring it to life.
-                    </p>
+                  <div className={`mt-8 max-w-2xl space-y-5 border-l border-[#124CCF] pl-5 text-black/75 sm:pl-7 ${bodyDark}`}>
+                    <p>At Rare creative studios, we see every project as an opportunity to think differently, tell better stories, and create work that makes an impact. We bring together creativity, strategy, and execution to help brands communicate with clarity and connect with the people who matter to them.</p>
+                    <p>For us, it’s never just about creating content. It’s about understanding the story behind a brand and finding the right way to bring it to life.</p>
                   </div>
 
-                  <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-[#050A14]/15 pt-5 text-[10px] font-semibold uppercase tracking-[.2em] text-black/60 md:text-[8px] md:text-black/55">
+                  <div className="rcs-nav-mono mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-[#111111]/15 pt-5 text-[10px] uppercase tracking-[.2em] text-black/60 md:text-[8px]">
                     <span>Pallapati Vinayvardhan Reddy</span>
-                    <span aria-hidden="true" className="h-px w-10 bg-[#B28F4A]" />
+                    <span aria-hidden="true" className="h-px w-10 bg-[#124CCF]" />
                     <span className="text-black/50">Founder / Rare creative studios</span>
                   </div>
                 </div>
@@ -569,7 +454,7 @@ export default function About() {
           <div className="mx-auto grid max-w-[1440px] gap-10 lg:grid-cols-[.72fr_1.28fr] lg:gap-20">
             <div data-reveal className="rcs-reveal lg:sticky lg:top-24 lg:self-start">
               <Eyebrow>Frequently asked questions</Eyebrow>
-              <h2 className={`rcs-display mt-5 ${h2Main}`}>
+              <h2 className={`rcs-display mt-5 uppercase ${h2Main}`}>
                 The right
                 <br />
                 questions.
@@ -592,23 +477,13 @@ export default function About() {
                         onClick={() => setActiveFaq(open ? -1 : index)}
                         className={`flex min-h-[72px] w-full items-center justify-between gap-4 py-5 text-left md:min-h-[84px] ${focus}`}
                       >
-                        <span className="min-w-0 flex-1 text-[clamp(1.05rem,4.6vw,1.2rem)] font-medium leading-snug tracking-[-.02em] md:text-[clamp(.9rem,1.45vw,1.15rem)]">
-                          {item.question}
-                        </span>
+                        <span className="min-w-0 flex-1 text-[clamp(1.05rem,4.6vw,1.2rem)] font-medium leading-snug tracking-[-.02em] md:text-[clamp(.9rem,1.45vw,1.15rem)]">{item.question}</span>
                         <PlusIcon open={open} />
                       </button>
                     </h3>
-                    <div
-                      id={panelId}
-                      role="region"
-                      aria-labelledby={buttonId}
-                      data-open={open}
-                      className="rcs-faq-panel"
-                    >
+                    <div id={panelId} role="region" aria-labelledby={buttonId} data-open={open} className="rcs-faq-panel">
                       <div className="overflow-hidden">
-                        <p className={`max-w-3xl pb-7 pr-2 text-white/70 sm:pr-10 ${bodyDark} md:text-[10px]`}>
-                          {item.answer}
-                        </p>
+                        <p className={`max-w-3xl pb-7 pr-2 text-white/70 sm:pr-10 ${bodyDark} md:text-[10px]`}>{item.answer}</p>
                       </div>
                     </div>
                   </div>
@@ -618,31 +493,29 @@ export default function About() {
           </div>
         </section>
 
-        {/* ================= 7. CTA ================= */}
-        <section className="relative overflow-hidden border-t border-white/10 bg-[#050A14]/65 px-5 pb-[max(6rem,env(safe-area-inset-bottom))] pt-24 sm:px-8 sm:py-36 md:px-14 md:py-48">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_55%,rgba(7,86,189,.35),transparent_60%)]"
-          />
+        {/* ================= 7. CTA (cobalt, like Home) ================= */}
+        <section className="relative isolate overflow-hidden border-t border-white/10 bg-[#124CCF] px-5 pb-[max(6rem,env(safe-area-inset-bottom))] pt-24 text-[#F5F2EA] sm:px-8 sm:py-36 md:px-14 md:py-48">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_80%_110%,rgba(36,93,255,.9),transparent_55%),radial-gradient(ellipse_at_15%_0%,rgba(7,28,80,.7),transparent_55%)]" />
           <div data-reveal className="rcs-reveal relative mx-auto max-w-[1440px]">
-            <Eyebrow>The next move</Eyebrow>
-            <h2 className={`rcs-display mt-5 max-w-5xl ${h2Cta}`}>
+            <p className={`rcs-nav-mono flex items-center gap-3 ${label} font-medium uppercase tracking-[.28em] text-white/80`}>
+              <span aria-hidden="true" className="h-px w-8 bg-current" />
+              The next move
+            </p>
+            <h2 className={`rcs-display mt-5 max-w-5xl uppercase ${h2Cta}`}>
               Your brand deserves
               <br />
-              <span className="font-editorial font-normal normal-case italic tracking-[-.04em] text-[#C6A66B]">a defining moment.</span>
+              <span className="font-editorial font-black normal-case italic tracking-[-.04em]">a defining moment.</span>
             </h2>
 
             <div className="mt-10 flex flex-col gap-10 sm:flex-row sm:items-end sm:justify-between">
-              <p className={`max-w-md text-white/75 ${bodyDark}`}>
-                If the ambition is bigger than a mention, let’s start with the story worth telling.
-              </p>
+              <p className={`max-w-md text-white/85 ${bodyDark}`}>If the ambition is bigger than a mention, let’s start with the story worth telling.</p>
               <a
                 href={WHATSAPP_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`group inline-flex shrink-0 items-center gap-5 ${label} font-semibold uppercase tracking-[.2em] ${focus}`}
+                className={`group inline-flex shrink-0 items-center gap-5 ${label} font-semibold uppercase tracking-[.2em] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white`}
               >
-                <span className="grid h-16 w-16 place-items-center rounded-full border border-[#C6A66B]/80 text-[#C6A66B] transition-colors duration-300 group-hover:bg-[#C6A66B] group-hover:text-[#050A14]">
+                <span className="grid h-16 w-16 place-items-center rounded-full border border-[#F5F2EA]/80 text-[#F5F2EA] transition-colors duration-300 group-hover:bg-[#F5F2EA] group-hover:text-[#124CCF]">
                   <ArrowUpRight size={20} strokeWidth={1.6} aria-hidden="true" />
                 </span>
                 Start a conversation

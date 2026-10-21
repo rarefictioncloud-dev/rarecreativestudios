@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ArrowUpRight, ChevronDown } from "lucide-react";
 
 /* ------------------------------------------------------------------
    CONFIG (edit without touching the layout)
@@ -56,74 +57,123 @@ function validate(v) {
   return e;
 }
 
-const font = '"Helvetica Now Display","Helvetica Now Text","Helvetica Neue",Helvetica,Arial,sans-serif';
+/* ------------------------------------------------------------------
+   DESIGN TOKENS (same palette as the home page)
+   ivory #F5F2EA / #f6f3ee   ink #111111   cobalt #0b3fd9
+   navy #071C50   light cobalt #245DFF / #6f92ff   grey #c6cbd3
+------------------------------------------------------------------- */
+const COBALT = "#0b3fd9";
 
-/* All 3D is CSS: a fixed "film-frame tunnel" you fly through, a rotating service ring and a cube,
-   all driven by one damped scroll value (--p, 0..1). No WebGL, so no fallback is needed. */
+/* ------------------------------------------------------------------
+   SCROLL-DRIVEN 3D (all CSS, no WebGL, so no fallback is needed)
+   - Global value --p (0..1, whole page) drives the fixed "film-frame tunnel".
+   - Every [data-sp] element gets its own --s (0..1: just entering the
+     screen -> just leaving it). The cube, the service ring, the floating
+     cubes, the frame stack and the tilting form card all read their --s.
+   Both values are damped in one requestAnimationFrame loop.
+------------------------------------------------------------------- */
 const CSS = `
-.rcs-stage { perspective: 1200px; perspective-origin: 50% 46%; }
-.rcs-world { position: absolute; inset: 0; transform-style: preserve-3d;
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+.lc-root { font-family: 'Manrope', 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%; }
+.lc-root ::selection { background: ${COBALT}; color: #fff; }
+.lc-disp { font-family: 'Bebas Neue', 'Anton', 'Arial Narrow', Impact, sans-serif; font-weight: 400; letter-spacing: -0.005em; line-height: .92; text-transform: uppercase; }
+.lc-disp em { font-family: 'Playfair Display', Georgia, serif; font-style: italic; font-weight: 700; letter-spacing: -0.055em; text-transform: uppercase; }
+.lc-mono { font-family: 'IBM Plex Mono', 'Courier New', monospace; text-transform: uppercase; letter-spacing: .2em; }
+.lc-grain { position: absolute; inset: 0; z-index: 30; pointer-events: none; opacity: .07; mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+
+/* ---- fixed tunnel of frames you fly through as you scroll ---- */
+.lc-stage { perspective: 1200px; perspective-origin: 50% 46%; }
+.lc-world { position: absolute; inset: 0; transform-style: preserve-3d;
   transform: rotateX(calc(var(--my, 0) * -3deg)) rotateY(calc(var(--mx, 0) * 4deg)); }
-.rcs-frame { position: absolute; left: 50%; top: 50%; width: min(70vw, 1100px); aspect-ratio: 16 / 9;
+.lc-frame { position: absolute; left: 50%; top: 50%; width: min(70vw, 1100px); aspect-ratio: 16 / 9;
   --z: calc(var(--p, 0) * 3600 - var(--i) * 420 - 200);
   transform: translate(-50%, -50%) translateZ(calc(var(--z) * 1px));
-  border: 2px solid rgba(82,113,255,.6); background: rgba(0,35,102,.07);
+  border: 1.5px solid rgba(11,63,217,.45); background: rgba(11,63,217,.025);
   opacity: clamp(0, calc((500 - var(--z)) / 250), 1); will-change: transform, opacity; }
-.rcs-frame.rcs-y { border-color: rgba(250,212,48,.85); }
-@media (max-aspect-ratio: 1/1) { .rcs-frame { width: 88vw; aspect-ratio: 3 / 4; } }
+.lc-frame.lc-ink { border-color: rgba(17,17,17,.5); }
+@media (max-aspect-ratio: 1/1) { .lc-frame { width: 88vw; aspect-ratio: 3 / 4; } }
 
-.rcs-q { container-type: inline-size; }
-.rcs-cube { position: relative; width: 100%; height: 100%; transform-style: preserve-3d;
-  transform: rotateX(-24deg) rotateY(calc(35deg + var(--p, 0) * 1080deg)); }
-.rcs-face { position: absolute; inset: 0; backface-visibility: hidden; }
-.rcs-f1 { background: #5271FF; transform: translateZ(12cqw); }
-.rcs-f2 { background: #3F58D6; transform: rotateY(90deg) translateZ(12cqw); }
-.rcs-f3 { background: #2A3C9C; transform: rotateY(180deg) translateZ(12cqw); }
-.rcs-f4 { background: #6A86FF; transform: rotateY(-90deg) translateZ(12cqw); }
-.rcs-f5 { background: #93A8FF; transform: rotateX(90deg) translateZ(12cqw); }
-.rcs-f6 { background: #1B2870; transform: rotateX(-90deg) translateZ(12cqw); }
+/* ---- generic cube: size comes from --sz ---- */
+.lc-cubewrap { perspective: 900px; }
+.lc-cube { position: relative; width: 100%; height: 100%; transform-style: preserve-3d;
+  transform: rotateX(-24deg) rotateY(calc(35deg + var(--s, .5) * 900deg)); }
+.lc-face { position: absolute; inset: 0; backface-visibility: hidden; box-shadow: inset 0 0 0 1px rgba(245,242,234,.22); }
+.lc-f1 { background: #0b3fd9; transform: translateZ(calc(var(--sz) / 2)); }
+.lc-f2 { background: #0a35b8; transform: rotateY(90deg) translateZ(calc(var(--sz) / 2)); }
+.lc-f3 { background: #071C50; transform: rotateY(180deg) translateZ(calc(var(--sz) / 2)); }
+.lc-f4 { background: #245DFF; transform: rotateY(-90deg) translateZ(calc(var(--sz) / 2)); }
+.lc-f5 { background: #6f92ff; transform: rotateX(90deg) translateZ(calc(var(--sz) / 2)); }
+.lc-f6 { background: #111111; transform: rotateX(-90deg) translateZ(calc(var(--sz) / 2)); }
+.lc-q { container-type: inline-size; }
 
-.rcs-ring-wrap { perspective: 1400px; font-size: clamp(.85rem, 3.4vw, 2.4rem); }
-.rcs-ring { position: relative; width: 12em; height: 4em; margin: 2em auto; transform-style: preserve-3d;
-  transform: translateZ(-10.4em) rotateY(calc(var(--p, 0) * -720deg)); }
-.rcs-ring > span { position: absolute; inset: 0; display: grid; place-items: center; padding: 0 .6em; text-align: center;
-  backface-visibility: hidden; transform: rotateY(calc(var(--k) * 60deg)) translateZ(10.4em);
-  border: 1px solid rgba(82,113,255,.7); background: rgba(0,0,0,.82); font-weight: 700; text-transform: uppercase;
-  letter-spacing: -.03em; line-height: 1; }
+/* ---- the form card leans back as it enters and forward as it leaves ---- */
+.lc-tilt { transform: perspective(1400px) rotateX(calc((.5 - var(--s, .5)) * 14deg)) rotateY(calc((var(--s, .5) - .5) * -7deg));
+  transform-origin: 50% 60%; will-change: transform; }
 
-.rcs-rv { opacity: 0; transform: perspective(1400px) rotateX(14deg) translateY(56px) translateZ(-80px); transform-origin: 50% 100%;
-  transition: opacity .9s ease, transform .9s cubic-bezier(.2,.7,.2,1); }
-.rcs-rv.rcs-in { opacity: 1; transform: none; }
+/* ---- rotating service ring ---- */
+.lc-ring-wrap { perspective: 1400px; font-size: clamp(1.15rem, 5vw, 3rem); }
+.lc-ring { position: relative; width: 12em; height: 3em; margin: 2em auto; transform-style: preserve-3d;
+  transform: translateZ(-10.4em) rotateY(calc(var(--s, .5) * -720deg)); }
+.lc-ring > span { position: absolute; inset: 0; display: grid; place-items: center; padding: 0 .6em; text-align: center; backface-visibility: hidden;
+  transform: rotateY(calc(var(--k) * 60deg)) translateZ(10.4em);
+  border: 1px solid rgba(245,242,234,.4); background: rgba(7,28,80,.78);
+  font-family: 'Bebas Neue', 'Anton', 'Arial Narrow', Impact, sans-serif; font-weight: 400; text-transform: uppercase; letter-spacing: .02em; line-height: 1; }
+
+/* ---- stack of frames that swings as it scrolls past ---- */
+.lc-stack { perspective: 1400px; }
+.lc-stack-in { position: relative; width: 100%; height: 100%; transform-style: preserve-3d;
+  transform: rotateX(16deg) rotateY(calc(-42deg + var(--s, .5) * 84deg)); }
+.lc-stack-in > span { position: absolute; inset: 0; border: 1.5px solid rgba(245,242,234,.65);
+  transform: translateZ(calc(var(--n) * -54px + 108px)); }
+
+/* ---- reveal: tilt up from below ---- */
+.lc-rv { opacity: 0; transform: perspective(1400px) rotateX(14deg) translateY(56px) translateZ(-80px); transform-origin: 50% 100%;
+  transition: opacity .9s ease var(--d, 0ms), transform .9s cubic-bezier(.2,.7,.2,1) var(--d, 0ms); }
+.lc-rv.lc-in { opacity: 1; transform: none; }
 
 @media (prefers-reduced-motion: reduce) {
-  .rcs-rv { opacity: 1; transform: none; transition: none; }
+  .lc-rv { opacity: 1; transform: none; transition: none; }
+  .lc-tilt { transform: none; }
 }`;
 
-const outline = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white";
+const outlineInk = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0b3fd9]";
+const outlineLight = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white";
 
 const inputCls =
-  "block w-full rounded-none border border-[#75849B]/70 bg-white/[0.04] px-4 py-3.5 text-base text-white placeholder:text-[#75849B] transition-colors duration-200 hover:border-[#75849B] focus:border-[#5271FF] focus:bg-white/[0.07] focus:outline-none focus:ring-2 focus:ring-[#5271FF] aria-[invalid=true]:border-[#FF8A80]";
+  "block w-full rounded-none border-0 border-b border-black/40 bg-transparent px-0 py-3 text-base text-[#111] placeholder:text-black/40 transition-colors duration-200 hover:border-black/70 focus:border-b-2 focus:border-[#0b3fd9] focus:bg-[#0b3fd9]/[0.04] focus:outline-none focus:ring-0 aria-[invalid=true]:border-b-2 aria-[invalid=true]:border-[#b3261e]";
 
-const btnBlue = `group inline-flex min-h-[56px] w-full touch-manipulation items-center justify-between gap-4 bg-[#5271FF] px-7 text-sm font-bold tracking-[.08em] text-white transition-colors duration-300 hover:bg-white hover:text-black disabled:cursor-not-allowed disabled:opacity-60 sm:w-fit sm:justify-start ${outline}`;
-const arrow = "inline-block transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5";
+const btnCobalt = `group inline-flex min-h-14 w-full touch-manipulation items-center justify-between gap-4 bg-[#0b3fd9] px-7 text-[12px] font-bold uppercase tracking-[0.16em] text-[#F5F2EA] transition-colors duration-300 hover:bg-[#071C50] disabled:cursor-not-allowed disabled:opacity-60 sm:w-fit sm:justify-start ${outlineInk}`;
+const btnIvory = `group inline-flex min-h-14 w-full touch-manipulation items-center justify-between gap-4 bg-[#F5F2EA] px-7 text-[12px] font-bold uppercase tracking-[0.16em] text-[#071C50] transition-colors duration-300 hover:bg-white sm:w-fit sm:justify-start ${outlineLight}`;
+const arrow = "transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5";
 
-/* The question mark is the idea; its dot is a physical blue cube that turns as you scroll. */
+/* A cube whose rotation follows the scroll position of its wrapper (needs data-sp). */
+function Cube({ size }) {
+  return (
+    <div className="lc-cubewrap" style={{ width: size, height: size, "--sz": size }}>
+      <div className="lc-cube">
+        <span className="lc-face lc-f1" />
+        <span className="lc-face lc-f2" />
+        <span className="lc-face lc-f3" />
+        <span className="lc-face lc-f4" />
+        <span className="lc-face lc-f5" />
+        <span className="lc-face lc-f6" />
+      </div>
+    </div>
+  );
+}
+
+/* The question mark is the idea; its dot is a physical cube that turns as you scroll. */
 function IdeaMark() {
   return (
-    <div className="rcs-q relative mx-auto aspect-[2/3] w-full" aria-hidden="true">
-      <span className="absolute left-[2%] top-[4%] block aspect-square w-[13%] rounded-full bg-[#FAD430]" />
+    <div data-sp className="lc-q relative mx-auto aspect-[2/3] w-full" aria-hidden="true">
+      <span className="absolute left-[2%] top-[4%] block aspect-square w-[13%] rounded-full bg-[#111]" />
       <svg viewBox="0 0 200 300" className="absolute inset-0 h-full w-full" fill="none">
-        <path d="M38 92 C38 14 162 14 162 90 C162 142 100 140 100 196" stroke="#5271FF" strokeWidth="46" strokeLinecap="butt" />
+        <path d="M38 92 C38 14 162 14 162 90 C162 142 100 140 100 196" stroke={COBALT} strokeWidth="46" strokeLinecap="butt" />
       </svg>
-      <div className="absolute left-1/2 top-[85%]" style={{ width: "24cqw", height: "24cqw", transform: "translate(-50%,-50%)", perspective: "900px" }}>
-        <div className="rcs-cube" data-p>
-          <span className="rcs-face rcs-f1" />
-          <span className="rcs-face rcs-f2" />
-          <span className="rcs-face rcs-f3" />
-          <span className="rcs-face rcs-f4" />
-          <span className="rcs-face rcs-f5" />
-          <span className="rcs-face rcs-f6" />
-        </div>
+      <div className="absolute left-1/2 top-[85%]" style={{ width: "24cqw", height: "24cqw", transform: "translate(-50%,-50%)" }}>
+        <Cube size="24cqw" />
       </div>
     </div>
   );
@@ -132,16 +182,25 @@ function IdeaMark() {
 function Field({ id, label, error, optional, children }) {
   return (
     <div>
-      <label htmlFor={id} className="mb-2 block text-sm font-bold text-white">
+      <label htmlFor={id} className="lc-mono mb-1 block text-[10px] font-medium text-black/75">
         {label}
-        {optional && <span className="font-normal text-white/60"> (optional)</span>}
+        {optional && <span className="text-black/50"> (optional)</span>}
       </label>
       {children}
       {error && (
-        <p id={`${id}-error`} className="mt-2 text-sm font-medium text-[#FF8A80]">
+        <p id={`${id}-error`} className="mt-2 text-sm font-medium text-[#b3261e]">
           {error}
         </p>
       )}
+    </div>
+  );
+}
+
+function SelectWrap({ children }) {
+  return (
+    <div className="relative">
+      {children}
+      <ChevronDown aria-hidden="true" size={18} strokeWidth={1.4} className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-black/60" />
     </div>
   );
 }
@@ -163,31 +222,64 @@ export default function LetsConnect() {
     return () => mq.removeEventListener?.("change", on);
   }, []);
 
-  /* One damped scroll value drives every 3D element (writes --p only on [data-p] nodes). */
+  /* One loop drives everything: --p on the stage, --s on every [data-sp] element. */
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
-    const els = [...root.querySelectorAll("[data-p]")];
-    const apply = (p) => els.forEach((el) => el.style.setProperty("--p", p.toFixed(4)));
-    if (reduced) { apply(0.2); return; } // polished static composition
-    let cur = 0, tgt = 0, raf = 0;
-    const read = () => {
-      const max = root.offsetHeight - window.innerHeight;
-      tgt = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
-    };
-    const tick = () => {
-      cur += (tgt - cur) * 0.1;
-      if (Math.abs(tgt - cur) < 0.0004) { cur = tgt; raf = 0; } else raf = requestAnimationFrame(tick);
-      apply(cur);
-    };
-    const kick = () => { read(); if (!raf) raf = requestAnimationFrame(tick); };
     const stage = root.querySelector("[data-stage]");
+    const nodes = [...root.querySelectorAll("[data-sp]")].map((el) => ({ el, cur: 0.5, tgt: 0.5 }));
+    const g = { cur: 0, tgt: 0 };
+    const clamp = (n) => Math.min(1, Math.max(0, n));
+
+    if (reduced) {
+      stage?.style.setProperty("--p", "0.2"); // polished static composition
+      nodes.forEach((n) => n.el.style.setProperty("--s", "0.5"));
+      return;
+    }
+
+    const measure = () => {
+      const vh = window.innerHeight;
+      const r = root.getBoundingClientRect();
+      const span = r.height - vh;
+      g.tgt = span > 0 ? clamp(-r.top / span) : 0;
+      nodes.forEach((n) => {
+        const b = n.el.getBoundingClientRect();
+        n.tgt = clamp((vh - b.top) / (vh + b.height));
+      });
+    };
+    const paint = () => {
+      stage?.style.setProperty("--p", g.cur.toFixed(4));
+      nodes.forEach((n) => n.el.style.setProperty("--s", n.cur.toFixed(4)));
+    };
+    let raf = 0;
+    const tick = () => {
+      let busy = false;
+      const ease = (o) => {
+        o.cur += (o.tgt - o.cur) * 0.1;
+        if (Math.abs(o.tgt - o.cur) < 0.0005) o.cur = o.tgt;
+        else busy = true;
+      };
+      ease(g);
+      nodes.forEach(ease);
+      paint();
+      raf = busy ? requestAnimationFrame(tick) : 0;
+    };
+    const kick = () => {
+      measure();
+      if (!raf) raf = requestAnimationFrame(tick);
+    };
+
+    // start exactly where the page is (no spin-in on load)
+    measure();
+    g.cur = g.tgt;
+    nodes.forEach((n) => { n.cur = n.tgt; });
+    paint();
+
     const fine = window.matchMedia("(pointer: fine)").matches;
     const onMove = (e) => {
       stage?.style.setProperty("--mx", (e.clientX / window.innerWidth - 0.5).toFixed(3));
       stage?.style.setProperty("--my", (e.clientY / window.innerHeight - 0.5).toFixed(3));
     };
-    kick();
     window.addEventListener("scroll", kick, { passive: true });
     window.addEventListener("resize", kick);
     if (fine) window.addEventListener("pointermove", onMove, { passive: true });
@@ -201,13 +293,13 @@ export default function LetsConnect() {
 
   /* Tilt-in reveal */
   useEffect(() => {
-    const items = rootRef.current?.querySelectorAll(".rcs-rv") ?? [];
+    const items = rootRef.current?.querySelectorAll(".lc-rv") ?? [];
     if (reduced || !("IntersectionObserver" in window)) {
-      items.forEach((i) => i.classList.add("rcs-in"));
+      items.forEach((i) => i.classList.add("lc-in"));
       return;
     }
     const io = new IntersectionObserver(
-      (entries) => entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("rcs-in"); io.unobserve(e.target); } }),
+      (entries) => entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("lc-in"); io.unobserve(e.target); } }),
       { threshold: 0.12, rootMargin: "0px 0px -4% 0px" }
     );
     items.forEach((i) => io.observe(i));
@@ -257,82 +349,83 @@ export default function LetsConnect() {
 
   return (
     /* clip-path keeps the FIXED 3D stage inside <main>, so a footer below is never painted over */
-    <main ref={rootRef} style={{ fontFamily: font }} className="relative isolate overflow-x-clip bg-black text-white [clip-path:inset(0)]">
+    <main ref={rootRef} className="lc-root relative isolate overflow-x-clip bg-[#F5F2EA] text-[#111111] [clip-path:inset(0)]">
       <style>{CSS}</style>
+      <span aria-hidden="true" className="lc-grain" />
 
       {/* ============ SCROLL-DRIVEN 3D STAGE: fly through a tunnel of film frames ============ */}
-      <div data-stage data-p className="rcs-stage pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden="true">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_60%_at_50%_46%,rgba(0,35,102,.55),transparent_75%)]" />
-        <div className="rcs-world">
+      <div data-stage className="lc-stage pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden="true">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_65%_60%_at_50%_46%,rgba(255,255,255,.7),rgba(239,235,227,0)_75%)]" />
+        <div className="lc-world">
           {Array.from({ length: 10 }, (_, i) => (
-            <span key={i} className={`rcs-frame ${i % 4 === 0 ? "rcs-y" : ""}`} style={{ "--i": i }} />
+            <span key={i} className={`lc-frame ${i % 4 === 0 ? "lc-ink" : ""}`} style={{ "--i": i }} />
           ))}
         </div>
       </div>
 
       <div className="relative z-10">
-        {/* ================= 1. GOT A BIG IDEA? ================= */}
+        {/* ================= 1. GOT A BIG IDEA? (one full screen) ================= */}
         <section
           aria-labelledby="idea-hero"
-          className="relative isolate overflow-hidden pb-[max(4rem,env(safe-area-inset-bottom))] pt-36 md:pt-40 lg:flex lg:min-h-[100svh] lg:items-center lg:pb-24"
+          className="relative flex min-h-[100svh] items-center pb-[max(4rem,env(safe-area-inset-bottom))] pt-32 md:pt-36 lg:pb-20"
         >
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-black/50 via-black/20 to-black/60 lg:bg-gradient-to-r lg:from-black/75 lg:via-black/25 lg:to-transparent" />
-          <div className="relative mx-auto grid w-full max-w-[1440px] gap-10 px-[max(1.25rem,env(safe-area-inset-left))] sm:px-10 md:px-16 lg:grid-cols-[1.3fr_.7fr] lg:items-center lg:gap-6">
+          <div className="mx-auto grid w-full max-w-[1440px] gap-10 px-[max(1.25rem,env(safe-area-inset-left))] sm:px-10 md:px-16 lg:grid-cols-[1.35fr_.65fr] lg:items-center lg:gap-6">
             <div className="relative z-10">
-              <p className="mb-6 flex items-center gap-3 text-sm font-bold tracking-[.14em] text-white">
-                <span aria-hidden="true" className="block h-2.5 w-2.5 rounded-full bg-[#FAD430]" />
-                LET’S CONNECT
+              <p className="lc-mono flex items-center gap-3 text-[11px] text-black/75">
+                <span aria-hidden="true" className="block h-2.5 w-2.5 rounded-full bg-[#0b3fd9]" />
+                Let’s connect
               </p>
-              <h1 id="idea-hero" className="break-words text-[clamp(1.58rem,5.55vw,5.1rem)] font-bold uppercase leading-[.86] tracking-[-.05em]">
-                <span className="block">Got a big</span>
-                <span className="block">idea?</span>
+              <h1 id="idea-hero" className="lc-disp mt-5 break-words text-black">
+                <span className="block text-[clamp(3.6rem,17vw,10.5rem)]">Got a big</span>
+                <span className="block text-[clamp(3.6rem,17vw,10.5rem)]">idea<em style={{ color: COBALT }}>?</em></span>
               </h1>
-              <p className="mt-6 text-[clamp(0.9rem,2.4vw,1.95rem)] font-bold uppercase leading-[.95] tracking-[-.04em] text-[#5271FF]">Let’s make it rare.</p>
-              <span aria-hidden="true" className="mt-5 block h-1.5 w-14 bg-[#FAD430]" />
-              <p className="mt-6 max-w-[40ch] text-base leading-relaxed text-white/85 md:text-lg">
+              <p className="lc-disp mt-4 text-[clamp(2rem,8vw,4.6rem)] text-black sm:mt-6">
+                Let’s make it <em style={{ color: COBALT }}>rare.</em>
+              </p>
+              <span aria-hidden="true" className="mt-7 block h-px w-14 bg-black/60" />
+              <p className="mt-6 max-w-[40ch] text-[15px] leading-relaxed text-black/80 sm:text-base md:text-lg">
                 Big ambitions. Unusual ideas. Interesting challenges.
                 <br />
                 Tell us what you’re thinking.
               </p>
               <div className="mt-9">
-                <a href="#contact-form" onClick={goToForm} className={btnBlue}>
-                  LET’S START SOMETHING <span aria-hidden="true" className={arrow}>↗</span>
+                <a href="#contact-form" onClick={goToForm} className={btnCobalt}>
+                  Let’s start something
+                  <ArrowUpRight size={16} strokeWidth={2} aria-hidden="true" className={arrow} />
                 </a>
               </div>
             </div>
 
-            <div className="relative mx-auto w-[min(48vw,240px)] lg:w-[min(30vw,420px)] lg:justify-self-end">
+            <div className="relative mx-auto w-[min(48vw,240px)] lg:w-[min(28vw,400px)] lg:justify-self-end">
               <IdeaMark />
             </div>
           </div>
         </section>
 
         {/* ================= 2. MAKE YOUR MOVE ================= */}
-        <section id="contact-form" aria-labelledby="form-heading" className="scroll-mt-24 px-[max(1.25rem,env(safe-area-inset-left))] py-16 sm:px-10 md:px-16 md:py-28">
-          <div className="mx-auto grid max-w-[1440px] gap-10 lg:grid-cols-[.9fr_1.1fr] lg:gap-16">
-            <div className="rcs-rv lg:flex lg:flex-col lg:justify-between lg:py-4">
+        <section id="contact-form" aria-labelledby="form-heading" className="scroll-mt-4 px-[max(1.25rem,env(safe-area-inset-left))] py-20 sm:px-10 md:px-16 md:py-32">
+          <div className="mx-auto grid max-w-[1440px] gap-12 lg:grid-cols-[.9fr_1.1fr] lg:gap-16">
+            <div className="lc-rv lg:flex lg:flex-col lg:justify-between lg:py-4">
               <div>
-                <span aria-hidden="true" className="mb-8 block h-1.5 w-16 bg-[#FAD430]" />
-                <h2 id="form-heading" className="break-words text-[clamp(1.28rem,3.38vw,3.38rem)] font-bold uppercase leading-[.88] tracking-[-.045em] text-[#5271FF]">
-                  <span className="block">Every good</span>
-                  <span className="block">idea starts</span>
-                  <span className="block">somewhere<span className="text-[#FAD430]">.</span></span>
+                <p className="lc-mono text-[11px] text-black/75">01 / Make your move</p>
+                <h2 id="form-heading" className="lc-disp mt-5 text-[clamp(3rem,11vw,6.6rem)] text-black">
+                  Every good idea starts <em style={{ color: COBALT }}>somewhere.</em>
                 </h2>
               </div>
               <div className="mt-10 lg:mt-16">
-                <p className="max-w-[44ch] text-base leading-relaxed text-white/85 md:text-lg">
+                <p className="max-w-[44ch] text-[15px] leading-relaxed text-black/80 sm:text-base md:text-lg">
                   Rare Creative Studios welcomes project enquiries and collaborations. Whether you’re launching a brand, shaping a story, or exploring a partnership, tell us what you’re working on.
                 </p>
                 {(EMAIL || SOCIALS.length > 0) && (
-                  <ul className="mt-6 space-y-1 text-white">
+                  <ul className="mt-6 space-y-1">
                     {EMAIL && (
                       <li>
-                        <a href={`mailto:${EMAIL}`} className={`inline-block py-1.5 underline decoration-[#5271FF] underline-offset-4 ${outline}`}>{EMAIL}</a>
+                        <a href={`mailto:${EMAIL}`} className={`inline-block py-1.5 underline decoration-[#0b3fd9] underline-offset-4 ${outlineInk}`}>{EMAIL}</a>
                       </li>
                     )}
                     {SOCIALS.map((s) => (
                       <li key={s.href}>
-                        <a href={s.href} target="_blank" rel="noopener noreferrer" className={`inline-block py-1.5 underline decoration-[#5271FF] underline-offset-4 ${outline}`}>{s.label}</a>
+                        <a href={s.href} target="_blank" rel="noopener noreferrer" className={`inline-block py-1.5 underline decoration-[#0b3fd9] underline-offset-4 ${outlineInk}`}>{s.label}</a>
                       </li>
                     ))}
                   </ul>
@@ -340,70 +433,87 @@ export default function LetsConnect() {
               </div>
             </div>
 
-            <div className="rcs-rv relative border border-[#5271FF]/40 bg-black px-5 py-12 shadow-[0_0_90px_rgba(82,113,255,.18)] sm:px-10 md:px-12 md:py-14">
-              <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#5271FF] via-[#5271FF] to-[#FAD430]" />
-              <form onSubmit={onSubmit} noValidate aria-label="Contact form" className="grid gap-7">
-                <div className="grid gap-7 md:grid-cols-2">
-                  <Field id="cf-name" label="Name" error={errors.name}>
-                    <input id="cf-name" name="name" type="text" autoComplete="name" required value={values.name} onChange={onChange} aria-invalid={Boolean(errors.name)} aria-describedby={describe("name")} className={inputCls} />
-                  </Field>
-                  <Field id="cf-email" label="Email" error={errors.email}>
-                    <input id="cf-email" name="email" type="email" inputMode="email" autoComplete="email" required value={values.email} onChange={onChange} aria-invalid={Boolean(errors.email)} aria-describedby={describe("email")} className={inputCls} />
-                  </Field>
+            {/* wrapper measures scroll (data-sp); the card inside leans in 3D */}
+            <div data-sp>
+              <div className="lc-rv">
+                <div className="lc-tilt relative border border-black/10 bg-[#fbf9f4] px-5 py-10 shadow-[0_40px_80px_-40px_rgba(7,28,80,.45)] sm:px-10 md:px-12 md:py-14">
+                  <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#0b3fd9] via-[#245DFF] to-[#071C50]" />
+                  <p aria-hidden="true" className="lc-mono mb-8 text-[10px] text-black/55">Project enquiry</p>
+                  <form onSubmit={onSubmit} noValidate aria-label="Contact form" className="grid gap-7">
+                    <div className="grid gap-7 md:grid-cols-2">
+                      <Field id="cf-name" label="Name" error={errors.name}>
+                        <input id="cf-name" name="name" type="text" autoComplete="name" required value={values.name} onChange={onChange} aria-invalid={Boolean(errors.name)} aria-describedby={describe("name")} className={inputCls} />
+                      </Field>
+                      <Field id="cf-email" label="Email" error={errors.email}>
+                        <input id="cf-email" name="email" type="email" inputMode="email" autoComplete="email" required value={values.email} onChange={onChange} aria-invalid={Boolean(errors.email)} aria-describedby={describe("email")} className={inputCls} />
+                      </Field>
+                    </div>
+
+                    <Field id="cf-company" label="Company / Brand" optional>
+                      <input id="cf-company" name="company" type="text" autoComplete="organization" value={values.company} onChange={onChange} className={inputCls} />
+                    </Field>
+
+                    <div className="grid gap-7 md:grid-cols-2">
+                      <Field id="cf-service" label="Service required" error={errors.service}>
+                        <SelectWrap>
+                          <select id="cf-service" name="service" required value={values.service} onChange={onChange} aria-invalid={Boolean(errors.service)} aria-describedby={describe("service")} className={`${inputCls} appearance-none pr-7`}>
+                            <option value="">Select a service</option>
+                            {SERVICES.map((s) => (<option key={s} value={s}>{s}</option>))}
+                          </select>
+                        </SelectWrap>
+                      </Field>
+                      <Field id="cf-budget" label="Estimated budget" optional>
+                        <SelectWrap>
+                          <select id="cf-budget" name="budget" value={values.budget} onChange={onChange} className={`${inputCls} appearance-none pr-7`}>
+                            <option value="">Select a range</option>
+                            {BUDGETS.map((b) => (<option key={b} value={b}>{b}</option>))}
+                          </select>
+                        </SelectWrap>
+                      </Field>
+                    </div>
+
+                    <Field id="cf-details" label="Project details" error={errors.details}>
+                      <textarea id="cf-details" name="details" rows={5} required value={values.details} onChange={onChange} aria-invalid={Boolean(errors.details)} aria-describedby={describe("details")} className={`${inputCls} resize-y`} />
+                    </Field>
+
+                    <div className="flex flex-col gap-5">
+                      <button type="submit" disabled={status === "submitting"} aria-busy={status === "submitting"} className={btnCobalt}>
+                        {status === "submitting" ? "Sending…" : "Send us your idea"}
+                        {status !== "submitting" && <ArrowUpRight size={16} strokeWidth={2} aria-hidden="true" className={arrow} />}
+                      </button>
+                      <div aria-live="polite" role="status" className="min-h-[1.5rem] text-sm font-medium">
+                        {status === "success" && <p className="text-[#0b3fd9]">{message}</p>}
+                        {status === "error" && <p className="text-[#b3261e]">{message}</p>}
+                      </div>
+                    </div>
+                  </form>
                 </div>
-
-                <Field id="cf-company" label="Company / Brand" optional>
-                  <input id="cf-company" name="company" type="text" autoComplete="organization" value={values.company} onChange={onChange} className={inputCls} />
-                </Field>
-
-                <div className="grid gap-7 md:grid-cols-2">
-                  <Field id="cf-service" label="Service required" error={errors.service}>
-                    <select id="cf-service" name="service" required value={values.service} onChange={onChange} aria-invalid={Boolean(errors.service)} aria-describedby={describe("service")} className={inputCls}>
-                      <option value="" className="bg-black">Select a service</option>
-                      {SERVICES.map((s) => (<option key={s} value={s} className="bg-black">{s}</option>))}
-                    </select>
-                  </Field>
-                  <Field id="cf-budget" label="Estimated budget" optional>
-                    <select id="cf-budget" name="budget" value={values.budget} onChange={onChange} className={inputCls}>
-                      <option value="" className="bg-black">Select a range</option>
-                      {BUDGETS.map((b) => (<option key={b} value={b} className="bg-black">{b}</option>))}
-                    </select>
-                  </Field>
-                </div>
-
-                <Field id="cf-details" label="Project details" error={errors.details}>
-                  <textarea id="cf-details" name="details" rows={6} required value={values.details} onChange={onChange} aria-invalid={Boolean(errors.details)} aria-describedby={describe("details")} className={`${inputCls} resize-y`} />
-                </Field>
-
-                <div className="flex flex-col gap-5">
-                  <button type="submit" disabled={status === "submitting"} aria-busy={status === "submitting"} className={btnBlue}>
-                    {status === "submitting" ? "SENDING…" : "SEND US YOUR IDEA"}
-                    {status !== "submitting" && <span aria-hidden="true" className={arrow}>↗</span>}
-                  </button>
-                  <div aria-live="polite" role="status" className="min-h-[1.5rem] text-sm font-medium">
-                    {status === "success" && <p className="text-[#FAD430]">{message}</p>}
-                    {status === "error" && <p className="text-[#FF8A80]">{message}</p>}
-                  </div>
-                </div>
-              </form>
+              </div>
             </div>
           </div>
         </section>
 
         {/* ================= 3. LET'S MAKE SOMETHING THAT MATTERS (3D service ring) ================= */}
-        <section aria-labelledby="matters" className="overflow-hidden px-[max(1.25rem,env(safe-area-inset-left))] py-24 sm:px-10 md:px-16 md:py-36">
-          <div className="mx-auto max-w-[1440px]">
-            <h2 id="matters" className="rcs-rv break-words text-[clamp(1.13rem,4.8vw,4.5rem)] font-bold uppercase leading-[.88] tracking-[-.05em] text-white">
-              <span className="block">Let’s make</span>
-              <span className="block">something</span>
-              <span className="block text-[#5271FF]">that matters<span className="text-[#FAD430]">.</span></span>
+        <section aria-labelledby="matters" className="relative overflow-hidden bg-[#071C50] px-[max(1.25rem,env(safe-area-inset-left))] py-24 text-[#F5F2EA] sm:px-10 md:px-16 md:py-36">
+          {/* two cubes that spin with the scroll */}
+          <div data-sp aria-hidden="true" className="pointer-events-none absolute right-[7%] top-[10%] hidden sm:block">
+            <Cube size="clamp(70px, 9vw, 130px)" />
+          </div>
+          <div data-sp aria-hidden="true" className="pointer-events-none absolute bottom-[8%] left-[5%] hidden sm:block">
+            <Cube size="clamp(44px, 5vw, 76px)" />
+          </div>
+
+          <div className="relative mx-auto max-w-[1440px]">
+            <p className="lc-mono text-[11px] text-[#F5F2EA]/70">02 / What we make</p>
+            <h2 id="matters" className="lc-rv lc-disp mt-5 break-words text-[clamp(3rem,12vw,8rem)]">
+              Let’s make something <em className="text-[#6f92ff]">that matters.</em>
             </h2>
 
             <ul className="sr-only">{RING.map((s) => (<li key={s}>{s}</li>))}</ul>
-            <div aria-hidden="true" className="rcs-ring-wrap mt-14 md:mt-20">
-              <div className="rcs-ring" data-p>
+            <div data-sp aria-hidden="true" className="lc-ring-wrap mt-14 md:mt-20">
+              <div className="lc-ring">
                 {RING.map((s, k) => (
-                  <span key={s} style={{ "--k": k, color: k % 3 === 2 ? "#FAD430" : "#fff" }}>{s}</span>
+                  <span key={s} style={{ "--k": k, color: k % 3 === 2 ? "#6f92ff" : "#F5F2EA" }}>{s}</span>
                 ))}
               </div>
             </div>
@@ -411,17 +521,26 @@ export default function LetsConnect() {
         </section>
 
         {/* ================= 4. FINAL CTA ================= */}
-        <section aria-labelledby="closing" className="px-[max(1.25rem,env(safe-area-inset-left))] pb-[max(6rem,env(safe-area-inset-bottom))] pt-24 sm:px-10 md:px-16 md:pb-36 md:pt-28">
-          <div className="rcs-rv mx-auto max-w-[1440px]">
-            <h2 id="closing" className="break-words text-[clamp(0.94rem,4.2vw,3.9rem)] font-bold uppercase leading-[.9] tracking-[-.045em]">
-              <span className="block">Your idea.</span>
-              <span className="block">Our imagination.</span>
-              <span className="block text-[#5271FF]">Something rare<span className="text-[#FAD430]">.</span></span>
+        <section aria-labelledby="closing" className="relative isolate overflow-hidden bg-[#0b3fd9] px-[max(1.25rem,env(safe-area-inset-left))] pb-[max(6rem,env(safe-area-inset-bottom))] pt-24 text-[#F5F2EA] sm:px-10 md:px-16 md:pb-36 md:pt-32">
+          {/* frame stack that swings as you scroll past */}
+          <div data-sp aria-hidden="true" className="lc-stack pointer-events-none absolute -right-[14%] top-1/2 -z-10 aspect-[4/3] w-[72vw] max-w-[560px] -translate-y-1/2 opacity-60 sm:right-[4%] sm:opacity-90 lg:right-[8%]">
+            <div className="lc-stack-in">
+              {[0, 1, 2, 3].map((n) => (
+                <span key={n} style={{ "--n": n, background: `rgba(245,242,234,${0.03 + n * 0.015})` }} />
+              ))}
+            </div>
+          </div>
+
+          <div className="lc-rv mx-auto max-w-[1440px]">
+            <p className="lc-mono text-[11px] text-[#F5F2EA]/75">03 / Start</p>
+            <h2 id="closing" className="lc-disp mt-5 break-words text-[clamp(3.1rem,13vw,8.4rem)]">
+              Your idea.<br />Our imagination.<br />Something <em>rare.</em>
             </h2>
-            <span aria-hidden="true" className="mt-10 block h-1.5 w-20 bg-[#FAD430]" />
-            <div className="mt-10">
-              <a href="#contact-form" onClick={goToForm} className={btnBlue}>
-                START A PROJECT <span aria-hidden="true" className={arrow}>↗</span>
+            <span aria-hidden="true" className="mt-9 block h-px w-16 bg-[#F5F2EA]/70" />
+            <div className="mt-9">
+              <a href="#contact-form" onClick={goToForm} className={btnIvory}>
+                Start a project
+                <ArrowUpRight size={16} strokeWidth={2} aria-hidden="true" className={arrow} />
               </a>
             </div>
           </div>
