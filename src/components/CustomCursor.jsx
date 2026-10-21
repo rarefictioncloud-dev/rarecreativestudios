@@ -1,224 +1,347 @@
 import { useEffect, useRef } from "react";
 
 const CURSOR_CSS = `
-  .rcs-cursor-dot,
-  .rcs-cursor-ring {
-    position: fixed;
-    left: 0;
-    top: 0;
-    z-index: 9998;
-    pointer-events: none;
-    opacity: 0;
-    will-change: transform, width, height, opacity;
+  @media (hover: hover) and (pointer: fine) {
+    html,
+    body,
+    body * {
+      cursor: none !important;
+    }
+
+    .rcs-cursor {
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 2147483647;
+      width: 42px;
+      height: 42px;
+      pointer-events: none;
+      opacity: 0;
+      visibility: hidden;
+      will-change: transform;
+      transition: opacity 180ms ease, visibility 180ms ease;
+    }
+
+    .rcs-cursor.is-visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    /* Default RCS brand marker */
+    .rcs-cursor__core {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 12px;
+      height: 12px;
+      border: 1.5px solid #111111;
+      border-radius: 50%;
+      background: #124CCF;
+      box-shadow: 0 0 0 3px rgba(245, 242, 234, 0.9);
+      transform: translate(-50%, -50%);
+      transition:
+        width 240ms cubic-bezier(.2,.8,.2,1),
+        height 240ms cubic-bezier(.2,.8,.2,1),
+        background 200ms ease,
+        border-radius 240ms ease,
+        border-color 200ms ease;
+    }
+
+    /* Fine ivory center */
+    .rcs-cursor__core::after {
+      content: "";
+      position: absolute;
+      width: 3px;
+      height: 3px;
+      top: 50%;
+      left: 50%;
+      border-radius: 50%;
+      background: #F5F2EA;
+      transform: translate(-50%, -50%);
+      transition: opacity 160ms ease;
+    }
+
+    /* Thin orbit ring */
+    .rcs-cursor__orbit {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 28px;
+      height: 28px;
+      border: 1px solid rgba(18, 76, 207, 0.45);
+      border-radius: 50%;
+      transform: translate(-50%, -50%) scale(.65);
+      opacity: 0;
+      transition:
+        transform 260ms cubic-bezier(.2,.8,.2,1),
+        opacity 200ms ease;
+    }
+
+    /* Arrow label */
+    .rcs-cursor__arrow {
+      position: absolute;
+      top: 0;
+      left: 0;
+      display: grid;
+      width: 28px;
+      height: 28px;
+      place-items: center;
+      color: #F5F2EA;
+      font-family: Arial, sans-serif;
+      font-size: 17px;
+      line-height: 1;
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(.6);
+      transition:
+        opacity 180ms ease,
+        transform 220ms cubic-bezier(.2,.8,.2,1);
+    }
+
+    /* Editorial Explore label for creative work */
+    .rcs-cursor__explore {
+      position: absolute;
+      top: 0;
+      left: 0;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 10px 13px;
+      border: 1px solid #124CCF;
+      border-radius: 2px;
+      background: #F5F2EA;
+      color: #111111;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 9px;
+      font-weight: 500;
+      letter-spacing: .12em;
+      white-space: nowrap;
+      opacity: 0;
+      transform: translate(12px, 12px) scale(.92);
+      transition:
+        opacity 180ms ease,
+        transform 220ms cubic-bezier(.2,.8,.2,1);
+    }
+
+    .rcs-cursor__explore::after {
+      content: "↗";
+      color: #124CCF;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      letter-spacing: 0;
+    }
+
+    /* Interactive links and buttons */
+    .rcs-cursor.is-link .rcs-cursor__core {
+      width: 28px;
+      height: 28px;
+      border-color: #111111;
+      background: #124CCF;
+    }
+
+    .rcs-cursor.is-link .rcs-cursor__core::after {
+      opacity: 0;
+    }
+
+    .rcs-cursor.is-link .rcs-cursor__orbit {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    .rcs-cursor.is-link .rcs-cursor__arrow {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    /* Creative project / image hover */
+    .rcs-cursor.is-explore .rcs-cursor__core,
+    .rcs-cursor.is-explore .rcs-cursor__orbit,
+    .rcs-cursor.is-explore .rcs-cursor__arrow {
+      opacity: 0;
+    }
+
+    .rcs-cursor.is-explore .rcs-cursor__explore {
+      opacity: 1;
+      transform: translate(12px, 12px) scale(1);
+    }
+
+    /* Click response */
+    .rcs-cursor.is-clicking .rcs-cursor__core {
+      background: #111111;
+      transform: translate(-50%, -50%) scale(.8);
+    }
+
+    .rcs-cursor.is-clicking .rcs-cursor__orbit {
+      transform: translate(-50%, -50%) scale(1.35);
+      opacity: 0;
+    }
+
+    .rcs-cursor.is-hidden {
+      opacity: 0;
+      visibility: hidden;
+    }
   }
 
-  .rcs-cursor-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #124CCF;
-    z-index: 10000;
-  }
-
-  .rcs-cursor-ring {
-    width: 38px;
-    height: 38px;
-    border: 1px solid rgba(18, 76, 207, 0.65);
-    border-radius: 50%;
-    background: rgba(245, 242, 234, 0.08);
-    display: grid;
-    place-items: center;
-    transition:
-      width 260ms cubic-bezier(.2,.8,.2,1),
-      height 260ms cubic-bezier(.2,.8,.2,1),
-      background 260ms ease,
-      border-color 260ms ease;
-  }
-
-  .rcs-cursor-arrow {
-    width: 14px;
-    height: 14px;
-    color: #124CCF;
-    opacity: 0;
-    transform: scale(.6) rotate(-45deg);
-    transition:
-      opacity 180ms ease,
-      transform 260ms ease;
-  }
-
-  .rcs-cursor-ring.is-hovering {
-    width: 62px;
-    height: 62px;
-    background: rgba(18, 76, 207, 0.06);
-    border-color: #124CCF;
-  }
-
-  .rcs-cursor-ring.is-hovering .rcs-cursor-arrow {
-    opacity: 1;
-    transform: scale(1) rotate(0deg);
-  }
-
-  .rcs-cursor-ring.is-pressed {
-    width: 30px;
-    height: 30px;
-    background: rgba(18, 76, 207, 0.12);
-  }
-
-  @media (pointer: coarse), (hover: none) {
-    .rcs-cursor-dot,
-    .rcs-cursor-ring {
+  @media (hover: none), (pointer: coarse) {
+    .rcs-cursor {
       display: none !important;
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .rcs-cursor-dot,
-    .rcs-cursor-ring {
-      display: none !important;
+    .rcs-cursor,
+    .rcs-cursor * {
+      transition: none !important;
     }
   }
 `;
 
 export default function CustomCursor() {
-  const dotRef = useRef(null);
-  const ringRef = useRef(null);
+  const cursorRef = useRef(null);
+  const animationRef = useRef(null);
 
   useEffect(() => {
-    const dot = dotRef.current;
-    const ring = ringRef.current;
+    const cursor = cursorRef.current;
 
-    if (!dot || !ring) return;
+    if (!cursor) return;
 
-    const finePointer = window.matchMedia(
-      "(pointer: fine) and (hover: hover)"
-    ).matches;
+    const pointerMedia = window.matchMedia(
+      "(hover: hover) and (pointer: fine)"
+    );
 
-    const reducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)"
-    ).matches;
+    if (!pointerMedia.matches) return;
 
-    if (!finePointer || reducedMotion) return;
+    let disposed = false;
+    let targetX = -100;
+    let targetY = -100;
+    let currentX = -100;
+    let currentY = -100;
 
-    let mouseX = -100;
-    let mouseY = -100;
+    const interactiveSelector = [
+      "a",
+      "button",
+      "[role='button']",
+      "summary",
+      "[data-cursor='hover']",
+    ].join(",");
 
-    let ringX = -100;
-    let ringY = -100;
+    const exploreSelector = [
+      "[data-cursor='explore']",
+      ".project-card",
+      ".work-card",
+      ".portfolio-item",
+    ].join(",");
 
-    let rafId = 0;
-    let visible = false;
+    const textSelector = [
+      "input",
+      "textarea",
+      "select",
+      '[contenteditable="true"]',
+    ].join(",");
 
-    const animate = () => {
-      ringX += (mouseX - ringX) * 0.16;
-      ringY += (mouseY - ringY) * 0.16;
+    const render = () => {
+      if (disposed) return;
 
-      dot.style.transform = `
-        translate3d(
-          ${mouseX - 3.5}px,
-          ${mouseY - 3.5}px,
-          0
-        )
-      `;
+      // Slightly smooth the cursor without creating a long trailing effect.
+      currentX += (targetX - currentX) * 0.78;
+      currentY += (targetY - currentY) * 0.78;
 
-      ring.style.transform = `
-        translate3d(
-          ${ringX - ring.offsetWidth / 2}px,
-          ${ringY - ring.offsetHeight / 2}px,
-          0
-        )
-      `;
+      cursor.style.transform =
+        `translate3d(${currentX}px, ${currentY}px, 0)`;
 
-      rafId = requestAnimationFrame(animate);
+      animationRef.current =
+        window.requestAnimationFrame(render);
     };
 
     const handlePointerMove = (event) => {
-      mouseX = event.clientX;
-      mouseY = event.clientY;
+      targetX = event.clientX;
+      targetY = event.clientY;
 
-      if (!visible) {
-        visible = true;
-        dot.style.opacity = "1";
-        ring.style.opacity = "1";
-      }
+      cursor.classList.add("is-visible");
+      cursor.classList.remove("is-hidden");
 
-      if (!rafId) {
-        rafId = requestAnimationFrame(animate);
-      }
-    };
-
-    const handlePointerOver = (event) => {
       const target = event.target;
 
-      if (!(target instanceof Element)) return;
+      if (target.closest(textSelector)) {
+        cursor.classList.add("is-hidden");
+        return;
+      }
 
-      const interactive = target.closest(
-        [
-          "a",
-          "button",
-          "[role='button']",
-          "input",
-          "select",
-          "textarea",
-          "[data-cursor='hover']",
-        ].join(",")
+      const exploreTarget = target.closest(exploreSelector);
+      const linkTarget = target.closest(interactiveSelector);
+
+      cursor.classList.toggle(
+        "is-explore",
+        Boolean(exploreTarget)
       );
 
-      ring.classList.toggle("is-hovering", Boolean(interactive));
+      cursor.classList.toggle(
+        "is-link",
+        Boolean(linkTarget) && !exploreTarget
+      );
     };
 
     const handlePointerDown = () => {
-      ring.classList.add("is-pressed");
+      cursor.classList.add("is-clicking");
     };
 
     const handlePointerUp = () => {
-      ring.classList.remove("is-pressed");
+      cursor.classList.remove("is-clicking");
     };
 
     const handlePointerLeave = () => {
-      visible = false;
-      dot.style.opacity = "0";
-      ring.style.opacity = "0";
+      cursor.classList.remove("is-visible");
     };
 
     const handlePointerEnter = () => {
-      if (mouseX >= 0 && mouseY >= 0) {
-        visible = true;
-        dot.style.opacity = "1";
-        ring.style.opacity = "1";
+      cursor.classList.add("is-visible");
+    };
+
+    const handleWindowBlur = () => {
+      cursor.classList.remove("is-visible");
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        cursor.classList.remove("is-visible");
       }
     };
 
-    document.addEventListener("pointermove", handlePointerMove, {
+    window.addEventListener("pointermove", handlePointerMove, {
       passive: true,
     });
 
-    document.addEventListener("pointerover", handlePointerOver);
-
-    document.addEventListener("pointerdown", handlePointerDown);
-
-    document.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("blur", handleWindowBlur);
 
     document.addEventListener("pointerleave", handlePointerLeave);
-
     document.addEventListener("pointerenter", handlePointerEnter);
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibilityChange
+    );
 
-    // Start the animation loop only after the first pointer movement.
+    animationRef.current =
+      window.requestAnimationFrame(render);
+
     return () => {
-      document.removeEventListener("pointermove", handlePointerMove);
+      disposed = true;
 
-      document.removeEventListener("pointerover", handlePointerOver);
+      if (animationRef.current !== null) {
+        window.cancelAnimationFrame(animationRef.current);
+      }
 
-      document.removeEventListener("pointerdown", handlePointerDown);
-
-      document.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("blur", handleWindowBlur);
 
       document.removeEventListener("pointerleave", handlePointerLeave);
-
       document.removeEventListener("pointerenter", handlePointerEnter);
-
-      if (rafId) {
-        cancelAnimationFrame(rafId);
-      }
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange
+      );
     };
   }, []);
 
@@ -227,30 +350,17 @@ export default function CustomCursor() {
       <style>{CURSOR_CSS}</style>
 
       <div
-        ref={ringRef}
+        ref={cursorRef}
+        className="rcs-cursor"
         aria-hidden="true"
-        className="rcs-cursor-ring"
       >
-        <svg
-          className="rcs-cursor-arrow"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.7"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M7 17 17 7" />
-          <path d="M7 7h10v10" />
-        </svg>
+        <div className="rcs-cursor__orbit" />
+        <div className="rcs-cursor__core" />
+        <div className="rcs-cursor__arrow">↗</div>
+        <div className="rcs-cursor__explore">
+          EXPLORE
+        </div>
       </div>
-
-      <div
-        ref={dotRef}
-        aria-hidden="true"
-        className="rcs-cursor-dot"
-      />
     </>
   );
 }
