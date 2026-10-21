@@ -50,12 +50,12 @@ export default function Navbar() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
 
-  // Close the mobile menu when the route changes.
+  // Close the mobile menu whenever the route changes.
   useEffect(() => {
     setOpen(false);
   }, [pathname]);
 
-  // Track scroll position for the navbar's visual styling.
+  // Track scrolling for the mobile navbar's visual styling.
   useEffect(() => {
     const onScroll = () => {
       setScrolled(window.scrollY > 24);
@@ -72,28 +72,7 @@ export default function Navbar() {
     };
   }, []);
 
-  // Prevent background scrolling while the mobile menu is open.
-  useEffect(() => {
-    if (!open) return;
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    const handleEscape = (event) => {
-      if (event.key === "Escape") {
-        setOpen(false);
-      }
-    };
-
-    window.addEventListener("keydown", handleEscape);
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", handleEscape);
-    };
-  }, [open]);
-
-  // Navigate to sections on the Home page.
+  // Navigate to Home page sections.
   const goTo = (id) => {
     setOpen(false);
 
@@ -102,16 +81,14 @@ export default function Navbar() {
     ).matches;
 
     const scrollToSection = () => {
-      window.setTimeout(() => {
-        const element = document.getElementById(id);
+      const element = document.getElementById(id);
 
-        if (element) {
-          element.scrollIntoView({
-            behavior: reduceMotion ? "auto" : "smooth",
-            block: "start",
-          });
-        }
-      }, 50);
+      if (element) {
+        element.scrollIntoView({
+          behavior: reduceMotion ? "auto" : "smooth",
+          block: "start",
+        });
+      }
     };
 
     if (pathname === "/") {
@@ -120,18 +97,12 @@ export default function Navbar() {
       navigate("/");
 
       window.setTimeout(() => {
-        const element = document.getElementById(id);
-
-        if (element) {
-          element.scrollIntoView({
-            behavior: reduceMotion ? "auto" : "smooth",
-            block: "start",
-          });
-        }
-      }, 500);
+        scrollToSection();
+      }, 450);
     }
   };
 
+  // Keep the ivory visual identity consistent.
   const headerSkin = scrolled
     ? "border-b border-black/[0.08] bg-[#F5F2EA]/95 backdrop-blur-xl shadow-[0_5px_25px_rgba(0,0,0,0.04)]"
     : "border-b border-black/[0.04] bg-[#F5F2EA]";
@@ -175,7 +146,7 @@ export default function Navbar() {
     shrink-0
     items-center
     justify-center
-    gap-2
+    gap-3
     rounded-full
     bg-[#124CCF]
     px-5
@@ -198,12 +169,16 @@ export default function Navbar() {
       <header
         className={`
           rcs-body
-          relative
           z-50
           w-full
           transition-all
           duration-300
           ${headerSkin}
+
+          /* Desktop: normal document flow, never fixed */
+          relative
+
+          /* Mobile: fixed navbar stays visible while scrolling */
           max-md:fixed
           max-md:inset-x-0
           max-md:top-0
@@ -218,14 +193,14 @@ export default function Navbar() {
             max-w-[1500px]
             items-center
             justify-between
-            gap-3
-            px-4
+            gap-4
+            px-5
             sm:px-8
             md:h-24
             md:px-[6vw]
           "
         >
-          {/* RARE logo */}
+          {/* RCS wordmark */}
 
           <Link
             to="/"
@@ -256,7 +231,7 @@ export default function Navbar() {
                 font-normal
                 uppercase
                 leading-[1.6]
-                tracking-[0.14em]
+                tracking-[0.18em]
                 text-[#333333]
                 sm:text-[8px]
                 md:text-[9px]
@@ -322,44 +297,35 @@ export default function Navbar() {
             />
           </Link>
 
-          {/* Mobile CTA + hamburger menu */}
+          {/* Mobile CTA and menu toggle */}
 
           <div className="flex shrink-0 items-center gap-2 md:hidden">
             <Link
               to={CTA.path}
-              onClick={() => setOpen(false)}
-              className={`
+              aria-label={CTA.label}
+              className="
                 rcs-nav-sans
                 inline-flex
-                min-h-10
                 items-center
-                justify-center
-                gap-1
+                gap-1.5
                 rounded-full
-                bg-[#124CCF]
+                border
+                border-[#111111]/25
                 px-3
+                py-2.5
                 text-[10px]
                 font-semibold
-                leading-none
-                text-white
+                text-[#111111]
                 transition-colors
                 duration-300
-                hover:bg-[#111111]
-                sm:gap-2
+                hover:border-[#124CCF]
+                hover:text-[#124CCF]
                 sm:px-4
                 sm:text-[11px]
-                ${focus}
-              `}
+              "
             >
-              <span className="whitespace-nowrap">
-                Start a conversation
-              </span>
-
-              <ArrowUpRight
-                size={13}
-                strokeWidth={1.8}
-                className="shrink-0"
-              />
+              <span>Let's talk</span>
+              <ArrowUpRight size={13} />
             </Link>
 
             <button
@@ -371,8 +337,6 @@ export default function Navbar() {
               aria-expanded={open}
               aria-controls="rcs-mobile-nav"
               className={`
-                relative
-                z-[60]
                 grid
                 h-10
                 w-10
@@ -381,7 +345,6 @@ export default function Navbar() {
                 rounded-full
                 border
                 border-black/20
-                bg-[#F5F2EA]
                 text-[#111111]
                 transition-colors
                 duration-300
@@ -390,44 +353,22 @@ export default function Navbar() {
                 ${focus}
               `}
             >
-              <span
-                className={`
-                  absolute transition-all duration-300
-                  ${
-                    open
-                      ? "rotate-90 scale-0 opacity-0"
-                      : "rotate-0 scale-100 opacity-100"
-                  }
-                `}
-              >
-                <Menu size={19} strokeWidth={1.7} />
-              </span>
-
-              <span
-                className={`
-                  absolute transition-all duration-300
-                  ${
-                    open
-                      ? "rotate-0 scale-100 opacity-100"
-                      : "-rotate-90 scale-0 opacity-0"
-                  }
-                `}
-              >
-                <X size={19} strokeWidth={1.7} />
-              </span>
+              {open ? (
+                <X size={18} strokeWidth={1.7} />
+              ) : (
+                <Menu size={18} strokeWidth={1.7} />
+              )}
             </button>
           </div>
         </nav>
 
-        {/* Mobile menu panel */}
+        {/* Mobile navigation overlay */}
 
         <div
           id="rcs-mobile-nav"
           aria-hidden={!open}
           className={`
-            overflow-y-auto
-            border-t
-            border-black/[0.08]
+            overflow-hidden
             bg-[#F5F2EA]
             transition-[max-height,opacity,visibility]
             duration-300
@@ -435,14 +376,12 @@ export default function Navbar() {
             md:hidden
             ${
               open
-                ? "visible max-h-[calc(100dvh-72px)] opacity-100"
+                ? "visible max-h-[500px] opacity-100"
                 : "invisible max-h-0 opacity-0"
             }
           `}
         >
-          <div className="px-5 pb-7 pt-5 sm:px-8">
-            {/* Menu heading */}
-
+          <div className="px-5 pb-7 pt-3 sm:px-8">
             <div className="mb-5 flex items-center justify-between">
               <span className="rcs-nav-mono text-[9px] uppercase tracking-[0.2em] text-black/45">
                 Navigation
@@ -452,8 +391,6 @@ export default function Navbar() {
                 RCS / 01
               </span>
             </div>
-
-            {/* Navigation links */}
 
             <ul>
               {NAV_LINKS.map((item, index) => {
@@ -533,11 +470,8 @@ export default function Navbar() {
               })}
             </ul>
 
-            {/* Secondary CTA */}
-
             <Link
               to={CTA.path}
-              onClick={() => setOpen(false)}
               tabIndex={open ? 0 : -1}
               className={`
                 rcs-nav-sans
@@ -548,28 +482,23 @@ export default function Navbar() {
                 items-center
                 justify-between
                 rounded-full
-                border
-                border-[#124CCF]
+                bg-[#124CCF]
                 px-5
                 text-[12px]
                 font-semibold
-                text-[#124CCF]
+                text-white
                 transition-colors
                 duration-300
-                hover:bg-[#124CCF]
-                hover:text-white
+                hover:bg-[#111111]
                 ${focus}
               `}
             >
               {CTA.label}
-
               <ArrowUpRight size={17} />
             </Link>
 
-            {/* Menu footer */}
-
-            <div className="mt-6 flex items-center justify-between gap-3">
-              <span className="rcs-nav-mono text-[9px] uppercase tracking-[0.12em] text-black/45">
+            <div className="mt-6 flex items-center justify-between">
+              <span className="rcs-nav-mono text-[9px] uppercase tracking-[0.15em] text-black/45">
                 Strategy / Story / Culture
               </span>
 
@@ -581,8 +510,11 @@ export default function Navbar() {
         </div>
       </header>
 
-      {/* Reserve space for the fixed mobile navbar */}
-
+      {/* 
+        Mobile only:
+        Reserve space for the fixed navbar so it does not cover page content.
+        Desktop navbar remains in normal document flow.
+      */}
       <div
         aria-hidden="true"
         className="h-[72px] md:hidden"
