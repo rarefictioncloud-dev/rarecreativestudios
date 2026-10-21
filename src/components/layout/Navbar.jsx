@@ -50,12 +50,12 @@ export default function Navbar() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
 
-  // Close the mobile menu whenever the route changes.
+  // Close the mobile menu when the route changes.
   useEffect(() => {
     setOpen(false);
   }, [pathname]);
 
-  // Track scroll position without changing the navbar's color identity.
+  // Track scroll position for the navbar's visual styling.
   useEffect(() => {
     const onScroll = () => {
       setScrolled(window.scrollY > 24);
@@ -72,7 +72,28 @@ export default function Navbar() {
     };
   }, []);
 
-  // Navigate to Home sections, including when using HashRouter.
+  // Prevent background scrolling while the mobile menu is open.
+  useEffect(() => {
+    if (!open) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [open]);
+
+  // Navigate to sections on the Home page.
   const goTo = (id) => {
     setOpen(false);
 
@@ -81,14 +102,16 @@ export default function Navbar() {
     ).matches;
 
     const scrollToSection = () => {
-      const element = document.getElementById(id);
+      window.setTimeout(() => {
+        const element = document.getElementById(id);
 
-      if (element) {
-        element.scrollIntoView({
-          behavior: reduceMotion ? "auto" : "smooth",
-          block: "start",
-        });
-      }
+        if (element) {
+          element.scrollIntoView({
+            behavior: reduceMotion ? "auto" : "smooth",
+            block: "start",
+          });
+        }
+      }, 50);
     };
 
     if (pathname === "/") {
@@ -97,49 +120,53 @@ export default function Navbar() {
       navigate("/");
 
       window.setTimeout(() => {
-        scrollToSection();
-      }, 450);
+        const element = document.getElementById(id);
+
+        if (element) {
+          element.scrollIntoView({
+            behavior: reduceMotion ? "auto" : "smooth",
+            block: "start",
+          });
+        }
+      }, 500);
     }
   };
 
-  // Consistent ivory theme on every page.
   const headerSkin = scrolled
-    ? "border-b border-black/[0.08] bg-[#F5F2EA]/90 backdrop-blur-xl shadow-[0_5px_25px_rgba(0,0,0,0.04)]"
+    ? "border-b border-black/[0.08] bg-[#F5F2EA]/95 backdrop-blur-xl shadow-[0_5px_25px_rgba(0,0,0,0.04)]"
     : "border-b border-black/[0.04] bg-[#F5F2EA]";
 
   const focus =
     "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#124CCF]";
 
-  const linkCls = (active = false) =>
-    `
-      rcs-nav-sans
-      relative
-      py-2
-      text-[13px]
-      font-medium
-      transition-colors
-      duration-300
-      ${
-        active
-          ? "text-[#124CCF]"
-          : "text-[#222222] hover:text-[#124CCF]"
-      }
-      ${focus}
-    `;
+  const linkCls = (active = false) => `
+    rcs-nav-sans
+    relative
+    py-2
+    text-[13px]
+    font-medium
+    transition-colors
+    duration-300
+    ${
+      active
+        ? "text-[#124CCF]"
+        : "text-[#222222] hover:text-[#124CCF]"
+    }
+    ${focus}
+  `;
 
-  const underline = (active = false) =>
-    `
-      absolute
-      -bottom-0.5
-      left-0
-      h-[1.5px]
-      w-full
-      origin-left
-      transition-transform
-      duration-300
-      ${active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"}
-      bg-[#124CCF]
-    `;
+  const underline = (active = false) => `
+    absolute
+    -bottom-0.5
+    left-0
+    h-[1.5px]
+    w-full
+    origin-left
+    transition-transform
+    duration-300
+    ${active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"}
+    bg-[#124CCF]
+  `;
 
   const ctaClass = `
     rcs-nav-sans
@@ -148,7 +175,7 @@ export default function Navbar() {
     shrink-0
     items-center
     justify-center
-    gap-3
+    gap-2
     rounded-full
     bg-[#124CCF]
     px-5
@@ -165,299 +192,109 @@ export default function Navbar() {
   `;
 
   return (
-    <header
-      className={`
-        rcs-body
-        fixed
-        inset-x-0
-        top-0
-        z-50
-        transition-all
-        duration-300
-        ${headerSkin}
-      `}
-    >
+    <>
       <style>{FONT_CSS}</style>
 
-      <nav
-        aria-label="Primary navigation"
-        className="
-          mx-auto
-          flex
-          h-[72px]
-          max-w-[1500px]
-          items-center
-          justify-between
-          gap-4
-          px-5
-          sm:px-8
-          md:h-24
-          md:px-[6vw]
-        "
-      >
-        {/* RCS wordmark */}
-
-        <Link
-          to="/"
-          aria-label="Rare Creative Studios home"
-          onClick={() => setOpen(false)}
-          className={`flex shrink-0 items-center gap-2.5 md:gap-3 ${focus}`}
-        >
-          <span
-            className="
-              rcs-nav-logo
-              text-[30px]
-              font-normal
-              uppercase
-              leading-none
-              text-[#111111]
-              md:text-[40px]
-            "
-          >
-            RARE
-          </span>
-
-          <span
-            className="
-              rcs-nav-mono
-              flex
-              flex-col
-              text-[7px]
-              font-normal
-              uppercase
-              leading-[1.6]
-              tracking-[0.18em]
-              text-[#333333]
-              sm:text-[8px]
-              md:text-[9px]
-              md:tracking-[0.22em]
-            "
-          >
-            <span>Creative</span>
-            <span>Studios</span>
-          </span>
-        </Link>
-
-        {/* Desktop navigation */}
-
-        <ul className="hidden items-center gap-8 md:flex lg:gap-12">
-          {NAV_LINKS.map((item) => {
-            const active = item.path
-              ? pathname === item.path
-              : false;
-
-            return (
-              <li key={item.label}>
-                {item.path ? (
-                  <Link
-                    to={item.path}
-                    aria-current={active ? "page" : undefined}
-                    className={`group ${linkCls(active)}`}
-                  >
-                    {item.label}
-                    <span className={underline(active)} />
-                  </Link>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => goTo(item.section)}
-                    className={`group ${linkCls(false)}`}
-                  >
-                    {item.label}
-                    <span className={underline(false)} />
-                  </button>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-
-        {/* Desktop CTA */}
-
-        <Link
-          to={CTA.path}
-          className={`hidden md:inline-flex ${ctaClass}`}
-        >
-          {CTA.label}
-
-          <ArrowUpRight
-            size={15}
-            strokeWidth={1.8}
-            className="
-              transition-transform
-              duration-300
-              group-hover:-translate-y-0.5
-              group-hover:translate-x-0.5
-            "
-          />
-        </Link>
-
-        {/* Mobile CTA and menu toggle */}
-
-        <div className="flex shrink-0 items-center gap-2 md:hidden">
-          <Link
-            to={CTA.path}
-            aria-label={CTA.label}
-            className="
-              rcs-nav-sans
-              inline-flex
-              items-center
-              gap-1.5
-              rounded-full
-              border
-              border-[#111111]/25
-              px-3
-              py-2.5
-              text-[10px]
-              font-semibold
-              text-[#111111]
-              transition-colors
-              duration-300
-              hover:border-[#124CCF]
-              hover:text-[#124CCF]
-              sm:px-4
-              sm:text-[11px]
-            "
-          >
-            <span>Let's talk</span>
-            <ArrowUpRight size={13} />
-          </Link>
-
-          <button
-            type="button"
-            onClick={() => setOpen((value) => !value)}
-            aria-label={
-              open ? "Close navigation" : "Open navigation"
-            }
-            aria-expanded={open}
-            aria-controls="rcs-mobile-nav"
-            className={`
-              grid
-              h-10
-              w-10
-              shrink-0
-              place-items-center
-              rounded-full
-              border
-              border-black/20
-              text-[#111111]
-              transition-colors
-              duration-300
-              hover:border-[#124CCF]
-              hover:text-[#124CCF]
-              ${focus}
-            `}
-          >
-            {open ? (
-              <X size={18} strokeWidth={1.7} />
-            ) : (
-              <Menu size={18} strokeWidth={1.7} />
-            )}
-          </button>
-        </div>
-      </nav>
-
-      {/* Mobile navigation overlay */}
-
-      <div
-        id="rcs-mobile-nav"
-        aria-hidden={!open}
+      <header
         className={`
-          overflow-hidden
-          bg-[#F5F2EA]
-          transition-[max-height,opacity,visibility]
+          rcs-body
+          relative
+          z-50
+          w-full
+          transition-all
           duration-300
-          ease-in-out
-          md:hidden
-          ${
-            open
-              ? "visible max-h-[500px] opacity-100"
-              : "invisible max-h-0 opacity-0"
-          }
+          ${headerSkin}
+          max-md:fixed
+          max-md:inset-x-0
+          max-md:top-0
         `}
       >
-        <div className="px-5 pb-7 pt-3 sm:px-8">
-          <div className="mb-5 flex items-center justify-between">
-            <span className="rcs-nav-mono text-[9px] uppercase tracking-[0.2em] text-black/45">
-              Navigation
+        <nav
+          aria-label="Primary navigation"
+          className="
+            mx-auto
+            flex
+            h-[72px]
+            max-w-[1500px]
+            items-center
+            justify-between
+            gap-3
+            px-4
+            sm:px-8
+            md:h-24
+            md:px-[6vw]
+          "
+        >
+          {/* RARE logo */}
+
+          <Link
+            to="/"
+            aria-label="Rare Creative Studios home"
+            onClick={() => setOpen(false)}
+            className={`flex shrink-0 items-center gap-2.5 md:gap-3 ${focus}`}
+          >
+            <span
+              className="
+                rcs-nav-logo
+                text-[30px]
+                font-normal
+                uppercase
+                leading-none
+                text-[#111111]
+                md:text-[40px]
+              "
+            >
+              RARE
             </span>
 
-            <span className="rcs-nav-mono text-[9px] text-[#124CCF]">
-              RCS / 01
+            <span
+              className="
+                rcs-nav-mono
+                flex
+                flex-col
+                text-[7px]
+                font-normal
+                uppercase
+                leading-[1.6]
+                tracking-[0.14em]
+                text-[#333333]
+                sm:text-[8px]
+                md:text-[9px]
+                md:tracking-[0.22em]
+              "
+            >
+              <span>Creative</span>
+              <span>Studios</span>
             </span>
-          </div>
+          </Link>
 
-          <ul>
-            {NAV_LINKS.map((item, index) => {
+          {/* Desktop navigation */}
+
+          <ul className="hidden items-center gap-8 md:flex lg:gap-12">
+            {NAV_LINKS.map((item) => {
               const active = item.path
                 ? pathname === item.path
                 : false;
 
-              const mobileLinkClass = `
-                rcs-display
-                flex
-                min-h-[58px]
-                w-full
-                items-center
-                justify-between
-                text-left
-                text-[26px]
-                transition-colors
-                duration-300
-                ${
-                  active
-                    ? "text-[#124CCF]"
-                    : "text-[#111111] hover:text-[#124CCF]"
-                }
-                ${focus}
-              `;
-
               return (
-                <li
-                  key={item.label}
-                  className="border-b border-black/10"
-                >
+                <li key={item.label}>
                   {item.path ? (
                     <Link
                       to={item.path}
                       aria-current={active ? "page" : undefined}
-                      tabIndex={open ? 0 : -1}
-                      className={mobileLinkClass}
+                      className={`group ${linkCls(active)}`}
                     >
-                      <span className="flex items-center gap-4">
-                        <span className="rcs-nav-mono text-[10px] text-black/35">
-                          0{index + 1}
-                        </span>
-
-                        {item.label}
-                      </span>
-
-                      <ArrowUpRight
-                        size={19}
-                        strokeWidth={1.5}
-                        className="text-black/40"
-                      />
+                      {item.label}
+                      <span className={underline(active)} />
                     </Link>
                   ) : (
                     <button
                       type="button"
                       onClick={() => goTo(item.section)}
-                      tabIndex={open ? 0 : -1}
-                      className={mobileLinkClass}
+                      className={`group ${linkCls(false)}`}
                     >
-                      <span className="flex items-center gap-4">
-                        <span className="rcs-nav-mono text-[10px] text-black/35">
-                          0{index + 1}
-                        </span>
-
-                        {item.label}
-                      </span>
-
-                      <ArrowUpRight
-                        size={19}
-                        strokeWidth={1.5}
-                        className="text-black/40"
-                      />
+                      {item.label}
+                      <span className={underline(false)} />
                     </button>
                   )}
                 </li>
@@ -465,44 +302,291 @@ export default function Navbar() {
             })}
           </ul>
 
+          {/* Desktop CTA */}
+
           <Link
             to={CTA.path}
-            tabIndex={open ? 0 : -1}
-            className={`
-              rcs-nav-sans
-              mt-6
-              flex
-              min-h-12
-              w-full
-              items-center
-              justify-between
-              rounded-full
-              bg-[#124CCF]
-              px-5
-              text-[12px]
-              font-semibold
-              text-white
-              transition-colors
-              duration-300
-              hover:bg-[#111111]
-              ${focus}
-            `}
+            className={`hidden md:inline-flex ${ctaClass}`}
           >
             {CTA.label}
-            <ArrowUpRight size={17} />
+
+            <ArrowUpRight
+              size={15}
+              strokeWidth={1.8}
+              className="
+                transition-transform
+                duration-300
+                group-hover:-translate-y-0.5
+                group-hover:translate-x-0.5
+              "
+            />
           </Link>
 
-          <div className="mt-6 flex items-center justify-between">
-            <span className="rcs-nav-mono text-[9px] uppercase tracking-[0.15em] text-black/45">
-              Strategy / Story / Culture
-            </span>
+          {/* Mobile CTA + hamburger menu */}
 
-            <span className="rcs-nav-mono text-[9px] text-black/45">
-              © RCS
-            </span>
+          <div className="flex shrink-0 items-center gap-2 md:hidden">
+            <Link
+              to={CTA.path}
+              onClick={() => setOpen(false)}
+              className={`
+                rcs-nav-sans
+                inline-flex
+                min-h-10
+                items-center
+                justify-center
+                gap-1
+                rounded-full
+                bg-[#124CCF]
+                px-3
+                text-[10px]
+                font-semibold
+                leading-none
+                text-white
+                transition-colors
+                duration-300
+                hover:bg-[#111111]
+                sm:gap-2
+                sm:px-4
+                sm:text-[11px]
+                ${focus}
+              `}
+            >
+              <span className="whitespace-nowrap">
+                Start a conversation
+              </span>
+
+              <ArrowUpRight
+                size={13}
+                strokeWidth={1.8}
+                className="shrink-0"
+              />
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => setOpen((value) => !value)}
+              aria-label={
+                open ? "Close navigation" : "Open navigation"
+              }
+              aria-expanded={open}
+              aria-controls="rcs-mobile-nav"
+              className={`
+                relative
+                z-[60]
+                grid
+                h-10
+                w-10
+                shrink-0
+                place-items-center
+                rounded-full
+                border
+                border-black/20
+                bg-[#F5F2EA]
+                text-[#111111]
+                transition-colors
+                duration-300
+                hover:border-[#124CCF]
+                hover:text-[#124CCF]
+                ${focus}
+              `}
+            >
+              <span
+                className={`
+                  absolute transition-all duration-300
+                  ${
+                    open
+                      ? "rotate-90 scale-0 opacity-0"
+                      : "rotate-0 scale-100 opacity-100"
+                  }
+                `}
+              >
+                <Menu size={19} strokeWidth={1.7} />
+              </span>
+
+              <span
+                className={`
+                  absolute transition-all duration-300
+                  ${
+                    open
+                      ? "rotate-0 scale-100 opacity-100"
+                      : "-rotate-90 scale-0 opacity-0"
+                  }
+                `}
+              >
+                <X size={19} strokeWidth={1.7} />
+              </span>
+            </button>
+          </div>
+        </nav>
+
+        {/* Mobile menu panel */}
+
+        <div
+          id="rcs-mobile-nav"
+          aria-hidden={!open}
+          className={`
+            overflow-y-auto
+            border-t
+            border-black/[0.08]
+            bg-[#F5F2EA]
+            transition-[max-height,opacity,visibility]
+            duration-300
+            ease-in-out
+            md:hidden
+            ${
+              open
+                ? "visible max-h-[calc(100dvh-72px)] opacity-100"
+                : "invisible max-h-0 opacity-0"
+            }
+          `}
+        >
+          <div className="px-5 pb-7 pt-5 sm:px-8">
+            {/* Menu heading */}
+
+            <div className="mb-5 flex items-center justify-between">
+              <span className="rcs-nav-mono text-[9px] uppercase tracking-[0.2em] text-black/45">
+                Navigation
+              </span>
+
+              <span className="rcs-nav-mono text-[9px] text-[#124CCF]">
+                RCS / 01
+              </span>
+            </div>
+
+            {/* Navigation links */}
+
+            <ul>
+              {NAV_LINKS.map((item, index) => {
+                const active = item.path
+                  ? pathname === item.path
+                  : false;
+
+                const mobileLinkClass = `
+                  rcs-display
+                  flex
+                  min-h-[58px]
+                  w-full
+                  items-center
+                  justify-between
+                  text-left
+                  text-[26px]
+                  transition-colors
+                  duration-300
+                  ${
+                    active
+                      ? "text-[#124CCF]"
+                      : "text-[#111111] hover:text-[#124CCF]"
+                  }
+                  ${focus}
+                `;
+
+                return (
+                  <li
+                    key={item.label}
+                    className="border-b border-black/10"
+                  >
+                    {item.path ? (
+                      <Link
+                        to={item.path}
+                        aria-current={active ? "page" : undefined}
+                        tabIndex={open ? 0 : -1}
+                        className={mobileLinkClass}
+                      >
+                        <span className="flex items-center gap-4">
+                          <span className="rcs-nav-mono text-[10px] text-black/35">
+                            0{index + 1}
+                          </span>
+
+                          {item.label}
+                        </span>
+
+                        <ArrowUpRight
+                          size={19}
+                          strokeWidth={1.5}
+                          className="text-black/40"
+                        />
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => goTo(item.section)}
+                        tabIndex={open ? 0 : -1}
+                        className={mobileLinkClass}
+                      >
+                        <span className="flex items-center gap-4">
+                          <span className="rcs-nav-mono text-[10px] text-black/35">
+                            0{index + 1}
+                          </span>
+
+                          {item.label}
+                        </span>
+
+                        <ArrowUpRight
+                          size={19}
+                          strokeWidth={1.5}
+                          className="text-black/40"
+                        />
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+
+            {/* Secondary CTA */}
+
+            <Link
+              to={CTA.path}
+              onClick={() => setOpen(false)}
+              tabIndex={open ? 0 : -1}
+              className={`
+                rcs-nav-sans
+                mt-6
+                flex
+                min-h-12
+                w-full
+                items-center
+                justify-between
+                rounded-full
+                border
+                border-[#124CCF]
+                px-5
+                text-[12px]
+                font-semibold
+                text-[#124CCF]
+                transition-colors
+                duration-300
+                hover:bg-[#124CCF]
+                hover:text-white
+                ${focus}
+              `}
+            >
+              {CTA.label}
+
+              <ArrowUpRight size={17} />
+            </Link>
+
+            {/* Menu footer */}
+
+            <div className="mt-6 flex items-center justify-between gap-3">
+              <span className="rcs-nav-mono text-[9px] uppercase tracking-[0.12em] text-black/45">
+                Strategy / Story / Culture
+              </span>
+
+              <span className="rcs-nav-mono text-[9px] text-black/45">
+                © RCS
+              </span>
+            </div>
           </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      {/* Reserve space for the fixed mobile navbar */}
+
+      <div
+        aria-hidden="true"
+        className="h-[72px] md:hidden"
+      />
+    </>
   );
 }
