@@ -137,7 +137,7 @@ export default function LoadingScreen({ onComplete }) {
     // Finish the complete loading sequence at approximately 1 second.
     const completeTimer = window.setTimeout(() => {
       onComplete?.();
-    }, 1000);
+    }, 500);
 
     return () => {
       window.clearTimeout(exitTimer);
