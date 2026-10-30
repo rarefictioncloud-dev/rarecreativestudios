@@ -26,18 +26,18 @@ const CAPABILITIES = [
 /* One consistent RCS color palette across every route. */
 
 const THEME = {
-  root: "bg-[#F5F2EA] text-[#111111]",
-  heading: "text-[#124CCF]",
-  link: "text-[#111111]/75 hover:text-[#124CCF]",
-  muted: "text-[#111111]/65",
-  faint: "text-[#111111]/50",
-  rule: "border-[#111111]/15",
-  stroke: "rgba(17,17,17,0.25)",
+  root: "bg-[#000000] text-white",
+  heading: "text-[#D6B878]",
+  link: "text-white/75 hover:text-[#D6B878]",
+  muted: "text-white/65",
+  faint: "text-white/45",
+  rule: "border-white/15",
+  stroke: "rgba(255,255,255,0.22)",
   focus:
-    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#124CCF]",
-  accent: "text-[#124CCF]",
-  logo: "text-[#111111]",
-  top: "rounded-full border-[#111111]/25 hover:border-[#124CCF] hover:bg-[#124CCF] hover:text-white",
+    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#D6B878]",
+  accent: "text-[#D6B878]",
+  logo: "text-white",
+  top: "rounded-full border-white/25 hover:border-[#D6B878] hover:bg-[#D6B878] hover:text-black",
 };
 
 const padX =
@@ -132,14 +132,14 @@ export default function Footer() {
     items-center
     gap-4
     rounded-full
-    bg-[#124CCF]
+    bg-[#D6B878]
     px-7
     text-[13px]
     font-semibold
     text-white
     transition-all
     duration-300
-    hover:bg-[#111111]
+    hover:bg-white hover:text-black
     ${s.focus}
   `;
 

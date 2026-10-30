@@ -15,23 +15,24 @@ const CTA = {
 };
 
 const FONT_CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Anton&family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
   .rcs-body {
     font-family: "DM Sans", "Helvetica Neue", Arial, sans-serif;
   }
 
   .rcs-display {
-    font-family: "Anton", "Arial Narrow", Impact, sans-serif;
-    font-weight: 400;
-    text-transform: uppercase;
-    letter-spacing: .005em;
-    line-height: .95;
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: -0.035em;
+    line-height: 1.05;
   }
 
   .rcs-nav-logo {
-    font-family: "Anton", "Impact", "Arial Narrow", sans-serif;
-    letter-spacing: -0.01em;
+    font-family: "DM Sans", "Helvetica Neue", Arial, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.075em;
   }
 
   .rcs-nav-mono {
@@ -39,7 +40,7 @@ const FONT_CSS = `
   }
 
   .rcs-nav-sans {
-    font-family: "Manrope", "Inter", "Helvetica Neue", Arial, sans-serif;
+    font-family: "DM Sans", "Inter", "Helvetica Neue", Arial, sans-serif;
   }
 
   /* Desktop: navbar is part of the normal document flow. */
@@ -163,24 +164,24 @@ export default function Navbar() {
   };
 
   const headerSkin = scrolled
-    ? "border-b border-black/[0.08] bg-[#F5F2EA]/95 backdrop-blur-xl shadow-[0_5px_25px_rgba(0,0,0,0.04)]"
-    : "border-b border-black/[0.04] bg-[#F5F2EA]";
+    ? "border-b border-white/[0.10] bg-[#000000] shadow-[0_12px_40px_rgba(0,0,0,0.35)]"
+    : "border-b border-white/[0.08] bg-[#000000]";
 
   const focus =
-    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#124CCF]";
+    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C69A62]";
 
   const linkCls = (active = false) => `
     rcs-nav-sans
     relative
     py-2
-    text-[13px]
+    text-[12px]
     font-medium
     transition-colors
     duration-300
     ${
       active
-        ? "text-[#124CCF]"
-        : "text-[#222222] hover:text-[#124CCF]"
+        ? "text-[#D7B17B]"
+        : "text-white/75 hover:text-[#F2D6A8]"
     }
     ${focus}
   `;
@@ -199,24 +200,24 @@ export default function Navbar() {
         ? "scale-x-100"
         : "scale-x-0 group-hover:scale-x-100"
     }
-    bg-[#124CCF]
+    bg-[#C69A62]
   `;
 
   const mobileLinkClass = (active = false) => `
     rcs-display
     flex
-    min-h-[58px]
+    min-h-[64px]
     w-full
     items-center
     justify-between
     text-left
-    text-[26px]
+    text-[29px]
     transition-colors
     duration-300
     ${
       active
-        ? "text-[#124CCF]"
-        : "text-[#111111] hover:text-[#124CCF]"
+        ? "text-[#D7B17B]"
+        : "text-[#F4F0E8] hover:text-[#D7B17B]"
     }
     ${focus}
   `;
@@ -246,7 +247,7 @@ export default function Navbar() {
             gap-3
             px-4
             sm:px-8
-            md:h-24
+            md:h-[84px]
             md:px-[6vw]
           "
         >
@@ -270,13 +271,13 @@ export default function Navbar() {
             <span
               className="
                 rcs-nav-logo
-                text-[29px]
+                text-[27px]
                 font-normal
                 uppercase
                 leading-none
-                text-[#111111]
-                sm:text-[32px]
-                md:text-[40px]
+                text-[#F4F0E8]
+                sm:text-[30px]
+                md:text-[36px]
               "
             >
               RARE
@@ -293,7 +294,7 @@ export default function Navbar() {
                 uppercase
                 leading-[1.6]
                 tracking-[0.14em]
-                text-[#333333]
+                text-white/55
                 sm:text-[8px]
                 md:text-[9px]
                 md:tracking-[0.22em]
@@ -306,7 +307,7 @@ export default function Navbar() {
 
           {/* Desktop navigation */}
 
-          <ul className="hidden items-center gap-8 md:flex lg:gap-12">
+          <ul className="hidden items-center gap-7 md:flex lg:gap-10">
             {NAV_LINKS.map((item) => {
               const active = item.path
                 ? pathname === item.path
@@ -352,18 +353,19 @@ export default function Navbar() {
               justify-center
               gap-3
               rounded-full
-              bg-[#124CCF]
+              bg-[#C69A62]
               px-5
               py-3
-              text-[12px]
+              text-[11px]
               font-semibold
-              text-white
+              tracking-[0.02em]
+              text-[#111318]
               transition-colors
               duration-300
-              hover:bg-[#111111]
+              hover:bg-[#E8D7BD]
               md:inline-flex
               md:px-6
-              md:text-[13px]
+              md:text-[12px]
               ${focus}
             `}
           >
@@ -396,15 +398,15 @@ export default function Navbar() {
                 justify-center
                 gap-1
                 rounded-full
-                bg-[#124CCF]
+                bg-[#C69A62]
                 px-3
                 text-[10px]
                 font-semibold
                 leading-none
-                text-white
+                text-[#111318]
                 transition-colors
                 duration-300
-                hover:bg-[#111111]
+                hover:bg-[#E8D7BD]
                 min-[390px]:gap-1.5
                 min-[390px]:px-3.5
                 min-[390px]:text-[11px]
@@ -441,13 +443,13 @@ export default function Navbar() {
                 place-items-center
                 rounded-full
                 border
-                border-black/20
-                bg-[#F5F2EA]
-                text-[#111111]
+                border-white/20
+                bg-[#000000]
+                text-[#F4F0E8]
                 transition-colors
                 duration-300
                 hover:border-[#124CCF]
-                hover:text-[#124CCF]
+                hover:text-[#D7B17B]
                 ${focus}
               `}
             >
@@ -492,8 +494,8 @@ export default function Navbar() {
           className={`
             overflow-y-auto
             border-t
-            border-black/[0.08]
-            bg-[#F5F2EA]
+            border-white/[0.10]
+            bg-[#000000]
             transition-[max-height,opacity,visibility]
             duration-300
             ease-in-out
@@ -507,11 +509,11 @@ export default function Navbar() {
         >
           <div className="px-5 pb-7 pt-5 sm:px-8">
             <div className="mb-5 flex items-center justify-between">
-              <span className="rcs-nav-mono text-[9px] uppercase tracking-[0.2em] text-black/45">
+              <span className="rcs-nav-mono text-[9px] uppercase tracking-[0.2em] text-white/40">
                 Navigation
               </span>
 
-              <span className="rcs-nav-mono text-[9px] text-[#124CCF]">
+              <span className="rcs-nav-mono text-[9px] text-[#D7B17B]">
                 RCS / 01
               </span>
             </div>
@@ -525,7 +527,7 @@ export default function Navbar() {
                 return (
                   <li
                     key={item.label}
-                    className="border-b border-black/10"
+                    className="border-b border-white/10"
                   >
                     {item.path ? (
                       <Link
@@ -537,7 +539,7 @@ export default function Navbar() {
                         className={mobileLinkClass(active)}
                       >
                         <span className="flex items-center gap-4">
-                          <span className="rcs-nav-mono text-[10px] text-black/35">
+                          <span className="rcs-nav-mono text-[10px] text-white/30">
                             0{index + 1}
                           </span>
 
@@ -547,7 +549,7 @@ export default function Navbar() {
                         <ArrowUpRight
                           size={19}
                           strokeWidth={1.5}
-                          className="text-black/40"
+                          className="text-white/45"
                         />
                       </Link>
                     ) : (
@@ -558,7 +560,7 @@ export default function Navbar() {
                         className={mobileLinkClass(false)}
                       >
                         <span className="flex items-center gap-4">
-                          <span className="rcs-nav-mono text-[10px] text-black/35">
+                          <span className="rcs-nav-mono text-[10px] text-white/30">
                             0{index + 1}
                           </span>
 
@@ -568,7 +570,7 @@ export default function Navbar() {
                         <ArrowUpRight
                           size={19}
                           strokeWidth={1.5}
-                          className="text-black/40"
+                          className="text-white/45"
                         />
                       </button>
                     )}
@@ -578,11 +580,11 @@ export default function Navbar() {
             </ul>
 
             <div className="mt-6 flex items-center justify-between gap-3">
-              <span className="rcs-nav-mono text-[9px] uppercase tracking-[0.12em] text-black/45">
+              <span className="rcs-nav-mono text-[9px] uppercase tracking-[0.12em] text-white/40">
                 Strategy / Story / Culture
               </span>
 
-              <span className="rcs-nav-mono text-[9px] text-black/45">
+              <span className="rcs-nav-mono text-[9px] text-white/40">
                 © RCS
               </span>
             </div>

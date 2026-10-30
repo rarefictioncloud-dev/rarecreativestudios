@@ -1,15 +1,20 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import {
+  motion,
+  useReducedMotion,
+  useScroll,
+  useTransform,
+} from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
 import RibbonFallback from "../components/hero/RibbonFallback";
 
 /* Fonts (.rcs-display, .rcs-body, .rcs-nav-mono) are injected by Navbar, which is mounted on every page.
    THEME = Home: cobalt #124CCF, ivory #F5F2EA, Playfair serif headlines, Manrope body, mono labels.
-   TYPE SCALE = Home: at md (768px) and up the same small sizes; phones keep larger, readable sizes. */
+   LAYOUT = 3D-creator portfolio pattern: giant hero type, scroll marquee, scroll-revealed text,
+   numbered services list, sticky stacking cards. */
 
-// Three.js is loaded on demand so the page content never waits for it.
 const RibbonWorld = lazy(() => import("../components/hero/RibbonWorld"));
 
-// WhatsApp enquiry link: +91 7997658999
 const WHATSAPP_URL = `https://wa.me/917997658999?text=${encodeURIComponent(
   "hi , i would like to enquire about rare creative studios"
 )}`;
@@ -28,6 +33,7 @@ const h2Cta = "text-[clamp(1.8rem,9vw,2.6rem)] md:text-[clamp(1.45rem,3.5vw,3rem
 const bodyDark = "text-[15px] leading-7 md:text-[10.5px] md:leading-relaxed";
 const small = "text-[14px] leading-relaxed md:text-[9px]";
 const itemTitle = "text-[clamp(1.3rem,6vw,1.6rem)] md:text-[clamp(1rem,1.45vw,1.3rem)]";
+const sectionTitle = "text-[clamp(3rem,12vw,9rem)]";
 
 const FRAMES = ["STRATEGY", "STORY", "INFLUENCE", "FILM", "IMPACT"];
 
@@ -76,6 +82,164 @@ const capabilities = [
 
 const production = ["Creative direction", "Concept development", "Cinematography", "Video editing", "Post-production", "Short-film production"];
 
+const philosophy = [
+  "We don’t begin with a press release or a list of outlets. We begin with the business, the audience, the cultural context, and the perception the brand needs to earn.",
+  "From there, we design the narrative, identify the right voices and moments, and bring the story to life through precise execution.",
+  "The goal is not noise. It is meaningful attention that lasts.",
+];
+
+/* Marquee content: row 1 moves right on scroll, row 2 moves left */
+const MARQUEE_ROW_1 = [
+  ...capabilities.map((c) => ({ n: c.number, t: c.title, k: "Capability" })),
+  ...stages.map((s) => ({ n: s.number, t: s.title, k: "Stage" })),
+];
+const MARQUEE_ROW_2 = [
+  ...FRAMES.map((f, i) => ({ n: `0${i + 1}`, t: f, k: "Frame" })),
+  ...production.map((p, i) => ({ n: `0${i + 1}`, t: p, k: "Production" })),
+];
+
+/* ------------------------------------------------------------------ */
+/* Reusable components                                                 */
+/* ------------------------------------------------------------------ */
+
+/* Scroll-in wrapper. Respects reduced motion. */
+function FadeIn({ children, delay = 0, duration = 0.7, x = 0, y = 30, as = "div", className = "", style }) {
+  const reduce = useReducedMotion();
+  const Comp = motion[as] || motion.div;
+  if (reduce) {
+    const Plain = as;
+    return <Plain className={className} style={style}>{children}</Plain>;
+  }
+  return (
+    <Comp
+      className={className}
+      style={style}
+      initial={{ opacity: 0, x, y }}
+      whileInView={{ opacity: 1, x: 0, y: 0 }}
+      viewport={{ once: true, margin: "50px", amount: 0 }}
+      transition={{ duration, delay, ease: [0.25, 0.1, 0.25, 1] }}
+    >
+      {children}
+    </Comp>
+  );
+}
+
+/* Mouse-following magnetic effect */
+function Magnet({
+  children,
+  padding = 100,
+  strength = 3,
+  activeTransition = "transform 0.3s ease-out",
+  inactiveTransition = "transform 0.6s ease-in-out",
+  className = "",
+  disabled = false,
+}) {
+  const ref = useRef(null);
+  const [active, setActive] = useState(false);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    if (disabled) return;
+    if (window.matchMedia("(pointer: coarse)").matches) return;
+    const move = (e) => {
+      const el = ref.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+      const dx = e.clientX - cx;
+      const dy = e.clientY - cy;
+      if (Math.abs(dx) < r.width / 2 + padding && Math.abs(dy) < r.height / 2 + padding) {
+        setActive(true);
+        setPos({ x: dx / strength, y: dy / strength });
+      } else {
+        setActive(false);
+        setPos({ x: 0, y: 0 });
+      }
+    };
+    window.addEventListener("mousemove", move, { passive: true });
+    return () => window.removeEventListener("mousemove", move);
+  }, [padding, strength, disabled]);
+
+  return (
+    <div ref={ref} className={`relative inline-block ${className}`}>
+      <div
+        style={{
+          transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`,
+          transition: active ? activeTransition : inactiveTransition,
+          willChange: "transform",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/* Character-by-character scroll reveal (opacity .2 -> 1) */
+function Char({ char, index, total, progress }) {
+  const start = index / total;
+  const end = Math.min(1, start + 1 / total + 0.02);
+  const opacity = useTransform(progress, [start, end], [0.2, 1]);
+  return <motion.span style={{ opacity }}>{char}</motion.span>;
+}
+
+function AnimatedText({ text, className = "" }) {
+  const ref = useRef(null);
+  const reduce = useReducedMotion();
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start 0.8", "end 0.2"] });
+  if (reduce) return <p className={className}>{text}</p>;
+
+  const words = text.split(" ");
+  const total = text.length;
+  let cursor = 0;
+  return (
+    <p ref={ref} className={className} aria-label={text}>
+      {words.map((word, wi) => {
+        const startIndex = cursor;
+        cursor += word.length + 1;
+        return (
+          <span key={wi} aria-hidden="true" className="inline-block whitespace-nowrap">
+            {word.split("").map((ch, ci) => (
+              <Char key={ci} char={ch} index={startIndex + ci} total={total} progress={scrollYProgress} />
+            ))}
+            {wi < words.length - 1 && <span>&nbsp;</span>}
+          </span>
+        );
+      })}
+    </p>
+  );
+}
+
+/* Cobalt pill CTA (WhatsApp) */
+function ContactButton({ children = "Start a conversation", className = "" }) {
+  return (
+    <a
+      href={WHATSAPP_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`inline-flex items-center justify-center rounded-full px-8 py-3 font-medium uppercase tracking-widest text-white transition-transform duration-300 hover:scale-[1.03] sm:px-10 sm:py-3.5 md:px-12 md:py-4 text-xs sm:text-sm md:text-[11px] ${focus} ${className}`}
+      style={{
+        background: "linear-gradient(123deg, #071C50 7%, #124CCF 40%, #245DFF 72%, #6B93FF 100%)",
+        boxShadow: "0px 4px 4px rgba(18,76,207,.25), 4px 4px 12px #245DFF inset",
+        outline: "2px solid white",
+        outlineOffset: "-3px",
+      }}
+    >
+      {children}
+      <span className="sr-only"> (opens WhatsApp in a new tab)</span>
+    </a>
+  );
+}
+
+function GhostPill({ children }) {
+  return (
+    <span className="inline-flex items-center rounded-full border-2 border-[#D7E2EA]/70 px-6 py-2 text-[11px] font-medium uppercase tracking-widest text-[#D7E2EA] sm:px-8 sm:py-2.5 md:text-[9px]">
+      {children}
+    </span>
+  );
+}
+
 function PlusIcon({ open }) {
   return (
     <span aria-hidden="true" className={`relative flex h-11 w-11 shrink-0 items-center justify-center transition-transform duration-300 ${open ? "rotate-45 text-[#6B93FF]" : "text-white/75"}`}>
@@ -85,7 +249,6 @@ function PlusIcon({ open }) {
   );
 }
 
-/* Small mono label with a hairline, shared by every section */
 function Eyebrow({ children, tone = "dark" }) {
   return (
     <p className={`rcs-nav-mono flex items-center gap-3 ${label} font-medium uppercase tracking-[.28em] md:tracking-[.3em] ${tone === "light" ? "text-[#124CCF]" : "text-[#6B93FF]"}`}>
@@ -95,16 +258,186 @@ function Eyebrow({ children, tone = "dark" }) {
   );
 }
 
-/* Decorative paper layer. Moves at its own speed (see parallax effect). */
-function Layer({ speed, rot = 0, className = "" }) {
-  return <div aria-hidden="true" data-par={speed} data-rot={rot} className={`pointer-events-none absolute will-change-transform ${className}`} style={{ transform: `rotate(${rot}deg)` }} />;
+/* Decorative floating "3D" objects used in the philosophy corners */
+function FloatObject({ kind, className, delay, x, floatDelay = 0 }) {
+  const reduce = useReducedMotion();
+  const shapes = {
+    ring: (
+      <div className="aspect-square w-full rounded-full border-[clamp(10px,2vw,22px)] border-[#245DFF] shadow-[0_0_60px_rgba(36,93,255,.55),inset_0_0_24px_rgba(255,255,255,.35)]" />
+    ),
+    sheet: (
+      <div className="aspect-[4/5] w-full rotate-[-12deg] border border-white/20 bg-[#F5F2EA] shadow-[0_30px_80px_rgba(0,0,0,.55)]">
+        <span className="mt-[14%] ml-[14%] block h-[2px] w-[45%] bg-[#C6A66B]" />
+      </div>
+    ),
+    orb: (
+      <div className="aspect-square w-full rounded-full bg-[radial-gradient(circle_at_30%_28%,#8FB0FF_0%,#124CCF_45%,#071C50_100%)] shadow-[0_20px_70px_rgba(18,76,207,.6)]" />
+    ),
+    gold: (
+      <div className="aspect-square w-full rounded-full border-[clamp(4px,.8vw,9px)] border-[#C6A66B] shadow-[0_0_40px_rgba(198,166,107,.4),inset_0_0_14px_rgba(255,236,190,.5)]" />
+    ),
+  };
+  return (
+    <FadeIn delay={delay} x={x} y={0} duration={0.9} className={`pointer-events-none absolute ${className}`}>
+      <motion.div
+        aria-hidden="true"
+        animate={reduce ? undefined : { y: [0, -16, 0], rotate: [0, 4, 0] }}
+        transition={{ duration: 6 + floatDelay, repeat: Infinity, ease: "easeInOut", delay: floatDelay }}
+      >
+        {shapes[kind]}
+      </motion.div>
+    </FadeIn>
+  );
 }
+
+/* One row of the scroll-driven marquee */
+function MarqueeTile({ item, i }) {
+  const v = i % 3;
+  const styles = [
+    "bg-[#124CCF] text-white",
+    "bg-[#F5F2EA] text-[#111111]",
+    "border border-[#6B93FF]/50 bg-[#071C50]/60 text-[#8FB0FF]",
+  ];
+  return (
+    <div className={`relative flex h-[180px] w-[280px] shrink-0 flex-col justify-between rounded-2xl p-5 sm:h-[270px] sm:w-[420px] sm:p-7 ${styles[v]}`}>
+      <div className="rcs-nav-mono flex items-center justify-between text-[10px] uppercase tracking-[.25em] opacity-70 md:text-[8px]">
+        <span>{item.k}</span>
+        <span>{item.n}</span>
+      </div>
+      <p className="rcs-display uppercase text-[clamp(1.4rem,3.4vw,2.4rem)] leading-[.95]">{item.t}</p>
+    </div>
+  );
+}
+
+function MarqueeSection() {
+  const sectionRef = useRef(null);
+  const row1 = useRef(null);
+  const row2 = useRef(null);
+  const reduce = useReducedMotion();
+
+  useEffect(() => {
+    if (reduce) return;
+    let frame = 0;
+    const run = () => {
+      frame = 0;
+      const el = sectionRef.current;
+      if (!el) return;
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      const offset = (window.scrollY - top + window.innerHeight) * 0.3;
+      if (row1.current) row1.current.style.transform = `translate3d(calc(-33.333% + ${offset - 200}px), 0, 0)`;
+      if (row2.current) row2.current.style.transform = `translate3d(calc(-33.333% - ${offset - 200}px), 0, 0)`;
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(run);
+    };
+    run();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [reduce]);
+
+  const tripled = (arr) => [...arr, ...arr, ...arr];
+
+  return (
+    <section ref={sectionRef} aria-hidden="true" className="relative overflow-hidden border-y border-white/10 bg-[#050A14]/80 pb-10 pt-24 sm:pt-32 md:pt-40">
+      <div ref={row1} className="flex w-max gap-3" style={{ willChange: "transform", transform: "translate3d(-33.333%,0,0)" }}>
+        {tripled(MARQUEE_ROW_1).map((item, i) => (
+          <MarqueeTile key={`a${i}`} item={item} i={i} />
+        ))}
+      </div>
+      <div ref={row2} className="mt-3 flex w-max gap-3" style={{ willChange: "transform", transform: "translate3d(-33.333%,0,0)" }}>
+        {tripled(MARQUEE_ROW_2).map((item, i) => (
+          <MarqueeTile key={`b${i}`} item={item} i={i + 1} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* Sticky stacking card: scales down as later cards slide over it */
+function StageCard({ stage, index, total, progress }) {
+  const targetScale = 1 - (total - 1 - index) * 0.03;
+  const range = [index / total, 1];
+  const scale = useTransform(progress, range, [1, targetScale]);
+
+  return (
+    <div className="sticky top-24 h-[85vh] md:top-32">
+      <motion.div
+        style={{ scale, top: `${index * 28}px` }}
+        className="relative origin-top rounded-[40px] border-2 border-[#6B93FF]/50 bg-[#050A14] p-4 shadow-[0_40px_120px_rgba(0,0,0,.6)] sm:rounded-[50px] sm:p-6 md:rounded-[60px] md:p-8"
+      >
+        {/* top row */}
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 px-2 sm:px-4">
+          <div className="flex items-center gap-4 sm:gap-8">
+            <span className="rcs-display rcs-outline text-[clamp(3rem,10vw,8rem)] leading-none text-[#245DFF]">{stage.number}</span>
+            <div>
+              <p className={`rcs-nav-mono ${label} uppercase tracking-[.25em] text-[#6B93FF]`}>Stage {stage.number} / 0{total}</p>
+              <h3 className="rcs-display mt-1 uppercase text-[clamp(1.4rem,4vw,3rem)]">{stage.title}</h3>
+            </div>
+          </div>
+          <GhostPill>The hierarchy</GhostPill>
+        </div>
+
+        {/* bottom grid: 40% / 60% */}
+        <div className="mt-4 grid grid-cols-[40fr_60fr] gap-3 sm:mt-6 sm:gap-4">
+          <div className="flex flex-col gap-3 sm:gap-4">
+            <div
+              className="flex items-end overflow-hidden rounded-[28px] bg-[#124CCF] p-4 sm:rounded-[40px] sm:p-6 md:rounded-[50px]"
+              style={{ height: "clamp(130px, 16vw, 230px)" }}
+            >
+              <p className="text-[11px] font-semibold leading-snug text-white sm:text-[13px] md:text-[11px]">{stage.kicker}</p>
+            </div>
+            <div
+              className="flex items-end overflow-hidden rounded-[28px] bg-[#F5F2EA] p-4 text-[#111111] sm:rounded-[40px] sm:p-6 md:rounded-[50px]"
+              style={{ height: "clamp(160px, 22vw, 340px)" }}
+            >
+              <p className="text-[11px] leading-snug text-black/70 sm:text-[13px] md:text-[11px]">{stage.body}</p>
+            </div>
+          </div>
+          <div
+            className="relative flex items-center justify-center overflow-hidden rounded-[28px] bg-[radial-gradient(ellipse_at_70%_20%,#245DFF_0%,#124CCF_40%,#071C50_100%)] sm:rounded-[40px] md:rounded-[50px]"
+            style={{ height: "calc(clamp(130px, 16vw, 230px) + clamp(160px, 22vw, 340px) + 0.75rem)" }}
+          >
+            <span aria-hidden="true" className="absolute h-[70%] w-[46%] rotate-[-18deg] rounded-[50%] border-[clamp(10px,2.4vw,30px)] border-[#8FB0FF]/70 shadow-[0_0_60px_rgba(143,176,255,.5)]" />
+            <span aria-hidden="true" className="absolute right-[12%] top-[14%] h-[14%] w-[9%] rounded-full border-[3px] border-[#C6A66B]" />
+            <span aria-hidden="true" className="rcs-display pointer-events-none select-none uppercase text-[clamp(1.6rem,6.5vw,6rem)] text-white/90 mix-blend-overlay">{stage.title}</span>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function StrategyStack() {
+  const ref = useRef(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
+  return (
+    <div ref={ref} className="mt-12 md:mt-20">
+      {stages.map((s, i) => (
+        <StageCard key={s.number} stage={s} index={i} total={stages.length} progress={scrollYProgress} />
+      ))}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Page                                                                */
+/* ------------------------------------------------------------------ */
 
 export default function About() {
   const rootRef = useRef(null);
+  const heroRef = useRef(null);
   const [activeFaq, setActiveFaq] = useState(-1);
   const [webgl, setWebgl] = useState(false);
   const [reduced, setReduced] = useState(false);
+
+  const { scrollYProgress: heroProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
+  const heroY = useTransform(heroProgress, [0, 1], [0, -140]);
+  const heroOpacity = useTransform(heroProgress, [0, 0.8], [1, 0.2]);
 
   /* The footer sits outside <main>; give the page a solid navy backdrop so it is always readable */
   useEffect(() => {
@@ -128,88 +461,28 @@ export default function About() {
     }
   }, []);
 
-  /* Reveal on enter (one observer, unobserves after firing) */
-  useEffect(() => {
-    const root = rootRef.current;
-    if (!root) return;
-    const items = root.querySelectorAll("[data-reveal]");
-    if (reduced || !("IntersectionObserver" in window)) {
-      items.forEach((i) => i.classList.add("rcs-in"));
-      return;
-    }
-    const io = new IntersectionObserver(
-      (entries) =>
-        entries.forEach((e) => {
-          if (e.isIntersecting) {
-            e.target.classList.add("rcs-in");
-            io.unobserve(e.target);
-          }
-        }),
-      { threshold: 0.1, rootMargin: "0px 0px -4% 0px" }
-    );
-    items.forEach((i) => io.observe(i));
-    return () => io.disconnect();
-  }, [reduced]);
-
-  /* Scroll parallax for paper layers: one passive listener, one rAF per frame */
-  useEffect(() => {
-    const root = rootRef.current;
-    if (!root || reduced) return;
-    const layers = Array.from(root.querySelectorAll("[data-par]"));
-    let frame = 0;
-    const run = () => {
-      frame = 0;
-      const vh = window.innerHeight;
-      for (const el of layers) {
-        const r = el.parentElement.getBoundingClientRect();
-        if (r.bottom < -vh || r.top > vh * 2) continue;
-        const d = r.top + r.height / 2 - vh / 2;
-        const s = parseFloat(el.dataset.par);
-        const rot = parseFloat(el.dataset.rot || 0);
-        el.style.transform = `translate3d(0, ${(d * s).toFixed(1)}px, 0) rotate(${(rot + d * s * 0.01).toFixed(2)}deg)`;
-      }
-    };
-    const onScroll = () => {
-      if (!frame) frame = requestAnimationFrame(run);
-    };
-    run();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-    };
-  }, [reduced]);
-
   return (
     <main ref={rootRef} data-scene-root className="rcs-about rcs-body relative overflow-x-clip bg-[#050A14] text-[#F5F2EA]">
       <style>{`
-        /* Home theme: editorial serif headlines, Manrope body */
         .rcs-about { font-family: 'Manrope', 'Helvetica Neue', Arial, sans-serif; }
         .rcs-about .rcs-display { font-family: 'Playfair Display', Georgia, serif; font-weight: 900; letter-spacing: -0.045em; line-height: .92; }
         .rcs-about .font-editorial { font-family: 'Playfair Display', Georgia, serif; }
         .rcs-about ::selection { background: #124CCF; color: #fff; }
 
-        .rcs-reveal { opacity: 0; transform: translateY(22px); transition: opacity .8s ease, transform .8s cubic-bezier(.2,.7,.2,1); }
-        .rcs-reveal.rcs-tilt { transform: perspective(1200px) rotateX(8deg) translateY(40px); transform-origin: 50% 100%; }
-        .rcs-reveal.rcs-in { opacity: 1; transform: none; }
+        /* gradient headline text */
+        .rcs-grad { background: linear-gradient(180deg, #7F8796 0%, #D7E2EA 100%);
+          -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
 
         .rcs-grain::after { content: ""; pointer-events: none; position: absolute; inset: 0; opacity: .07;
           background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.32'/%3E%3C/svg%3E");
           mix-blend-mode: soft-light; }
 
         .rcs-outline { color: transparent; -webkit-text-stroke: 1px currentColor; }
-        .rcs-cue { animation: rcs-cue 2.2s ease-in-out infinite; transform-origin: top; }
-        @keyframes rcs-cue { 0% { transform: scaleY(0); } 50% { transform: scaleY(1); } 100% { transform: scaleY(1); opacity: 0; } }
-        @keyframes rr-marq { to { transform: translateX(-50%); } }
 
         .rcs-faq-panel { display: grid; grid-template-rows: 0fr; visibility: hidden; transition: grid-template-rows .35s ease, visibility 0s linear .35s; }
         .rcs-faq-panel[data-open="true"] { grid-template-rows: 1fr; visibility: visible; transition-delay: 0s; }
 
         @media (prefers-reduced-motion: reduce) {
-          .rcs-reveal, .rcs-reveal.rcs-tilt { opacity: 1; transform: none; transition: none; }
-          .rcs-cue { animation: none; }
           .rcs-faq-panel { transition: none; }
         }
       `}</style>
@@ -224,153 +497,131 @@ export default function About() {
           ) : (
             <RibbonFallback />
           )}
-          {/* legibility scrim: stronger on phones where the ribbon is closer to the text */}
           <div className="absolute inset-0 bg-[#050A14]/55 md:bg-[#050A14]/40" />
         </div>
       </div>
 
       <div className="relative z-10">
         {/* ================= 1. HERO ================= */}
-        <section className="rcs-grain relative isolate flex min-h-[92svh] items-end overflow-hidden px-5 pb-[max(3rem,env(safe-area-inset-bottom))] pt-32 sm:px-8 md:min-h-[100svh] md:px-14 md:pb-16">
+        <section ref={heroRef} className="rcs-grain relative isolate flex h-screen min-h-[640px] flex-col justify-end overflow-hidden px-5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-28 sm:px-8 md:px-14">
           <div className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(4,5,8,.1)_0%,rgba(4,5,8,.2)_45%,#050A14_100%)]" aria-hidden="true" />
-          <div className="relative mx-auto w-full max-w-[1440px]">
-            <p className={`rcs-nav-mono mb-6 ${label} uppercase tracking-[.3em] text-white/70`}>Strategy / Story / Culture</p>
-            <h1 className="rcs-display max-w-[1100px] uppercase text-[clamp(2.1rem,10vw,3.6rem)] md:text-[clamp(1.95rem,5.3vw,4.8rem)]">
-              The best PR
-              <br />
-              isn’t seen.
-              <br />
-              <span className="font-editorial font-black normal-case italic tracking-[-.04em] text-[#6B93FF]">It’s felt.</span>
-            </h1>
-            <span aria-hidden="true" className="mt-8 block h-px w-24 bg-[#6B93FF]" />
-          </div>
 
-          <div className="absolute bottom-6 right-5 hidden flex-col items-center gap-3 text-[9px] uppercase tracking-[.25em] text-white/50 sm:flex md:right-14 md:text-[8px]" aria-hidden="true">
-            Scroll
-            <span className="rcs-cue block h-12 w-px bg-[#6B93FF]" />
-          </div>
-        </section>
+          <motion.div style={reduced ? undefined : { y: heroY, opacity: heroOpacity }} className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col justify-end">
+            <FadeIn delay={0} y={-20}>
+              <p className={`rcs-nav-mono mb-6 ${label} uppercase tracking-[.3em] text-white/70`}>Strategy / Story / Culture</p>
+            </FadeIn>
 
-        {/* ============ FILM STRIP ============ */}
-        <div aria-hidden="true" className="overflow-hidden border-y border-white/10 bg-[#03060D]/90 py-2">
-          <span className="block h-2 bg-[repeating-linear-gradient(90deg,#ffffff1f_0_10px,transparent_10px_22px)]" />
-          <div className="my-2 flex w-max animate-[rr-marq_32s_linear_infinite] motion-reduce:animate-none">
-            {[...FRAMES, ...FRAMES].map((t, i) => (
-              <div
-                key={i}
-                className={`rcs-display mx-1.5 grid h-[clamp(3.2rem,8vw,5rem)] w-[clamp(7rem,20vw,12rem)] shrink-0 place-items-center text-[clamp(.65rem,1.45vw,1rem)] ${
-                  i % 2 ? "border border-[#6B93FF]/50 text-[#6B93FF]" : "bg-[#124CCF] text-white"
-                }`}
-              >
-                {t}
-              </div>
-            ))}
-          </div>
-          <span className="block h-2 bg-[repeating-linear-gradient(90deg,#ffffff1f_0_10px,transparent_10px_22px)]" />
-        </div>
+            <FadeIn delay={0.15} y={40} className="w-full overflow-hidden">
+              <h1 className="rcs-display w-full whitespace-nowrap uppercase leading-none text-[10.5vw] sm:text-[11vw] md:text-[11.5vw] lg:text-[12vw]">
+                <span className="rcs-grad block">The best PR</span>
+                <span className="rcs-grad block">isn’t seen.</span>
+                <span className="font-editorial mt-2 block font-black normal-case italic tracking-[-.04em] text-[#6B93FF] text-[9vw] sm:text-[9.5vw] md:text-[9.5vw]">It’s felt.</span>
+              </h1>
+            </FadeIn>
+          </motion.div>
 
-        {/* ================= 2. PHILOSOPHY ================= */}
-        <section id="our-philosophy" className="relative px-4 py-16 sm:px-8 sm:py-24 md:px-14 md:py-32">
-          <div className="relative mx-auto max-w-[1440px]">
-            <Layer speed={0.05} rot={-4} className="-left-2 top-6 h-[85%] w-[92%] bg-[#C6CBD3]/40 md:left-4" />
-            <Layer speed={-0.04} rot={2.5} className="left-3 top-0 h-[90%] w-[94%] bg-[#245DFF]/25 md:left-10" />
-
-            <div data-reveal className="rcs-reveal rcs-tilt relative bg-[#F5F2EA] px-5 py-12 text-[#111111] shadow-[0_40px_120px_rgba(0,0,0,.55)] sm:px-10 sm:py-16 md:px-16 md:py-24">
-              <div className="grid gap-10 lg:grid-cols-[.6fr_1.4fr] lg:gap-20">
-                <div>
-                  <Eyebrow tone="light">Our philosophy</Eyebrow>
-                  <p className="mt-5 max-w-xs font-editorial text-lg italic leading-snug text-black/60 md:text-[14.5px]">Modern PR, reimagined.</p>
-                </div>
-
-                <div>
-                  <h2 className={`rcs-display uppercase ${h2Main}`}>
-                    Visibility is easy.
-                    <br />
-                    <span className="font-editorial font-black normal-case italic tracking-[-.04em] text-[#124CCF]">Relevance is earned.</span>
-                  </h2>
-
-                  <div className={`mt-8 max-w-2xl space-y-5 border-t border-[#111111]/15 pt-6 text-black/70 ${bodyDark}`}>
-                    <p>We don’t begin with a press release or a list of outlets. We begin with the business, the audience, the cultural context, and the perception the brand needs to earn.</p>
-                    <p>From there, we design the narrative, identify the right voices and moments, and bring the story to life through precise execution.</p>
-                    <p className="font-semibold text-black">The goal is not noise. It is meaningful attention that lasts.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ================= 3. STRATEGY ================= */}
-        <section className="relative overflow-hidden border-t border-white/10 bg-[#050A14]/55 px-5 py-20 sm:px-8 sm:py-28 md:px-14 md:py-36">
-          <Layer speed={0.06} rot={8} className="-right-10 top-10 h-64 w-44 bg-[#F5F2EA]/10 sm:h-80 sm:w-56" />
-          <div className="relative mx-auto max-w-[1440px]">
-            <div data-reveal className="rcs-reveal max-w-5xl">
-              <Eyebrow>The strategy hierarchy</Eyebrow>
-              <h2 className={`rcs-display mt-5 uppercase ${h2Main}`}>
-                Start at the top.
-                <br />
-                <span className="font-editorial font-black normal-case italic tracking-[-.04em] text-white/55">Make every move count.</span>
-              </h2>
-              <p className={`mt-6 max-w-xl text-white/70 ${bodyDark}`}>
-                Every campaign begins with a clear strategic objective, not a list of disconnected tactics. Each stage carries the one before it.
+          {/* bottom bar */}
+          <div className="relative mx-auto mt-8 flex w-full max-w-[1440px] items-end justify-between gap-6 pb-2 sm:pb-4 md:pb-6">
+            <FadeIn delay={0.35} y={20}>
+              <p className="max-w-[160px] font-light uppercase leading-snug tracking-wide text-[#D7E2EA] sm:max-w-[220px] md:max-w-[260px]" style={{ fontSize: "clamp(0.75rem, 1.2vw, 1.1rem)" }}>
+                Modern PR, reimagined. Narrative, influence and film that shape perception.
               </p>
-            </div>
-
-            {/* connected stages: a descending staircase joined by one line */}
-            <ol className="relative mt-14 grid gap-12 md:mt-20 md:grid-cols-3 md:gap-8">
-              <span aria-hidden="true" className="absolute bottom-0 left-[22px] top-0 w-px bg-gradient-to-b from-[#6B93FF] via-[#6B93FF]/40 to-transparent md:hidden" />
-              <span aria-hidden="true" className="absolute left-0 right-0 top-[3rem] hidden h-px bg-gradient-to-r from-[#6B93FF] via-[#6B93FF]/40 to-transparent md:block" />
-              {stages.map((s, i) => (
-                <li key={s.number} data-reveal className="rcs-reveal relative pl-14 md:pl-0" style={{ transitionDelay: `${i * 90}ms` }}>
-                  <div className={i === 1 ? "md:mt-16" : i === 2 ? "md:mt-32" : ""}>
-                    <span aria-hidden="true" className="absolute left-[16px] top-3 h-3 w-3 rounded-full bg-[#6B93FF] ring-4 ring-[#050A14] md:hidden" />
-                    <p className="rcs-display rcs-outline text-[clamp(3.5rem,16vw,5rem)] leading-none text-[#245DFF] md:text-[clamp(3.5rem,8vw,6rem)]">{s.number}</p>
-                    <h3 className={`rcs-display mt-4 uppercase ${itemTitle}`}>{s.title}</h3>
-                    <p className="mt-3 max-w-sm text-[14px] font-semibold leading-6 text-[#6B93FF] md:text-[9px] md:leading-relaxed">{s.kicker}</p>
-                    <p className={`mt-4 max-w-sm text-white/65 ${small}`}>{s.body}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
+            </FadeIn>
+            <FadeIn delay={0.5} y={20}>
+              <Magnet padding={120} strength={3}>
+                <ContactButton />
+              </Magnet>
+            </FadeIn>
           </div>
         </section>
 
-        {/* ================= 4. CAPABILITIES ================= */}
-        <section className="relative px-4 py-16 sm:px-8 sm:py-24 md:px-14 md:py-32">
-          <div className="relative mx-auto max-w-[1440px]">
-            <Layer speed={0.05} rot={3} className="left-2 top-10 h-[92%] w-[96%] bg-[#C6CBD3]/35 md:left-8" />
-            <div data-reveal className="rcs-reveal rcs-tilt relative bg-[#F5F2EA] px-5 py-12 text-[#111111] shadow-[0_40px_120px_rgba(0,0,0,.55)] sm:px-10 sm:py-16 md:px-16 md:py-24">
+        {/* ============ 2. MARQUEE ============ */}
+        <MarqueeSection />
+
+        {/* ================= 3. PHILOSOPHY (about) ================= */}
+        <section id="our-philosophy" className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#050A14]/55 px-5 py-20 sm:px-8 md:px-10">
+          <FloatObject kind="orb" delay={0.1} x={-80} floatDelay={0} className="left-[1%] top-[4%] w-[110px] sm:left-[2%] sm:w-[150px] md:left-[4%] md:w-[200px]" />
+          <FloatObject kind="gold" delay={0.25} x={-80} floatDelay={1.2} className="bottom-[8%] left-[3%] w-[90px] sm:left-[6%] sm:w-[130px] md:left-[10%] md:w-[170px]" />
+          <FloatObject kind="ring" delay={0.15} x={80} floatDelay={0.6} className="right-[1%] top-[4%] w-[110px] sm:right-[2%] sm:w-[150px] md:right-[4%] md:w-[200px]" />
+          <FloatObject kind="sheet" delay={0.3} x={80} floatDelay={1.8} className="bottom-[8%] right-[3%] w-[100px] sm:right-[6%] sm:w-[140px] md:right-[10%] md:w-[190px]" />
+
+          <div className="relative z-10 flex flex-col items-center gap-16 text-center sm:gap-20 md:gap-24">
+            <div className="flex flex-col items-center gap-10 sm:gap-14 md:gap-16">
+              <FadeIn y={40}>
+                <div className="flex flex-col items-center gap-5">
+                  <Eyebrow>Our philosophy</Eyebrow>
+                  <h2 className="rcs-display rcs-grad uppercase leading-none text-[clamp(2.2rem,9vw,7rem)]">
+                    Visibility
+                    <br />
+                    is easy.
+                  </h2>
+                  <p className="font-editorial font-black italic tracking-[-.04em] text-[#6B93FF] text-[clamp(1.6rem,6vw,4.5rem)]">Relevance is earned.</p>
+                </div>
+              </FadeIn>
+
+              <div className="flex max-w-[560px] flex-col gap-5">
+                <AnimatedText text={philosophy[0]} className="text-center font-medium leading-relaxed text-[#D7E2EA]" />
+                <AnimatedText text={philosophy[1]} className="text-center font-medium leading-relaxed text-[#D7E2EA]" />
+                <AnimatedText text={philosophy[2]} className="text-center font-bold leading-relaxed text-white" />
+              </div>
+            </div>
+
+            <FadeIn delay={0.1}>
+              <Magnet padding={120} strength={3}>
+                <ContactButton />
+              </Magnet>
+            </FadeIn>
+          </div>
+        </section>
+
+        {/* ================= 4. WHAT WE DO (ivory, numbered list) ================= */}
+        <section className="relative rounded-t-[40px] bg-[#F5F2EA] px-5 py-20 text-[#0C0C0C] sm:rounded-t-[50px] sm:px-8 sm:py-24 md:rounded-t-[60px] md:px-10 md:py-32">
+          <FadeIn>
+            <div className="mb-16 flex flex-col items-center gap-4 text-center sm:mb-20 md:mb-28">
               <Eyebrow tone="light">What we do</Eyebrow>
-              <h2 className={`rcs-display mt-5 uppercase ${h2Main}`}>
+              <h2 className={`rcs-display uppercase leading-none ${sectionTitle}`}>
                 One clear
                 <br />
                 <span className="font-editorial font-black normal-case italic tracking-[-.04em] text-[#124CCF]">point of view.</span>
               </h2>
-
-              <ul className="mt-12 border-t border-[#111111]/15 md:mt-16">
-                {capabilities.map((c, i) => (
-                  <li
-                    key={c.number}
-                    className={`grid gap-2 border-b border-[#111111]/15 py-7 sm:grid-cols-[minmax(4.5rem,.25fr)_1fr] md:grid-cols-[minmax(6rem,.2fr)_.9fr_1.1fr] md:items-baseline md:gap-8 md:py-9 ${i % 2 ? "md:pl-10 lg:pl-20" : ""}`}
-                  >
-                    <span className="rcs-display text-[clamp(2.2rem,10vw,3rem)] leading-none text-[#124CCF] md:text-[clamp(2rem,4vw,3rem)]">{c.number}</span>
-                    <h3 className={`rcs-display uppercase leading-tight ${itemTitle}`}>{c.title}</h3>
-                    <p className="text-[14px] leading-7 text-black/65 sm:col-start-2 md:col-start-auto md:text-[9px] md:leading-relaxed">{c.description}</p>
-                  </li>
-                ))}
-              </ul>
             </div>
+          </FadeIn>
+
+          <ul className="mx-auto max-w-5xl">
+            {capabilities.map((c, i) => (
+              <FadeIn as="li" key={c.number} delay={i * 0.1} className="flex items-start gap-5 border-b py-8 sm:gap-8 sm:py-10 md:gap-12 md:py-12" style={{ borderColor: "rgba(12,12,12,.15)", borderTopWidth: i === 0 ? 1 : 0, borderTopStyle: "solid" }}>
+                <span className="rcs-display shrink-0 leading-none text-[#0C0C0C]" style={{ fontSize: "clamp(3rem, 10vw, 140px)" }}>{c.number}</span>
+                <div className="flex flex-col gap-3 pt-1 sm:pt-3">
+                  <h3 className="rcs-display uppercase" style={{ fontSize: "clamp(1rem, 2.2vw, 2.1rem)" }}>{c.title}</h3>
+                  <p className="max-w-2xl font-light leading-relaxed" style={{ fontSize: "clamp(0.85rem, 1.6vw, 1.25rem)", opacity: 0.6 }}>{c.description}</p>
+                </div>
+              </FadeIn>
+            ))}
+          </ul>
+        </section>
+
+        {/* ================= 5. STRATEGY HIERARCHY (sticky stacking cards) ================= */}
+        <section className="relative z-10 -mt-10 rounded-t-[40px] bg-[#050A14] px-5 pb-24 pt-20 sm:-mt-12 sm:rounded-t-[50px] sm:px-8 sm:pt-24 md:-mt-14 md:rounded-t-[60px] md:px-10 md:pt-32">
+          <FadeIn>
+            <div className="flex flex-col items-center gap-5 text-center">
+              <Eyebrow>The strategy hierarchy</Eyebrow>
+              <h2 className={`rcs-display rcs-grad uppercase leading-none ${sectionTitle}`}>Start at the top.</h2>
+              <p className="font-editorial font-black italic tracking-[-.04em] text-white/55 text-[clamp(1.4rem,5vw,3.2rem)]">Make every move count.</p>
+              <p className={`mt-2 max-w-xl text-white/70 ${bodyDark}`}>
+                Every campaign begins with a clear strategic objective, not a list of disconnected tactics. Each stage carries the one before it.
+              </p>
+            </div>
+          </FadeIn>
+
+          <div className="mx-auto max-w-[1440px]">
+            <StrategyStack />
           </div>
         </section>
 
-        {/* ================= 5. CREATIVE PRODUCTION ================= */}
+        {/* ================= 6. CREATIVE PRODUCTION ================= */}
         <section className="relative overflow-hidden border-t border-white/10 bg-[#071C50]/85 px-5 py-24 sm:px-8 sm:py-32 md:px-14 md:py-44">
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_70%_40%,rgba(36,93,255,.3),transparent_60%)]" />
-          <Layer speed={0.07} rot={-9} className="-left-12 top-16 h-72 w-48 bg-[#F5F2EA]/10 sm:h-96 sm:w-64" />
-          <Layer speed={-0.05} rot={6} className="-right-10 bottom-10 h-64 w-44 bg-[#C6CBD3]/10 sm:h-80 sm:w-56" />
-
-          <div data-reveal className="rcs-reveal relative mx-auto max-w-[1440px]">
-            {/* viewfinder corners */}
+          <FadeIn className="relative mx-auto max-w-[1440px]">
             <div className="relative px-0 py-2 sm:px-10 sm:py-10">
               <span aria-hidden="true" className="absolute left-0 top-0 hidden h-8 w-8 border-l border-t border-[#6B93FF]/70 sm:block" />
               <span aria-hidden="true" className="absolute right-0 top-0 hidden h-8 w-8 border-r border-t border-[#6B93FF]/70 sm:block" />
@@ -390,41 +641,39 @@ export default function About() {
                 </p>
                 <ul className="border-t border-white/20">
                   {production.map((p, i) => (
-                    <li key={p} className="flex items-baseline gap-4 border-b border-white/20 py-3.5 text-[15px] font-medium tracking-[-.01em] text-[#F5F2EA] md:text-[10.5px]">
+                    <FadeIn as="li" key={p} delay={i * 0.06} y={16} className="flex items-baseline gap-4 border-b border-white/20 py-3.5 text-[15px] font-medium tracking-[-.01em] text-[#F5F2EA] md:text-[10.5px]">
                       <span aria-hidden="true" className={`rcs-nav-mono ${label} tracking-[.2em] text-[#8FB0FF]`}>0{i + 1}</span>
                       {p}
-                    </li>
+                    </FadeIn>
                   ))}
                 </ul>
               </div>
             </div>
-          </div>
+          </FadeIn>
         </section>
 
-        {/* ================= 5b. FOUNDER'S MESSAGE ================= */}
+        {/* ================= 7. FOUNDER'S MESSAGE ================= */}
         <section className="relative px-4 py-16 sm:px-8 sm:py-24 md:px-14 md:py-32">
           <div className="relative mx-auto max-w-[1440px]">
-            <Layer speed={0.05} rot={-2.5} className="-left-2 top-8 h-[90%] w-[94%] bg-[#C6CBD3]/35 md:left-6" />
-            <div data-reveal className="rcs-reveal rcs-tilt relative overflow-hidden bg-[#F5F2EA] px-5 py-12 text-[#111111] shadow-[0_40px_120px_rgba(0,0,0,.55)] sm:px-10 sm:py-16 md:px-16 md:py-24">
-              {/* oversized ghost lettering */}
+            <FadeIn y={50} className="relative overflow-hidden rounded-[40px] bg-[#F5F2EA] px-5 py-12 text-[#111111] shadow-[0_40px_120px_rgba(0,0,0,.55)] sm:rounded-[50px] sm:px-10 sm:py-16 md:rounded-[60px] md:px-16 md:py-24">
               <span aria-hidden="true" className="rcs-display pointer-events-none absolute -bottom-6 right-[-4%] select-none text-[clamp(8rem,34vw,32rem)] uppercase leading-none text-black/[0.045]">Rare</span>
 
               <div className="relative grid items-start gap-12 lg:grid-cols-[minmax(0,.62fr)_minmax(0,1.38fr)] lg:gap-20">
-                {/* portrait */}
                 <figure className="relative mx-auto w-full max-w-sm lg:mx-0 lg:max-w-none">
                   <span aria-hidden="true" className="absolute -left-3 -top-3 h-16 w-16 border-l border-t border-[#124CCF] sm:h-24 sm:w-24" />
                   <span aria-hidden="true" className="absolute -bottom-3 -right-3 h-16 w-16 border-b border-r border-black/25 sm:h-24 sm:w-24" />
-                  <div className="relative aspect-[4/5] overflow-hidden bg-[#C6CBD3]">
-                    <img src={FOUNDER_IMAGE} alt="Pallapati Vinayvardhan Reddy, Founder of Rare creative studios" loading="lazy" decoding="async" className="h-full w-full object-cover object-top" />
-                    <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/40 to-transparent px-5 pb-5 pt-16">
-                      <p className="rcs-nav-mono text-[10px] font-medium uppercase tracking-[.22em] text-[#8FB0FF] md:text-[8px]">Rare creative studios</p>
-                      <p className="rcs-display mt-1 text-base leading-tight text-white md:text-[clamp(1rem,1.45vw,1.3rem)]">Pallapati Vinayvardhan Reddy</p>
-                      <p className="rcs-nav-mono mt-1 text-[10px] uppercase tracking-[.22em] text-white/70 md:text-[8px]">Founder</p>
-                    </figcaption>
-                  </div>
+                  <Magnet padding={150} strength={3} activeTransition="transform 0.3s ease-out" inactiveTransition="transform 0.6s ease-in-out" className="block w-full">
+                    <div className="relative aspect-[4/5] overflow-hidden rounded-[28px] bg-[#C6CBD3] sm:rounded-[36px]">
+                      <img src={FOUNDER_IMAGE} alt="Pallapati Vinayvardhan Reddy, Founder of Rare creative studios" loading="lazy" decoding="async" className="h-full w-full object-cover object-top" />
+                      <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/40 to-transparent px-5 pb-5 pt-16">
+                        <p className="rcs-nav-mono text-[10px] font-medium uppercase tracking-[.22em] text-[#8FB0FF] md:text-[8px]">Rare creative studios</p>
+                        <p className="rcs-display mt-1 text-base leading-tight text-white md:text-[clamp(1rem,1.45vw,1.3rem)]">Pallapati Vinayvardhan Reddy</p>
+                        <p className="rcs-nav-mono mt-1 text-[10px] uppercase tracking-[.22em] text-white/70 md:text-[8px]">Founder</p>
+                      </figcaption>
+                    </div>
+                  </Magnet>
                 </figure>
 
-                {/* message */}
                 <div className="min-w-0">
                   <Eyebrow tone="light">Founder’s message</Eyebrow>
                   <h2 className={`rcs-display mt-5 uppercase ${h2Chapter}`}>
@@ -445,21 +694,21 @@ export default function About() {
                   </div>
                 </div>
               </div>
-            </div>
+            </FadeIn>
           </div>
         </section>
 
-        {/* ================= 6. FAQ ================= */}
+        {/* ================= 8. FAQ ================= */}
         <section id="faq" className="relative border-t border-white/10 bg-[#050A14]/90 px-5 py-20 sm:px-8 sm:py-28 md:px-14 md:py-32">
           <div className="mx-auto grid max-w-[1440px] gap-10 lg:grid-cols-[.72fr_1.28fr] lg:gap-20">
-            <div data-reveal className="rcs-reveal lg:sticky lg:top-24 lg:self-start">
+            <FadeIn className="lg:sticky lg:top-24 lg:self-start">
               <Eyebrow>Frequently asked questions</Eyebrow>
-              <h2 className={`rcs-display mt-5 uppercase ${h2Main}`}>
+              <h2 className={`rcs-display rcs-grad mt-5 uppercase ${h2Main}`}>
                 The right
                 <br />
                 questions.
               </h2>
-            </div>
+            </FadeIn>
 
             <div className="border-t border-white/20">
               {faqs.map((item, index) => {
@@ -467,7 +716,7 @@ export default function About() {
                 const panelId = `rcs-faq-panel-${index}`;
                 const buttonId = `rcs-faq-button-${index}`;
                 return (
-                  <div key={item.question} className="border-b border-white/20">
+                  <FadeIn key={item.question} delay={index * 0.05} y={18} className="border-b border-white/20">
                     <h3>
                       <button
                         type="button"
@@ -486,17 +735,17 @@ export default function About() {
                         <p className={`max-w-3xl pb-7 pr-2 text-white/70 sm:pr-10 ${bodyDark} md:text-[10px]`}>{item.answer}</p>
                       </div>
                     </div>
-                  </div>
+                  </FadeIn>
                 );
               })}
             </div>
           </div>
         </section>
 
-        {/* ================= 7. CTA (cobalt, like Home) ================= */}
+        {/* ================= 9. CTA ================= */}
         <section className="relative isolate overflow-hidden border-t border-white/10 bg-[#124CCF] px-5 pb-[max(6rem,env(safe-area-inset-bottom))] pt-24 text-[#F5F2EA] sm:px-8 sm:py-36 md:px-14 md:py-48">
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_80%_110%,rgba(36,93,255,.9),transparent_55%),radial-gradient(ellipse_at_15%_0%,rgba(7,28,80,.7),transparent_55%)]" />
-          <div data-reveal className="rcs-reveal relative mx-auto max-w-[1440px]">
+          <FadeIn className="relative mx-auto max-w-[1440px]">
             <p className={`rcs-nav-mono flex items-center gap-3 ${label} font-medium uppercase tracking-[.28em] text-white/80`}>
               <span aria-hidden="true" className="h-px w-8 bg-current" />
               The next move
@@ -509,20 +758,22 @@ export default function About() {
 
             <div className="mt-10 flex flex-col gap-10 sm:flex-row sm:items-end sm:justify-between">
               <p className={`max-w-md text-white/85 ${bodyDark}`}>If the ambition is bigger than a mention, let’s start with the story worth telling.</p>
-              <a
-                href={WHATSAPP_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`group inline-flex shrink-0 items-center gap-5 ${label} font-semibold uppercase tracking-[.2em] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white`}
-              >
-                <span className="grid h-16 w-16 place-items-center rounded-full border border-[#F5F2EA]/80 text-[#F5F2EA] transition-colors duration-300 group-hover:bg-[#F5F2EA] group-hover:text-[#124CCF]">
-                  <ArrowUpRight size={20} strokeWidth={1.6} aria-hidden="true" />
-                </span>
-                Start a conversation
-                <span className="sr-only"> (opens WhatsApp in a new tab)</span>
-              </a>
+              <Magnet padding={140} strength={3}>
+                <a
+                  href={WHATSAPP_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`group inline-flex shrink-0 items-center gap-5 ${label} font-semibold uppercase tracking-[.2em] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white`}
+                >
+                  <span className="grid h-16 w-16 place-items-center rounded-full border border-[#F5F2EA]/80 text-[#F5F2EA] transition-colors duration-300 group-hover:bg-[#F5F2EA] group-hover:text-[#124CCF]">
+                    <ArrowUpRight size={20} strokeWidth={1.6} aria-hidden="true" />
+                  </span>
+                  Start a conversation
+                  <span className="sr-only"> (opens WhatsApp in a new tab)</span>
+                </a>
+              </Magnet>
             </div>
-          </div>
+          </FadeIn>
         </section>
       </div>
     </main>
