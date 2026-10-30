@@ -852,20 +852,50 @@ function Figure({ id, pose = "standing", pos, yaw = 0, scale = 1, palette, armL 
   const torso = useRef(), headRef = useRef(), aR = useRef(), aL = useRef();
   useFrame(({ clock }) => {
     if (!animate || !torso.current) return;
+
+    // A slow, staggered conversation rhythm: one person speaks while the
+    // others listen, breathe, make small nods and subtly shift their weight.
     const t = clock.elapsedTime + phase;
-    const sp = THREE.MathUtils.smoothstep(Math.sin(t * 0.42 + phase * 1.9), -0.15, 0.5); // 0 listening .. 1 speaking
-    torso.current.scale.y = 1 + Math.sin(t * 1.6) * 0.004;
-    torso.current.rotation.x = lean + Math.sin(t * 0.7) * 0.01 + sp * 0.05;
-    headRef.current.rotation.y = head + Math.sin(t * 0.5) * 0.07 + sp * Math.sin(t * 0.9) * 0.08;
-    headRef.current.rotation.x = Math.sin(t * 0.43) * 0.03 + (1 - sp) * Math.max(0, Math.sin(t * 2.1)) * 0.06 - sp * 0.02;
-    const g = (ref, key, side, on) => {
-      if (!on || !ref.current) return;
+    const sp = THREE.MathUtils.smoothstep(
+      Math.sin(t * 0.38 + phase * 1.9),
+      -0.28,
+      0.62
+    );
+    const breath = Math.sin(t * 1.18 + phase * 0.7);
+    const sway = Math.sin(t * 0.63 + phase) * 0.012;
+    const gestureBeat = Math.max(0, Math.sin(t * 2.35 + phase * 1.35));
+
+    torso.current.scale.y = 1 + breath * 0.006;
+    torso.current.rotation.x =
+      lean + sway + breath * 0.008 + sp * (0.025 + gestureBeat * 0.025);
+    torso.current.rotation.z =
+      Math.sin(t * 0.52 + phase) * 0.012 + sp * Math.sin(t * 1.7 + phase) * 0.012;
+    torso.current.rotation.y = Math.sin(t * 0.42 + phase * 0.8) * 0.018;
+
+    headRef.current.rotation.y =
+      head + Math.sin(t * 0.47 + phase) * 0.055 +
+      sp * Math.sin(t * 0.82 + phase) * 0.105;
+    headRef.current.rotation.x =
+      Math.sin(t * 0.39 + phase * 0.6) * 0.022 +
+      (1 - sp) * Math.max(0, Math.sin(t * 1.75 + phase)) * 0.075 -
+      sp * (0.012 + gestureBeat * 0.018);
+    headRef.current.rotation.z =
+      Math.sin(t * 0.31 + phase) * 0.018 +
+      (1 - sp) * Math.sin(t * 0.9 + phase) * 0.018;
+
+    const animateArm = (ref, key, side, on) => {
+      if (!ref.current) return;
       const b = ARM[key];
-      ref.current.rotation.x = b.f + sp * (0.08 + Math.sin(t * 3.1 + side) * 0.17);
-      ref.current.rotation.z = side * b.a + sp * Math.sin(t * 2.2 + side * 2) * 0.07;
+      const idle = Math.sin(t * 0.8 + phase + side) * 0.025;
+      const speakingMotion = sp * (0.055 + gestureBeat * 0.16);
+      ref.current.rotation.x = b.f + (on ? speakingMotion + idle : idle);
+      ref.current.rotation.z =
+        side * b.a + (on ? sp * Math.sin(t * 1.8 + phase + side) * 0.065 : idle * side * 0.35);
+      ref.current.rotation.y = on ? Math.sin(t * 1.35 + phase + side) * sp * 0.035 : 0;
     };
-    g(aR, armR, 1, gestR);
-    g(aL, armL, -1, gestL);
+
+    animateArm(aR, armR, 1, gestR);
+    animateArm(aL, armL, -1, gestL);
   });
   if (glb) return <GlbModel url={glb} position={pos} rotation-y={yaw} scale={scale} />;
   const seated = pose === "seated";
@@ -1083,11 +1113,12 @@ function Softbox({ pos, aim, size = [1.6, 1.2], hot = HOT_WHITE }) {
    (profile to the camera); two people stand close behind the table, angled in
    towards the notes. Everyone is huddled around the same table and talking.
    Figure faces local -z, so yaw -PI/2 faces +x and yaw +PI/2 faces -x. */
-const SEAT_X = 1.5;
+// Keep the group compact so all four people read as one active discussion.
+const SEAT_X = 1.28;
 const TABLE_Z = -0.2;
 const NOTES_AT = [0.1, 0, -0.1];
-const STAND_A = [-1.2, 0, 0.95];
-const STAND_B = [1.2, 0, 0.95];
+const STAND_A = [-0.78, 0, 0.82];
+const STAND_B = [0.78, 0, 0.82];
 const PEOPLE = [
   { id: "seatA", pose: "seated", pos: [-SEAT_X, 0, TABLE_Z], yaw: -Math.PI / 2, head: 0.1, armL: "table", armR: "talk", gestR: true, lean: -0.05, palette: { top: "#2b2f36", bottom: "#15171b", skin: "#c58f6d", hair: "#17110d" }, phase: 0 },
   { id: "seatB", pose: "seated", pos: [SEAT_X, 0, TABLE_Z], yaw: Math.PI / 2, head: -0.1, armL: "talk", armR: "table", gestL: true, lean: -0.04, long: true, palette: { top: "#6b5642", bottom: "#1c1d22", skin: "#8a5a3f", hair: "#0d0b0a" }, phase: 1.3 },
@@ -1096,6 +1127,13 @@ const PEOPLE = [
 ];
 
 function StudioSet({ tx, low, reduced }) {
+  const coveRef = useRef();
+  const displayRef = useRef();
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime;
+    if (coveRef.current) coveRef.current.emissiveIntensity = 0.72 + Math.sin(t * 0.42) * 0.045;
+    if (displayRef.current) displayRef.current.emissiveIntensity = 0.18 + Math.sin(t * 0.7) * 0.025;
+  });
   const shelfItems = useMemo(() => {
     const r = rnd(9), out = [];
     for (let s = 0; s < 4; s++) for (let i = 0; i < 9; i++) {
@@ -1106,56 +1144,198 @@ function StudioSet({ tx, low, reduced }) {
   const trim = <meshBasicMaterial color={HOT_AMBER} toneMapped={false} />;
   return (
     <group>
-      {/* floor, rug, walls */}
-      <mesh rotation-x={-Math.PI / 2} position={[0, 0.003, -0.05]} receiveShadow><planeGeometry args={[9.6, 7]} /><meshStandardMaterial color="#1f1d1b" roughness={0.55} metalness={0.1} /></mesh>
-      <mesh rotation-x={-Math.PI / 2} position={[0, 0.006, 0.1]} receiveShadow><planeGeometry args={[5.6, 3.6]} /><meshStandardMaterial color="#2a1f1b" roughness={1} /></mesh>
-      <mesh position={[0, 1.9, -3.45]} receiveShadow><boxGeometry args={[9.8, 3.8, 0.12]} /><meshStandardMaterial color="#17181a" roughness={0.9} /></mesh>
-      <mesh position={[-4.8, 1.9, -0.05]}><boxGeometry args={[0.12, 3.8, 7]} /><meshStandardMaterial color="#141517" roughness={0.9} /></mesh>
-      <mesh position={[4.8, 1.9, -0.05]}><boxGeometry args={[0.12, 3.8, 7]} /><meshStandardMaterial color="#141517" roughness={0.9} /></mesh>
-
-      {/* amber trim: defines the studio as a lit set when seen from outside */}
-      <mesh position={[0, 3.82, -3.45]}><boxGeometry args={[9.84, 0.05, 0.14]} />{trim}</mesh>
-      <mesh position={[-4.8, 3.82, -0.05]}><boxGeometry args={[0.14, 0.05, 7.04]} />{trim}</mesh>
-      <mesh position={[4.8, 3.82, -0.05]}><boxGeometry args={[0.14, 0.05, 7.04]} />{trim}</mesh>
-      <mesh position={[0, 0.02, 3.46]}><boxGeometry args={[9.8, 0.03, 0.05]} />{trim}</mesh>
-
-      {/* wall: board, framed photos */}
-      <mesh position={[-0.3, 1.8, -3.37]}>
-        <planeGeometry args={[6.2, 2.5]} />
-        <meshStandardMaterial map={tx.board} emissiveMap={tx.board} emissive="#ffffff" emissiveIntensity={0.2} roughness={0.95} />
+      {/* PREMIUM CREATIVE OFFICE ARCHITECTURE */}
+      {/* honed-stone floor and soft textured meeting rug */}
+      <mesh rotation-x={-Math.PI / 2} position={[0, 0.003, -0.05]} receiveShadow>
+        <planeGeometry args={[9.6, 7]} />
+        <meshStandardMaterial color="#a79a89" roughness={0.48} metalness={0.08} />
       </mesh>
-      <mesh position={[3.35, 1.9, -3.38]}><boxGeometry args={[1.68, 1.18, 0.04]} /><meshStandardMaterial color="#0a0a0b" roughness={0.5} /></mesh>
-      <mesh position={[3.35, 1.9, -3.355]}>
-        <planeGeometry args={[1.5, 1]} />
-        <meshStandardMaterial map={tx.poster} emissiveMap={tx.poster} emissive="#ffffff" emissiveIntensity={0.25} />
+      <mesh rotation-x={-Math.PI / 2} position={[0, 0.008, 0.1]} receiveShadow>
+        <planeGeometry args={[5.8, 3.8]} />
+        <meshStandardMaterial color="#81766a" roughness={0.94} />
       </mesh>
-      {[[-3.55, 0.45, 0.9, tx.photoA], [-3.55, -0.7, 0.9, tx.photoB]].map(([x, y, w, m], i) => (
-        <mesh key={i} position={[x, 2.1 + y, -3.37]}><planeGeometry args={[w, w * 0.7]} /><meshStandardMaterial map={m} emissiveMap={m} emissive="#fff" emissiveIntensity={0.2} /></mesh>
+      {/* fine brass perimeter inlay and soft stone floor joints */}
+      {[-2.8, -1.4, 0, 1.4, 2.8].map((x, i) => (
+        <mesh key={`floor-joint-${i}`} rotation-x={-Math.PI / 2} position={[x, 0.006, 0.05]}>
+          <planeGeometry args={[0.008, 6.4]} />
+          <meshBasicMaterial color="#d5c7b5" transparent opacity={0.2} />
+        </mesh>
       ))}
 
-      {/* right wall: window glow */}
-      <mesh position={[4.73, 1.9, -0.9]} rotation-y={-Math.PI / 2}><planeGeometry args={[2.4, 1.7]} /><meshBasicMaterial color={BLUE_GLOW} toneMapped={false} /></mesh>
-      <mesh position={[4.72, 1.9, -0.9]} rotation-y={-Math.PI / 2}><boxGeometry args={[0.05, 1.7, 0.04]} /><meshStandardMaterial color="#050505" /></mesh>
-      <mesh position={[4.72, 1.9, -0.9]} rotation-y={-Math.PI / 2}><boxGeometry args={[2.4, 0.05, 0.04]} /><meshStandardMaterial color="#050505" /></mesh>
+      {/* warm charcoal architectural shell */}
+      <mesh position={[0, 1.9, -3.45]} receiveShadow>
+        <boxGeometry args={[9.8, 3.8, 0.16]} />
+        <meshStandardMaterial color="#33251e" roughness={0.76} />
+      </mesh>
+      <mesh position={[-4.8, 1.9, -0.05]}>
+        <boxGeometry args={[0.12, 3.8, 7]} />
+        <meshStandardMaterial color="#241c18" roughness={0.68} />
+      </mesh>
+      <mesh position={[4.8, 1.9, -0.05]}>
+        <boxGeometry args={[0.12, 3.8, 7]} />
+        <meshStandardMaterial color="#17191c" roughness={0.72} />
+      </mesh>
 
-      {/* left wall: shelving */}
-      {[0.5, 1.1, 1.7, 2.3].map((y) => (
-        <mesh key={y} position={[-4.55, y, -0.2]}><boxGeometry args={[0.36, 0.04, 6]} /><meshStandardMaterial color="#2a2018" roughness={0.7} /></mesh>
+      {/* floating ceiling raft with recessed architectural lighting */}
+      <mesh position={[0, 3.76, -0.15]} receiveShadow>
+        <boxGeometry args={[9.35, 0.12, 6.75]} />
+        <meshStandardMaterial color="#b6aa9a" roughness={0.72} metalness={0.04} />
+      </mesh>
+      <mesh position={[0, 3.68, -0.15]}>
+        <boxGeometry args={[8.9, 0.025, 6.25]} />
+        <meshStandardMaterial color="#c7b9a7" roughness={0.62} />
+      </mesh>
+      <mesh position={[0, 3.66, -0.15]}>
+        <boxGeometry args={[7.8, 0.018, 0.035]} />
+        <meshStandardMaterial ref={coveRef} color="#e4c58e" emissive="#d9a441" emissiveIntensity={0.82} toneMapped={false} />
+      </mesh>
+      {[-3.25, -1.1, 1.1, 3.25].map((x, i) => (
+        <group key={`ceiling-light-${i}`} position={[x, 3.61, -1.0]}>
+          <mesh><boxGeometry args={[0.78, 0.025, 0.12]} /><meshBasicMaterial color="#f0dfbd" toneMapped={false} /></mesh>
+          <pointLight position={[0, -0.15, 0]} intensity={1.4} distance={3.2} color="#f4dfbf" />
+        </group>
       ))}
-      {shelfItems.map((b, i) => (
-        <mesh key={i} position={[-4.55, 0.5 + b.s * 0.6 + b.h / 2 + 0.02, b.z]}><boxGeometry args={[0.22, b.h, b.w]} /><meshStandardMaterial color={b.c} roughness={0.8} /></mesh>
+      {/* sculptural brass-and-smoked-glass pendants: warm pools of light */}
+      {[
+        [-3.55, 3.48, -0.25, 0.34],
+        [-2.82, 3.42, 0.72, 0.27],
+        [-2.15, 3.52, -1.18, 0.31],
+        [2.15, 3.52, -1.18, 0.31],
+        [2.82, 3.42, 0.72, 0.27],
+        [3.55, 3.48, -0.25, 0.34],
+      ].map(([x, y, z, r], i) => (
+        <group key={`designer-pendant-${i}`} position={[x, y, z]}>
+          <mesh position={[0, 0.11, 0]}><cylinderGeometry args={[0.012, 0.012, 0.22, 12]} /><meshStandardMaterial color="#b18a55" metalness={0.9} roughness={0.22} /></mesh>
+          <mesh position={[0, -0.035, 0]}><torusGeometry args={[r * 0.78, 0.012, 8, 32]} /><meshStandardMaterial color="#c5a16b" metalness={0.92} roughness={0.2} /></mesh>
+          <mesh position={[0, -0.13, 0]} rotation-x={Math.PI}>
+            <cylinderGeometry args={[r * 0.52, r, 0.19, 32, 1, true]} />
+            <meshStandardMaterial color="#282522" metalness={0.68} roughness={0.26} side={THREE.DoubleSide} />
+          </mesh>
+          <mesh position={[0, -0.235, 0]}>
+            <circleGeometry args={[r * 0.7, 32]} />
+            <meshBasicMaterial color="#f5dfb8" toneMapped={false} side={THREE.DoubleSide} />
+          </mesh>
+          <pointLight position={[0, -0.32, 0]} intensity={1.1} distance={2.8} color="#f4d9b0" />
+        </group>
       ))}
 
-      {/* production equipment + props in the room */}
-      <mesh position={[-3.6, 0.3, -2.7]}><boxGeometry args={[1.0, 0.6, 0.6]} /><meshStandardMaterial color="#0d0e10" roughness={0.6} metalness={0.4} /></mesh>
-      <mesh position={[-3.5, 0.78, -2.6]}><boxGeometry args={[0.8, 0.32, 0.5]} /><meshStandardMaterial color="#111214" roughness={0.6} metalness={0.4} /></mesh>
-      <Tripod pos={[3.7, 0, -2.4]} yaw={0.6} h={1.3}><CinemaCamera scale={0.8} /></Tripod>
-      <group position={[4.1, 0, -2.9]}>
-        <mesh position={[0, 0.2, 0]}><cylinderGeometry args={[0.2, 0.15, 0.4, 14]} /><meshStandardMaterial color="#1a1613" roughness={0.8} /></mesh>
-        {[[0, 0.75, 0, 0.42], [0.2, 0.62, 0.1, 0.3], [-0.2, 0.66, -0.08, 0.32], [0.05, 0.98, 0.05, 0.28]].map(([x, y, z, r], i) => (
-          <mesh key={i} position={[x, y, z]}><sphereGeometry args={[r, 10, 10]} /><meshStandardMaterial color="#10201a" roughness={0.9} /></mesh>
+      {/* walnut feature wall: vertical slats frame a clean presentation display */}
+      <mesh position={[0, 1.92, -3.34]}>
+        <boxGeometry args={[7.35, 3.42, 0.045]} />
+        <meshStandardMaterial color="#4a3022" roughness={0.54} />
+      </mesh>
+      {Array.from({ length: 42 }, (_, i) => (
+        <mesh key={`walnut-slat-${i}`} position={[-3.58 + i * 0.175, 1.92, -3.285]}>
+          <boxGeometry args={[0.075, 3.35, 0.055]} />
+          <meshStandardMaterial color={i % 3 === 0 ? "#79543a" : "#5b3b29"} roughness={0.48} />
+        </mesh>
+      ))}
+      {/* blackened-brass frame around the central creative moodboard */}
+      <mesh position={[-0.25, 1.92, -3.235]}>
+        <boxGeometry args={[6.45, 2.45, 0.075]} />
+        <meshStandardMaterial color="#c09a62" metalness={0.86} roughness={0.22} />
+      </mesh>
+      <mesh position={[-0.25, 1.92, -3.185]}>
+        <planeGeometry args={[6.28, 2.28]} />
+        <meshStandardMaterial ref={displayRef} map={tx.board} emissiveMap={tx.board} emissive="#d9c8a7" emissiveIntensity={0.18} roughness={0.88} />
+      </mesh>
+      {/* slim display shelf */}
+      <mesh position={[-0.25, 0.58, -3.02]} castShadow>
+        <boxGeometry args={[6.85, 0.09, 0.42]} />
+        <meshStandardMaterial color="#171719" metalness={0.55} roughness={0.32} />
+      </mesh>
+      <mesh position={[-0.25, 0.635, -2.8]}>
+        <boxGeometry args={[6.7, 0.018, 0.025]} />
+        <meshBasicMaterial color="#d7b276" toneMapped={false} />
+      </mesh>
+
+      {/* understated executive credenza beneath the presentation wall */}
+      <group position={[0, 0, -2.82]}>
+        <mesh position={[0, 0.36, 0]} castShadow receiveShadow>
+          <boxGeometry args={[5.9, 0.68, 0.48]} />
+          <meshStandardMaterial color="#2d2119" roughness={0.38} metalness={0.16} />
+        </mesh>
+        {[-2.25, -1.12, 0, 1.12, 2.25].map((x, i) => (
+          <group key={`credenza-front-${i}`} position={[x, 0.36, 0.247]}>
+            <mesh><boxGeometry args={[1.02, 0.57, 0.018]} /><meshStandardMaterial color={i % 2 ? "#493326" : "#563a29"} roughness={0.5} /></mesh>
+            <mesh position={[0, 0.08, 0.018]}><boxGeometry args={[0.22, 0.018, 0.018]} /><meshStandardMaterial color="#b28b55" metalness={0.8} roughness={0.24} /></mesh>
+          </group>
+        ))}
+        {[-2.35, 2.35].map((x, i) => (
+          <mesh key={`credenza-leg-${i}`} position={[x, 0.12, 0]}><boxGeometry args={[0.055, 0.24, 0.38]} /><meshStandardMaterial color="#a88755" metalness={0.8} roughness={0.3} /></mesh>
         ))}
       </group>
+
+      {/* left-side glass partition with slim dark mullions */}
+      <mesh position={[-4.72, 1.9, -0.15]} rotation-y={Math.PI / 2}>
+        <planeGeometry args={[6.4, 3.25]} />
+        <meshBasicMaterial color="#26384a" transparent opacity={0.28} side={THREE.DoubleSide} />
+      </mesh>
+      {[-2.5, -0.65, 1.2, 2.95].map((z, i) => (
+        <mesh key={`left-glass-mullion-${i}`} position={[-4.69, 1.9, z]}>
+          <boxGeometry args={[0.055, 3.45, 0.055]} />
+          <meshStandardMaterial color="#11161c" metalness={0.8} roughness={0.25} />
+        </mesh>
+      ))}
+      <mesh position={[-4.68, 1.9, -0.15]}>
+        <boxGeometry args={[0.06, 0.055, 6.5]} />
+        <meshStandardMaterial color="#11161c" metalness={0.8} roughness={0.25} />
+      </mesh>
+
+      {/* right-side floor-to-ceiling windows: cool dusk city glow */}
+      <mesh position={[4.72, 1.95, -0.72]} rotation-y={-Math.PI / 2}>
+        <planeGeometry args={[3.55, 2.95]} />
+        <meshBasicMaterial color="#344d68" toneMapped={false} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh position={[4.68, 1.95, -0.72]} rotation-y={-Math.PI / 2}>
+        <planeGeometry args={[3.42, 2.82]} />
+        <meshBasicMaterial color="#17283b" transparent opacity={0.32} side={THREE.DoubleSide} />
+      </mesh>
+      {[-2.35, -1.2, -0.05, 1.1].map((z, i) => (
+        <mesh key={`window-vertical-${i}`} position={[4.64, 1.95, z]}>
+          <boxGeometry args={[0.075, 3.08, 0.065]} />
+          <meshStandardMaterial color="#11161b" metalness={0.78} roughness={0.25} />
+        </mesh>
+      ))}
+      {[0.58, 1.95, 3.32].map((y, i) => (
+        <mesh key={`window-horizontal-${i}`} position={[4.64, y, -0.72]}>
+          <boxGeometry args={[0.075, 0.055, 3.62]} />
+          <meshStandardMaterial color="#11161b" metalness={0.78} roughness={0.25} />
+        </mesh>
+      ))}
+
+      {/* refined side console, books and sculptural objects */}
+      <group position={[-3.85, 0, -0.75]}>
+        <mesh position={[0, 0.52, 0]}><boxGeometry args={[0.62, 1.04, 2.85]} /><meshStandardMaterial color="#1b1b1d" roughness={0.38} metalness={0.28} /></mesh>
+        {[0.22, 0.78].map((y, i) => (
+          <mesh key={`console-shelf-${i}`} position={[0, y, 0]}><boxGeometry args={[0.66, 0.035, 2.9]} /><meshStandardMaterial color="#9b784b" metalness={0.68} roughness={0.3} /></mesh>
+        ))}
+        {[-0.85, -0.4, 0.15, 0.72].map((z, i) => (
+          <mesh key={`design-book-${i}`} position={[0.02, 0.42, z]} rotation-x={i % 2 ? -0.05 : 0.04}>
+            <boxGeometry args={[0.24, 0.34 + (i % 2) * 0.08, 0.16]} />
+            <meshStandardMaterial color={["#b29a75", "#343b45", "#704b36", "#d0c5b1"][i]} roughness={0.8} />
+          </mesh>
+        ))}
+      </group>
+
+      {/* sculptural indoor plant in a stone planter */}
+      <group position={[4.0, 0, -2.72]}>
+        <mesh position={[0, 0.27, 0]}><cylinderGeometry args={[0.27, 0.2, 0.54, 24]} /><meshStandardMaterial color="#b8aa98" roughness={0.72} /></mesh>
+        {Array.from({ length: 9 }, (_, i) => {
+          const a = (i / 9) * Math.PI * 2;
+          return (
+            <group key={`office-leaf-${i}`} position={[Math.cos(a) * 0.08, 0.58, Math.sin(a) * 0.08]} rotation-z={Math.cos(a) * 0.45} rotation-x={Math.sin(a) * 0.4}>
+              <mesh position={[0, 0.38, 0]}><capsuleGeometry args={[0.095, 0.55, 4, 8]} /><meshStandardMaterial color={i % 2 ? "#29463b" : "#365847"} roughness={0.9} /></mesh>
+            </group>
+          );
+        })}
+      </group>
+
+      {/* restrained brass details and practical production object */}
+      <mesh position={[0, 3.52, -3.12]}><boxGeometry args={[7.5, 0.025, 0.025]} /><meshBasicMaterial color="#b38c55" toneMapped={false} /></mesh>
+      <Tripod pos={[3.45, 0, -2.15]} yaw={0.6} h={1.25}><CinemaCamera scale={0.72} /></Tripod>
+      <ChLight as="rectAreaLight" base={5} ch="studio" position={[-3.7, 2.3, -0.4]} rotation-y={Math.PI / 2} width={2.4} height={2.5} color="#f0d8b4" />
+      <ChLight as="rectAreaLight" base={7} ch="studio" position={[4.5, 2.1, -0.7]} rotation-y={Math.PI / 2} width={2.7} height={2.6} color="#7d9fc7" />
 
       {/* table (compact, so everyone is close), chairs */}
       <group position={[0, 0, TABLE_Z]}>
@@ -1166,8 +1346,8 @@ function StudioSet({ tx, low, reduced }) {
       </group>
       <Pendant reduced={reduced} />
       {/* chairs sit just behind each seated person, backs away from the table */}
-      <Chair pos={[-SEAT_X - 0.06, 0, TABLE_Z]} yaw={-Math.PI / 2} />
-      <Chair pos={[SEAT_X + 0.06, 0, TABLE_Z]} yaw={Math.PI / 2} />
+      <Chair pos={[-SEAT_X - 0.02, 0, TABLE_Z]} yaw={-Math.PI / 2} />
+      <Chair pos={[SEAT_X + 0.02, 0, TABLE_Z]} yaw={Math.PI / 2} />
 
       {/* notes, storyboards and references on the table */}
       <ContactShadow pos={[0.2, 0.7545, -0.1]} size={[1.34, 1.04]} blob={tx.blob} />
@@ -1194,18 +1374,18 @@ function StudioSet({ tx, low, reduced }) {
 
       {/* atmosphere: light cone under the pendant + floating dust */}
       <Shaft from={[0, 2.25, -0.2]} to={[0, 0.76, -0.2]} r={1.35} color="#ffd9a0" op={0.16} ch="studio" />
-      {!low && <Sparkles count={70} scale={[7, 3.4, 5]} position={[0, 1.8, 0]} size={1.8} speed={reduced ? 0 : 0.25} opacity={0.55} color="#ffd9a0" />}
+      {!low && <Sparkles count={70} scale={[7, 3.4, 5]} position={[0, 1.8, 0]} size={1.8} speed={reduced ? 0 : 0.25} opacity={0.55} color="#f3d7b0" />}
 
       {/* soft area lights: window spill + ceiling bounce */}
-      <ChLight as="rectAreaLight" base={7} ch="studio" position={[4.6, 1.9, -0.9]} rotation-y={Math.PI / 2} width={2.4} height={1.7} color="#6f9be8" />
+      <ChLight as="rectAreaLight" base={7} ch="studio" position={[4.6, 1.9, -0.9]} rotation-y={Math.PI / 2} width={2.4} height={1.7} color="#9bb4cf" />
       <ChLight as="rectAreaLight" base={3} ch="studio" position={[0, 2.35, -0.2]} rotation-x={-Math.PI / 2} width={1.6} height={1.0} color="#ffd9a0" />
 
       {/* practical lights */}
       <Spot pos={[0, 2.22, -0.2]} aim={[0, 0.75, -0.2]} base={9} ch="studio" angle={0.8} penumbra={0.9} decay={2} color="#ffd9a0" castShadow={!low} shadow-mapSize={[1024, 1024]} shadow-bias={-0.0006} />
-      <Spot pos={[-1.6, 3.4, -1.6]} aim={[-1.6, 1.9, -3.4]} base={40} ch="studio" angle={0.7} penumbra={0.8} decay={2} color="#ffc98a" />
-      <Spot pos={[2.6, 3.4, -1.6]} aim={[2.6, 1.9, -3.4]} base={40} ch="studio" angle={0.7} penumbra={0.8} decay={2} color="#ffc98a" />
+      <Spot pos={[-1.6, 3.4, -1.6]} aim={[-1.6, 1.9, -3.4]} base={40} ch="studio" angle={0.7} penumbra={0.8} decay={2} color="#f2d2a8" />
+      <Spot pos={[2.6, 3.4, -1.6]} aim={[2.6, 1.9, -3.4]} base={40} ch="studio" angle={0.7} penumbra={0.8} decay={2} color="#f2d2a8" />
       {/* soft front fill so the four people read clearly from behind at the open */}
-      <Spot pos={[0, 3.4, 4.2]} aim={[0, 0.9, 0.4]} base={28} ch="studio" angle={0.75} penumbra={1} decay={2} color="#b9ccf0" />
+      <Spot pos={[0, 3.4, 4.2]} aim={[0, 0.9, 0.4]} base={28} ch="studio" angle={0.75} penumbra={1} decay={2} color="#e7d5bd" />
       <ChLight as="directionalLight" base={2.4} ch="studio" position={[-6, 3, 1]} color="#5d8ed0" />
       <ChLight as="directionalLight" base={1.5} ch="studio" position={[0.5, 3, 9]} color="#8aa6d6" />
     </group>
@@ -1696,9 +1876,9 @@ function FallbackStory() {
     <main className="bg-[#0B0B0C] text-[#F1EFE9]">
       <style>{`@import url('${FONT_LINK}'); .rcs-display{font-family:'Inter Tight','Helvetica Neue',Arial,sans-serif;font-weight:300;letter-spacing:-0.045em} .rcs-mute{color:#8d8d89} .rcs-ui{font-family:'Inter Tight','Helvetica Neue',Arial,sans-serif}`}</style>
       <section className="flex min-h-[100svh] flex-col justify-end bg-[radial-gradient(ellipse_at_60%_30%,#1d3558_0%,#191A1C_45%,#0B0B0C_100%)] px-5 pb-16 sm:px-[5vw]">
-        <p className="rcs-ui text-[14px] font-medium text-[#D9A441]">Rare Creative Studios</p>
-        <h1 className="rcs-display mt-4 text-[clamp(2.4rem,7vw,5rem)] leading-[1]">Ideas, framed<br /><span className="rcs-mute">in motion.</span></h1>
-        <p className="rcs-ui mt-4 max-w-[34ch] text-[15px] text-[#F1EFE9]/75">From the first thought to the final frame.</p>
+        <p className="rcs-ui text-[11px] font-medium tracking-[0.16em] text-[#D9A441]">Rare Creative Studios</p>
+        <h1 className="rcs-display mt-2 text-[clamp(1.9rem,4.2vw,3.6rem)] leading-[0.98]">Ideas, framed<br /><span className="rcs-mute">in motion.</span></h1>
+        <p className="rcs-ui mt-3 max-w-[34ch] text-[13px] text-[#F1EFE9]/75">From the first thought to the final frame.</p>
       </section>
       {CHAPTERS.map(([n, d], i) => (
         <section key={n} className={`border-t border-white/10 px-5 py-16 sm:px-[5vw] sm:py-24 ${i % 2 ? "bg-[#101113]" : "bg-[#0B0B0C]"}`}>
@@ -1956,13 +2136,13 @@ export default function Home() {
           </div>
 
           {/* ---------- typography: driven by the same timeline ---------- */}
-          <div data-cap="open" className="pointer-events-none absolute left-5 top-[11svh] max-w-[90vw] sm:left-[5vw] sm:top-[13svh] sm:max-w-[64vw]">
-            <p className="rcs-ui rcs-a rcs-shadow text-[14px] font-medium text-[#D9A441] sm:text-[16px]" style={{ "--d": "0.5s" }}>Rare Creative Studios</p>
-            <h1 className="rcs-display rcs-shadow mt-4 text-[clamp(2.6rem,6.6vw,6.2rem)] leading-[0.98] text-[#F1EFE9]">
+          <div data-cap="open" className="pointer-events-none absolute bottom-[16svh] left-5 max-w-[82vw] sm:bottom-[17svh] sm:left-[5vw] sm:max-w-[42vw]">
+            <p className="rcs-ui rcs-a rcs-shadow text-[11px] font-medium tracking-[0.16em] text-[#D9A441] sm:text-[12px]" style={{ "--d": "0.5s" }}>Rare Creative Studios</p>
+            <h1 className="rcs-display rcs-shadow mt-2 text-[clamp(1.85rem,3.7vw,3.55rem)] leading-[0.98] text-[#F1EFE9]">
               <span className="rcs-mask"><span className="rcs-line" style={{ "--d": "0.7s" }}>Ideas, framed</span></span>
               <span className="rcs-mask"><span className="rcs-line rcs-mute" style={{ "--d": "0.9s" }}>in motion.</span></span>
             </h1>
-            <p className="rcs-ui rcs-a rcs-shadow mt-6 max-w-[34ch] text-[15px] font-normal leading-relaxed text-[#F1EFE9]/80 sm:text-[17px]" style={{ "--d": "1.6s" }}>
+            <p className="rcs-ui rcs-a rcs-shadow mt-3 max-w-[34ch] text-[12px] font-normal leading-relaxed text-[#F1EFE9]/80 sm:text-[13px]" style={{ "--d": "1.6s" }}>
               From the first thought to the final frame.
             </p>
           </div>
