@@ -12,7 +12,7 @@ import Lenis from "lenis";
 import { ArrowUpRight } from "lucide-react";
 
 /* ====================================================================
-   RARE CREATIVE STUDIOS: HOME  (v5: smooth camera, no apartment GLB)
+   RARE CREATIVE STUDIOS: HOME  (performance-balanced build, original visual direction retained)
    One continuous, scroll-controlled camera journey
    (React Three Fiber + GSAP ScrollTrigger + Lenis).
    Navbar and Footer are NOT part of this file.
@@ -731,7 +731,7 @@ function drawSign(g, w, h) {
   g.fillText("RARE CREATIVE STUDIOS", w / 2, h * 0.92);
 }
 
-function makeTextures(q) {
+function makeTextures(q, maxAnisotropy = 4) {
   if (typeof document === "undefined") return null;
   const T = {};
   const mk = (bw, bh, draw) => {
@@ -744,7 +744,7 @@ function makeTextures(q) {
     draw(g, bw, bh);
     const t = new THREE.CanvasTexture(c);
     t.colorSpace = THREE.SRGBColorSpace;
-    t.anisotropy = 8;
+    t.anisotropy = Math.min(8, Math.max(1, maxAnisotropy));
     return t;
   };
   T.hero = mk(2048, 1490, drawHero);
@@ -828,6 +828,7 @@ function Shaft({ from, to, r = 1.2, color = "#ffd9a0", op = 0.12, ch = "studio" 
     [color, op]
   );
   useFrame(() => { mat.uniforms.uOp.value = op * STATE[ch]; });
+  useEffect(() => () => mat.dispose(), [mat]);
   return (
     <mesh position={geo.mid} quaternion={geo.quat} renderOrder={5}>
       <coneGeometry args={[r, geo.len, 40, 1, true]} />
@@ -1531,9 +1532,11 @@ function ProceduralCar() {
   );
 }
 
-function Car() {
+function Car({ reduced = false }) {
   const g = useRef();
-  useFrame(({ clock }) => { if (g.current) g.current.rotation.y = Math.sin(clock.elapsedTime * 0.25) * 0.03; });
+  useFrame(({ clock }) => {
+    if (g.current && !reduced) g.current.rotation.y = Math.sin(clock.elapsedTime * 0.25) * 0.03;
+  });
   return (
     <group ref={g}>
       {ASSETS.car ? <GlbModel url={ASSETS.car} scale={ASSETS.carScale} /> : <ProceduralCar />}
@@ -1624,7 +1627,7 @@ function FilmSet({ tx, low, reduced }) {
       <Figure id="crewB" pose="standing" pos={crewB} yaw={yawTo(crewB, [cx, 0, cz])} armL="rest" armR="mug" palette={{ top: "#2d2a26", bottom: "#17181b", skin: "#8f5e41", hair: "#0c0a09" }} animate={!reduced} />
 
       {/* the car */}
-      <group position={[cx, 0.06, cz]} rotation-y={SET_YAW}><Car /></group>
+      <group position={[cx, 0.06, cz]} rotation-y={SET_YAW}><Car reduced={reduced} /></group>
 
       {/* atmosphere */}
       <Shaft from={[sbA[0], 3.2, sbA[1]]} to={[cx, 0.1, cz]} r={1.6} color="#6f9be0" op={0.1} ch="set" />
@@ -1662,6 +1665,7 @@ function Dome() {
     }),
     []
   );
+  useEffect(() => () => mat.dispose(), [mat]);
   return (
     <mesh position={[7.5, 0, 6]} renderOrder={-10} frustumCulled={false}>
       <sphereGeometry args={[160, 32, 16]} />
@@ -1762,29 +1766,38 @@ function CameraRig({ reduced }) {
    range, higher internal resolution) and chromatic aberration is removed, so the
    people, the table and the board stay sharp. Raise DOF_STRENGTH for more blur. */
 const DOF_STRENGTH = 0.3;
-function Effects() {
+function Effects({ quality = "high" }) {
   const dof = useRef();
   useFrame(() => { if (dof.current) dof.current.bokehScale = STATE.bk * DOF_STRENGTH; });
   return (
     <EffectComposer multisampling={0} disableNormalPass>
-      <DepthOfField ref={dof} target={FOCUS} focalLength={0.045} bokehScale={1} focusRange={0.08} height={900} />
-      <Bloom intensity={0.6} luminanceThreshold={0.85} luminanceSmoothing={0.2} mipmapBlur />
+      <DepthOfField ref={dof} target={FOCUS} focalLength={0.045} bokehScale={1} focusRange={0.08} height={quality === "low" ? 560 : quality === "balanced" ? 760 : 900} />
+      <Bloom intensity={0.6} luminanceThreshold={0.85} luminanceSmoothing={0.2} mipmapBlur height={quality === "low" ? 320 : quality === "balanced" ? 480 : 640} />
       <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
       <Vignette offset={0.3} darkness={0.6} />
-      <SMAA />
+      {quality !== "low" && <SMAA />}
     </EffectComposer>
   );
 }
 
-/* drops the pixel ratio only if the frame rate stays low, restores it when it recovers */
-function AdaptiveQuality({ low }) {
+/* Runtime DPR adaptation is bounded by the device profile and has hysteresis. */
+function AdaptiveQuality({ dprMax, dprMin }) {
   const setDpr = useThree((s) => s.setDpr);
-  const max = Math.min(typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1, low ? 1.4 : 2);
-  return <PerformanceMonitor flipflops={3} onDecline={() => setDpr(1.25)} onIncline={() => setDpr(max)} />;
+  const lastChange = useRef(0);
+  const apply = (value) => {
+    const now = performance.now();
+    if (now - lastChange.current < 2500) return;
+    lastChange.current = now;
+    setDpr(value);
+  };
+  return <PerformanceMonitor flipflops={4} onDecline={() => apply(dprMin)} onIncline={() => apply(dprMax)} />;
 }
 
-const Scene = memo(function Scene({ low, reduced }) {
-  const tx = useMemo(() => makeTextures(low ? 0.5 : 1), [low]);
+const Scene = memo(function Scene({ quality, reduced, dprMax, dprMin }) {
+  const maxAnisotropy = useThree((s) => s.gl.capabilities.getMaxAnisotropy());
+  const textureScale = quality === "low" ? 0.62 : quality === "balanced" ? 0.82 : 1;
+  const tx = useMemo(() => makeTextures(textureScale, maxAnisotropy), [textureScale, maxAnisotropy]);
+  const low = quality === "low";
   useEffect(() => () => { if (tx) Object.values(tx).forEach((t) => t.dispose()); }, [tx]);
   if (!tx) return null;
   return (
@@ -1809,8 +1822,8 @@ const Scene = memo(function Scene({ low, reduced }) {
       <Hall tx={tx} />
       <StudioSet tx={tx} low={low} reduced={reduced} />
       <FilmSet tx={tx} low={low} reduced={reduced} />
-      <AdaptiveQuality low={low} />
-      {!low && <Effects />}
+      <AdaptiveQuality dprMax={dprMax} dprMin={dprMin} />
+      <Effects quality={quality} />
     </>
   );
 });
@@ -1819,13 +1832,43 @@ const Scene = memo(function Scene({ low, reduced }) {
    5. PAGE
    ==================================================================== */
 
-function hasWebGL() {
+function getDeviceProfile() {
+  const mobile = window.matchMedia("(max-width: 819px)").matches ||
+    window.matchMedia("(pointer: coarse)").matches;
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const memory = navigator.deviceMemory || 0;
+  const cores = navigator.hardwareConcurrency || 0;
+  let gl = null;
+  let webgl2 = false;
+  let maxTextureSize = 0;
+  let maxRenderbufferSize = 0;
   try {
-    const c = document.createElement("canvas");
-    return !!(c.getContext("webgl2") || c.getContext("webgl"));
-  } catch {
-    return false;
-  }
+    const canvas = document.createElement("canvas");
+    gl = canvas.getContext("webgl2", { powerPreference: "high-performance" }) ||
+      canvas.getContext("webgl", { powerPreference: "high-performance" });
+    webgl2 = !!gl && typeof WebGL2RenderingContext !== "undefined" && gl instanceof WebGL2RenderingContext;
+    if (gl) {
+      maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+      maxRenderbufferSize = gl.getParameter(gl.MAX_RENDERBUFFER_SIZE);
+      const lose = gl.getExtension("WEBGL_lose_context");
+      if (lose) lose.loseContext();
+    }
+  } catch { gl = null; }
+  const supported = !!gl;
+  const constrainedGpu = !webgl2 || maxTextureSize < 4096 || maxRenderbufferSize < 4096;
+  const constrainedDevice = (memory > 0 && memory <= 4) || (cores > 0 && cores <= 4);
+  const quality = !supported ? "fallback" :
+    ((mobile && constrainedDevice) || (constrainedGpu && constrainedDevice) ? "low" :
+      (mobile || constrainedGpu || constrainedDevice ? "balanced" : "high"));
+  const nativeDpr = Math.max(1, window.devicePixelRatio || 1);
+  const dprMax = Math.min(nativeDpr, quality === "high" ? 1.8 : quality === "balanced" ? 1.45 : 1.15);
+  const dprMin = Math.min(dprMax, quality === "high" ? 1.15 : quality === "balanced" ? 1 : 0.85);
+  return {
+    mode: supported ? "webgl" : "fallback", quality, low: quality === "low", reduced, mobile,
+    dprMax, dprMin, antialias: quality === "low",
+    vh: mobile ? 850 : 1100,
+    capabilities: { webgl2, maxTextureSize, maxRenderbufferSize, memory, cores },
+  };
 }
 
 /* loads the web fonts and resolves once they are ready (3 s failsafe) */
@@ -1958,13 +2001,12 @@ export default function Home() {
   const fontsOk = useFonts();
   const vw = useViewportWidth();
 
-  useEffect(() => {
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const mobile = window.innerWidth < 820;
-    const mem = navigator.deviceMemory || 8;
-    const cores = navigator.hardwareConcurrency || 8;
-    setCfg({ mode: hasWebGL() ? "webgl" : "fallback", low: mobile || mem <= 4 || cores <= 4, reduced, vh: mobile ? 850 : 1100 });
-  }, []);
+  useEffect(() => () => {
+    const canvas = rootRef.current?.querySelector("canvas");
+    canvas?.__rcsContextCleanup?.();
+  }, [ctxKey]);
+
+  useEffect(() => { setCfg(getDeviceProfile()); }, []);
 
   /* no sideways scrolling while this page is mounted */
   useEffect(() => {
@@ -2000,7 +2042,7 @@ export default function Home() {
 
   useEffect(() => {
     if (!rootRef.current || !("IntersectionObserver" in window)) return;
-    const io = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), { rootMargin: "1000px 0px" });
+    const io = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), { rootMargin: "160px 0px" });
     io.observe(rootRef.current);
     return () => io.disconnect();
   }, [cfg, fontsOk]);
@@ -2059,10 +2101,22 @@ export default function Home() {
           // Play the live-action clip only during the camera viewfinder POV.
           // This follows the same scroll-scrubbed timeline, including reverse scrolling.
           const video = povVideoRef.current;
+          const approachingPOV = proxy.t >= 67.5 && proxy.t < 82.8;
+          if (video && approachingPOV && video.preload === "none" && !video.dataset.prepared) {
+            video.preload = "auto";
+            video.load();
+            video.dataset.prepared = "true";
+          }
           const inCameraPOV = proxy.t >= 75.6 && proxy.t < 82.8;
           if (video && inCameraPOV && !povVideoActiveRef.current) {
             // POV starts: always begin from frame 0, then play continuously (loops)
-            try { video.currentTime = 0; } catch {}
+            if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
+              try { video.currentTime = 0; } catch {}
+            } else {
+              video.addEventListener("loadedmetadata", () => {
+                try { video.currentTime = 0; } catch {}
+              }, { once: true });
+            }
             const playback = video.play();
             if (playback && typeof playback.catch === "function") playback.catch((err) => console.warn("[RCS] camera POV video could not autoplay:", err));
             povVideoActiveRef.current = true;
@@ -2144,8 +2198,19 @@ export default function Home() {
 
   const onCreated = ({ gl }) => {
     const el = gl.domElement;
-    el.addEventListener("webglcontextlost", (e) => { e.preventDefault(); setReady(false); setCtxKey((k) => k + 1); });
+    const onLost = (event) => { event.preventDefault(); setReady(false); };
+    const onRestored = () => {
+      setCtxKey((key) => key + 1);
+      requestAnimationFrame(() => requestAnimationFrame(() => setReady(true)));
+    };
+    el.addEventListener("webglcontextlost", onLost, false);
+    el.addEventListener("webglcontextrestored", onRestored, false);
     requestAnimationFrame(() => requestAnimationFrame(() => setReady(true)));
+    el.__rcsContextCleanup = () => {
+      el.removeEventListener("webglcontextlost", onLost, false);
+      el.removeEventListener("webglcontextrestored", onRestored, false);
+      delete el.__rcsContextCleanup;
+    };
   };
 
   const width = vw ? `${vw}px` : "100%";
@@ -2189,15 +2254,15 @@ export default function Home() {
               <Canvas
                 key={ctxKey}
                 style={{ width: "100%", height: "100%", display: "block" }}
-                shadows={!cfg.low}
-                flat={!cfg.low}
-                dpr={cfg.low ? [1, 1.4] : [1.5, 2]}
+                shadows={cfg.quality !== "low"}
+                flat={cfg.quality !== "low"}
+                dpr={[cfg.dprMin, cfg.dprMax]}
                 frameloop={inView ? "always" : "never"}
-                gl={{ antialias: !cfg.low, powerPreference: "high-performance" }}
+                gl={{ antialias: cfg.antialias, powerPreference: "high-performance", stencil: false, depth: true, preserveDrawingBuffer: false }}
                 camera={{ fov: 36, near: 0.05, far: 320, position: [0, 1.7, 6.4] }}
                 onCreated={onCreated}
               >
-                <Scene low={cfg.low} reduced={cfg.reduced} />
+                <Scene quality={cfg.quality} reduced={cfg.reduced} dprMax={cfg.dprMax} dprMin={cfg.dprMin} />
               </Canvas>
             </SceneBoundary>
           </div>
@@ -2211,7 +2276,7 @@ export default function Home() {
             muted
             loop
             playsInline
-            preload="auto"
+            preload="none"
             className="pointer-events-none absolute inset-0 h-full w-full object-cover"
             style={{ opacity: 0, visibility: "hidden" }}
           >
