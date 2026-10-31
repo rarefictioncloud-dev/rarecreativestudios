@@ -60,7 +60,7 @@ import { ArrowUpRight } from "lucide-react";
      - The modern_apartment.glb implementation has been removed. The
        procedural office architecture is now the permanent studio shell.
 
-   TUNING KNOBS: GAIN (overall light), POSE / PATH (camera path), TIME.smooth (smoothness), ASSETS (GLB models for car / people).
+   TUNING KNOBS: GAIN (overall light), POSE / PATH (camera path), TIME.smooth (smoothness), ASSETS (GLB models for car; FBX models for opening and film-set characters).
    The Navbar sits on a dark scene: give it light text on this page.
    ==================================================================== */
 
@@ -70,25 +70,119 @@ const GAIN = 1; // multiplies every light: raise if the scene feels too dark
 const FONT_LINK =
   "https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=Caveat:wght@500;600&display=swap";
 
-/* Real models plug in here. Leave null to use the built-in procedural
-   models. Example: car: "/models/car.glb". For people use ids
-   seatA, seatB, standA, standB, operator, crewA, crewB. */
+/* Optional GLB model overrides for non-opening figures and the car.
+   Opening and film-set people are loaded from FBX_CHARACTERS below. */
 const ASSETS = { car: null, carScale: 1, people: {} };
 
-// Temporary one-character FBX integration test.
-// Only standA in the opening studio scene is replaced; all other figures remain procedural.
-const FBX_TEST_CHARACTER = {
-  id: "standA",
-  // Local development uses the Vite proxy; GitHub Pages loads the public R2 URL.
-  // The R2 bucket must allow GET from https://rarefictioncloud-dev.github.io.
+// Four production FBX characters for the opening studio scene.
+// Local development goes through the Vite proxy; GitHub Pages loads R2 directly.
+const R2_FBX_BASE =
+  "https://pub-c068270ff2f94b2691bb54438e646383.r2.dev";
+
+const makeFBXConfig = (filename, targetHeight) => ({
   url: import.meta.env.DEV
-    ? "/__rcs_fbx__/Flair.fbx"
-    : "https://pub-c068270ff2f94b2691bb54438e646383.r2.dev/Flair.fbx",
-  targetHeight: 1.72,
-  // FBX/Mixamo assets commonly face +Z; the studio figures face local -Z.
-  // Change to 0 if the model appears to face away from the table.
+    ? `/__rcs_fbx__/${encodeURIComponent(filename)}`
+    : `${R2_FBX_BASE}/${encodeURIComponent(filename)}`,
+  targetHeight,
+  // Mixamo/FBX exports commonly face +Z; the scene figures face local -Z.
   rotationY: Math.PI,
+});
+
+const FBX_CHARACTERS = {
+  // Opening studio: seated models enlarged for clearer visibility.
+  seatA: makeFBXConfig("Sitting Idle.fbx", 1.62),
+  seatB: makeFBXConfig("Sitting Idle (1).fbx", 1.62),
+  // Opening studio: standing characters.
+  standA: makeFBXConfig("Searching Pockets.fbx", 1.72),
+  standB: makeFBXConfig("Thinking.fbx", 1.72),
+
+  // Film set: camera operator and the two crew members around the camera.
+  operator: makeFBXConfig("Angry.fbx", 1.72),
+  crewA: makeFBXConfig("Standing Clap.fbx", 1.72),
+  crewB: makeFBXConfig("Arm Stretching.fbx", 1.72),
 };
+
+// Shared download/parse cache. Opening characters are prioritized first;
+// film-set characters are requested after the opening group is ready.
+const FBX_PROMISE_CACHE = new Map();
+
+function getFBXPromise(url, priority = "high") {
+  if (FBX_PROMISE_CACHE.has(url)) return FBX_PROMISE_CACHE.get(url);
+
+  const promise = (async () => {
+    const response = await fetch(url, {
+      mode: "cors",
+      credentials: "omit",
+      cache: "force-cache",
+      priority,
+    });
+
+    if (!response.ok) {
+      throw new Error(`FBX request failed (${response.status} ${response.statusText}): ${url}`);
+    }
+
+    const buffer = await response.arrayBuffer();
+    const absoluteUrl = new URL(url, window.location.href);
+    const resourcePath = new URL(".", absoluteUrl).href;
+
+    // Parsing the downloaded ArrayBuffer avoids a second loader-managed request.
+    // FBXLoader.parse is synchronous; downloads are prioritized to make the
+    // opening characters available first.
+    const loader = new FBXLoader();
+    const root = loader.parse(buffer, resourcePath);
+    root.updateMatrixWorld(true);
+
+    console.info(
+      `[RCS FBX] Parsed: ${url} (${(buffer.byteLength / 1048576).toFixed(1)} MB)`
+    );
+    return root;
+  })();
+
+  FBX_PROMISE_CACHE.set(url, promise);
+  promise.catch(() => {
+    // Allow a later remount/retry instead of permanently caching a rejection.
+    if (FBX_PROMISE_CACHE.get(url) === promise) FBX_PROMISE_CACHE.delete(url);
+  });
+
+  return promise;
+}
+
+const OPENING_CHARACTER_IDS = ["seatA", "seatB", "standA", "standB"];
+const FILM_SET_CHARACTER_IDS = ["operator", "crewA", "crewB"];
+
+function preloadRCSCharacters() {
+  const loadGroup = (ids, priority) =>
+    Promise.allSettled(
+      ids.map((id) => getFBXPromise(FBX_CHARACTERS[id].url, priority))
+    );
+
+  // The opening four are the first visual priority. The three film-set
+  // characters begin downloading as soon as the opening group is parsed.
+  return loadGroup(OPENING_CHARACTER_IDS, "high").then((openingResults) =>
+    loadGroup(FILM_SET_CHARACTER_IDS, "low").then((filmResults) => ({
+      openingResults,
+      filmResults,
+    }))
+  );
+}
+
+function addCharacterPreloads() {
+  const links = [];
+
+  OPENING_CHARACTER_IDS.forEach((id) => {
+    const url = FBX_CHARACTERS[id].url;
+    const link = document.createElement("link");
+    link.rel = "preload";
+    link.as = "fetch";
+    link.href = url;
+    link.crossOrigin = "anonymous";
+    link.setAttribute("fetchpriority", "high");
+    document.head.appendChild(link);
+    links.push(link);
+  });
+
+  return () => links.forEach((link) => link.remove());
+}
 
 gsap.registerPlugin(ScrollTrigger);
 RectAreaLightUniformsLib.init(); // soft window / ceiling area lights
@@ -859,7 +953,7 @@ function GlbModel({ url, ...p }) {
   return <primitive object={c} {...p} />;
 }
 
-/* ---------- people: articulated procedural figures (GLB-swappable) ---------- */
+/* ---------- opening people: preloaded FBX models + procedural fallback code for other figures ---------- */
 
 const ARM = {
   rest: { f: 0.06, a: 0.09, e: 0.28 },
@@ -886,35 +980,11 @@ function Limb({ len, r, mat, rot = [0, 0, 0], pos = [0, 0, 0], gref, children })
 /* gestL / gestR switch on conversation: the figure takes turns "speaking"
    (phase offsets stagger who talks), gestures with that arm, leans in and turns
    the head; while listening it nods slowly. */
-function disposeFBXObject(root) {
-  if (!root) return;
-  const geometries = new Set();
-  const materials = new Set();
-  const textures = new Set();
-
-  root.traverse((child) => {
-    if (!child.isMesh) return;
-    if (child.geometry) geometries.add(child.geometry);
-
-    const list = Array.isArray(child.material) ? child.material : [child.material];
-    list.filter(Boolean).forEach((material) => {
-      materials.add(material);
-      Object.values(material).forEach((value) => {
-        if (value && value.isTexture) textures.add(value);
-      });
-    });
-  });
-
-  geometries.forEach((geometry) => geometry.dispose());
-  textures.forEach((texture) => texture.dispose());
-  materials.forEach((material) => material.dispose());
-}
-
 /**
- * Loads one FBX through the Vite same-origin development proxy to Cloudflare R2.
- * While loading or if the request fails, the original procedural character
- * remains visible. The model is normalized to a predictable height and
- * grounded at y = 0.
+ * Renders one preloaded FBX character.
+ * The shared prioritized preload cache avoids duplicate downloads when React
+ * remounts the scene or WebGL is restored.
+ * The model is normalized to the requested height and grounded at y = 0.
  */
 function FBXCharacter({
   url,
@@ -923,111 +993,78 @@ function FBXCharacter({
   scale = 1,
   targetHeight = 1.72,
   rotationY = Math.PI,
-  fallback = null,
+  shadows = true,
 }) {
   const [asset, setAsset] = useState(null);
 
   useEffect(() => {
     let active = true;
-    let request = null;
-    let ownedRoot = null;
-    let ownedMixer = null;
+    let mixer = null;
+    let rootForCleanup = null;
 
-    const loader = new FBXLoader();
-    loader.setCrossOrigin("anonymous");
-
-    console.info("[RCS FBX] Starting character request:", url);
-    request = loader.load(
-      url,
-      (loadedRoot) => {
-        console.info("[RCS FBX] Character loaded successfully.", {
-          meshes: (() => {
-            let count = 0;
-            loadedRoot.traverse((node) => { if (node.isMesh) count += 1; });
-            return count;
-          })(),
-          animations: loadedRoot.animations?.length ?? 0,
-        });
-        if (!active) {
-          disposeFBXObject(loadedRoot);
-          return;
-        }
+    getFBXPromise(url)
+      .then((loadedRoot) => {
+        if (!active) return;
 
         loadedRoot.updateMatrixWorld(true);
         const bounds = new THREE.Box3().setFromObject(loadedRoot);
         const size = bounds.getSize(new THREE.Vector3());
         const center = bounds.getCenter(new THREE.Vector3());
-        const safeHeight = Math.max(size.y, 0.001);
-        const fitScale = targetHeight / safeHeight;
+        const fitScale = targetHeight / Math.max(size.y, 0.001);
 
         loadedRoot.traverse((child) => {
           if (!child.isMesh) return;
-          child.castShadow = true;
-          child.receiveShadow = true;
+          child.castShadow = shadows;
+          child.receiveShadow = false;
           child.frustumCulled = true;
           if (child.geometry && !child.geometry.boundingSphere) {
             child.geometry.computeBoundingSphere();
           }
         });
 
-        // If the FBX contains animation clips, play the first one.
-        // A static posed FBX remains static when no clips are present.
-        if (loadedRoot.animations && loadedRoot.animations.length) {
-          ownedMixer = new THREE.AnimationMixer(loadedRoot);
-          ownedMixer.clipAction(loadedRoot.animations[0]).reset().play();
+        if (loadedRoot.animations?.length) {
+          mixer = new THREE.AnimationMixer(loadedRoot);
+          mixer.clipAction(loadedRoot.animations[0]).reset().play();
         }
 
-        ownedRoot = loadedRoot;
+        rootForCleanup = loadedRoot;
         setAsset({
           root: loadedRoot,
           fitScale,
-          mixer: ownedMixer,
+          mixer,
           offset: [
             -center.x * fitScale,
             -bounds.min.y * fitScale,
             -center.z * fitScale,
           ],
         });
-      },
-      (event) => {
-        if (event.lengthComputable) {
-          console.info(
-            `[RCS FBX] Download progress: ${Math.round((event.loaded / event.total) * 100)}%`
-          );
-        } else {
-          console.info(`[RCS FBX] Downloaded ${(event.loaded / (1024 * 1024)).toFixed(1)} MB`);
-        }
-      },
-      (error) => {
+      })
+      .catch((error) => {
         if (active) {
-          console.error(
-            "[RCS FBX] Character request/parse failed. Check DevTools > Network for the FBX request. " +
-            "For GitHub Pages, ensure the R2 bucket CORS policy allows GET from https://rarefictioncloud-dev.github.io.",
-            error
-          );
+          console.error("[RCS FBX] Character could not be prepared:", url, error);
           setAsset({ error: true });
         }
-      }
-    );
+      });
 
     return () => {
       active = false;
-      if (request && typeof request.abort === "function") request.abort();
-
-      if (ownedMixer && ownedRoot) {
-        ownedMixer.stopAllAction();
-        ownedMixer.uncacheRoot(ownedRoot);
+      if (mixer && rootForCleanup) {
+        mixer.stopAllAction();
+        mixer.uncacheRoot(rootForCleanup);
       }
-
-      disposeFBXObject(ownedRoot);
+      // Keep the parsed FBX in the module cache. This avoids another network
+      // transfer if the route or WebGL context is mounted again.
+      rootForCleanup?.removeFromParent();
     };
-  }, [url, targetHeight]);
+  }, [url, targetHeight, shadows]);
 
   useFrame((_, delta) => {
-    if (asset?.mixer) asset.mixer.update(Math.min(delta, 0.05));
+    if (asset?.mixer) asset.mixer.update(Math.min(delta, 1 / 30));
   });
 
-  if (!asset || asset.error) return fallback;
+  // No procedural substitute: each requested FBX appears as soon as its own
+  // download and parse completes; the rest of the scene is never blocked.
+  if (!asset || asset.error) return null;
 
   return (
     <group position={position} rotation-y={yaw} scale={scale}>
@@ -1058,16 +1095,18 @@ function Figure({
   phase = 0,
   gestL = false,
   gestR = false,
-  useProcedural = false,
+  low = false,
 }) {
   const glb = ASSETS.people[id];
+  const isFBX = Boolean(FBX_CHARACTERS[id]);
   const m = useMemo(() => {
+    if (isFBX) return null;
     const std = (color, roughness = 0.85) => new THREE.MeshStandardMaterial({ color, roughness });
     return { top: std(palette.top), bottom: std(palette.bottom), skin: std(palette.skin, 0.6), hair: std(palette.hair, 0.55), shoe: std("#0c0c0d", 0.5) };
-  }, [palette]);
+  }, [palette, isFBX]);
   const torso = useRef(), headRef = useRef(), aR = useRef(), aL = useRef();
   useFrame(({ clock }) => {
-    if (!animate || !torso.current) return;
+    if (isFBX || !animate || !torso.current) return;
 
     // A slow, staggered conversation rhythm: one person speaks while the
     // others listen, breathe, make small nods and subtly shift their weight.
@@ -1114,37 +1153,17 @@ function Figure({
     animateArm(aL, armL, -1, gestL);
   });
 
-  if (id === FBX_TEST_CHARACTER.id && !useProcedural) {
-    const proceduralFallback = (
-      <Figure
-        id={id}
-        pose={pose}
-        pos={pos}
-        yaw={yaw}
-        scale={scale}
-        palette={palette}
-        armL={armL}
-        armR={armR}
-        head={head}
-        lean={lean}
-        long={long}
-        animate={animate}
-        phase={phase}
-        gestL={gestL}
-        gestR={gestR}
-        useProcedural
-      />
-    );
-
+  const fbxConfig = FBX_CHARACTERS[id];
+  if (fbxConfig) {
     return (
       <FBXCharacter
-        url={FBX_TEST_CHARACTER.url}
+        url={fbxConfig.url}
         position={pos}
         yaw={yaw}
         scale={scale}
-        targetHeight={FBX_TEST_CHARACTER.targetHeight}
-        rotationY={FBX_TEST_CHARACTER.rotationY}
-        fallback={proceduralFallback}
+        targetHeight={fbxConfig.targetHeight}
+        rotationY={fbxConfig.rotationY}
+        shadows={!low}
       />
     );
   }
@@ -1368,12 +1387,15 @@ function Softbox({ pos, aim, size = [1.6, 1.2], hot = HOT_WHITE }) {
 // Keep the group compact so all four people read as one active discussion.
 const SEAT_X = 1.28;
 const TABLE_Z = -0.2;
+// Move only the seated people and their chairs slightly toward the far side;
+// keep the table and the rest of the set in their original positions.
+const SEATED_Z = TABLE_Z - 0.28;
 const NOTES_AT = [0.1, 0, -0.1];
 const STAND_A = [-0.78, 0, 0.82];
 const STAND_B = [0.78, 0, 0.82];
 const PEOPLE = [
-  { id: "seatA", pose: "seated", pos: [-SEAT_X, 0, TABLE_Z], yaw: -Math.PI / 2, head: 0.1, armL: "table", armR: "talk", gestR: true, lean: -0.05, palette: { top: "#2b2f36", bottom: "#15171b", skin: "#c58f6d", hair: "#17110d" }, phase: 0 },
-  { id: "seatB", pose: "seated", pos: [SEAT_X, 0, TABLE_Z], yaw: Math.PI / 2, head: -0.1, armL: "talk", armR: "table", gestL: true, lean: -0.04, long: true, palette: { top: "#6b5642", bottom: "#1c1d22", skin: "#8a5a3f", hair: "#0d0b0a" }, phase: 1.3 },
+  { id: "seatA", pose: "seated", pos: [-SEAT_X, 0, SEATED_Z], yaw: -Math.PI / 2, scale: 1.10, head: 0.1, armL: "table", armR: "talk", gestR: true, lean: -0.05, palette: { top: "#2b2f36", bottom: "#15171b", skin: "#c58f6d", hair: "#17110d" }, phase: 0 },
+  { id: "seatB", pose: "seated", pos: [SEAT_X, 0, SEATED_Z], yaw: Math.PI / 2, scale: 1.10, head: -0.1, armL: "talk", armR: "table", gestL: true, lean: -0.04, long: true, palette: { top: "#6b5642", bottom: "#1c1d22", skin: "#8a5a3f", hair: "#0d0b0a" }, phase: 1.3 },
   { id: "standA", pose: "standing", pos: STAND_A, yaw: yawTo(STAND_A, NOTES_AT), head: -0.3, armL: "cross", armR: "point", gestR: true, palette: { top: "#2f4358", bottom: "#17181c", skin: "#d1a07c", hair: "#2a1d14" }, phase: 2.1 },
   { id: "standB", pose: "standing", pos: STAND_B, yaw: yawTo(STAND_B, NOTES_AT), head: 0.3, armL: "talk", armR: "mug", gestL: true, scale: 1.04, palette: { top: "#1b1c20", bottom: "#222428", skin: "#a8734f", hair: "#0f0c0a" }, phase: 3.4 },
 ];
@@ -1599,8 +1621,8 @@ function StudioSet({ tx, low, reduced }) {
       </group>
       <Pendant reduced={reduced} />
       {/* chairs sit just behind each seated person, backs away from the table */}
-      <Chair pos={[-SEAT_X - 0.02, 0, TABLE_Z]} yaw={-Math.PI / 2} />
-      <Chair pos={[SEAT_X + 0.02, 0, TABLE_Z]} yaw={Math.PI / 2} />
+      <Chair pos={[-SEAT_X - 0.02, 0, SEATED_Z]} yaw={-Math.PI / 2} />
+      <Chair pos={[SEAT_X + 0.02, 0, SEATED_Z]} yaw={Math.PI / 2} />
 
       {/* notes, storyboards and references on the table */}
       <ContactShadow pos={[0.2, 0.7545, -0.1]} size={[1.34, 1.04]} blob={tx.blob} />
@@ -1623,7 +1645,7 @@ function StudioSet({ tx, low, reduced }) {
       <Pencil pos={[0.45, 0.76, 0.34]} rot={1.2} color="#111" len={0.14} />
 
       {/* the four people */}
-      {PEOPLE.map((p) => <Figure key={p.id} {...p} animate={!reduced} />)}
+      {PEOPLE.map((p) => <Figure key={p.id} {...p} animate={!reduced} low={low} />)}
 
       {/* atmosphere: light cone under the pendant */}
       <Shaft from={[0, 2.25, -0.2]} to={[0, 0.76, -0.2]} r={1.35} color="#ffd9a0" op={0.16} ch="studio" />
@@ -2018,10 +2040,10 @@ function AdaptiveQuality({ dprMax, dprMin }) {
   return <PerformanceMonitor flipflops={4} onDecline={() => apply(dprMin)} onIncline={() => apply(dprMax)} />;
 }
 
-const Scene = memo(function Scene({ quality, reduced, dprMax, dprMin }) {
+const Scene = memo(function Scene({ quality, reduced, dprMax, dprMin, fontsReady }) {
   const maxAnisotropy = useThree((s) => s.gl.capabilities.getMaxAnisotropy());
   const textureScale = quality === "low" ? 0.62 : quality === "balanced" ? 0.82 : 1;
-  const tx = useMemo(() => makeTextures(textureScale, maxAnisotropy), [textureScale, maxAnisotropy]);
+  const tx = useMemo(() => makeTextures(textureScale, maxAnisotropy), [textureScale, maxAnisotropy, fontsReady]);
   const low = quality === "low";
   useEffect(() => () => { if (tx) Object.values(tx).forEach((t) => t.dispose()); }, [tx]);
   if (!tx) return null;
@@ -2086,8 +2108,8 @@ function getDeviceProfile() {
     ((mobile && constrainedDevice) || (constrainedGpu && constrainedDevice) ? "low" :
       (mobile || constrainedGpu || constrainedDevice ? "balanced" : "high"));
   const nativeDpr = Math.max(1, window.devicePixelRatio || 1);
-  const dprMax = Math.min(nativeDpr, quality === "high" ? 1.8 : quality === "balanced" ? 1.45 : 1.15);
-  const dprMin = Math.min(dprMax, quality === "high" ? 1.15 : quality === "balanced" ? 1 : 0.85);
+  const dprMax = Math.min(nativeDpr, quality === "high" ? 1.5 : quality === "balanced" ? 1.25 : 1.0);
+  const dprMin = Math.min(dprMax, quality === "high" ? 1.0 : quality === "balanced" ? 0.85 : 0.7);
   return {
     mode: supported ? "webgl" : "fallback", quality, low: quality === "low", reduced, mobile,
     dprMax, dprMin, antialias: quality === "low",
@@ -2203,15 +2225,6 @@ function FallbackStory() {
   );
 }
 
-function Loader({ fade = false }) {
-  return (
-    <div className={`fixed inset-0 z-[60] flex flex-col items-center justify-center bg-[#0B0B0C] transition-opacity duration-1000 ${fade ? "pointer-events-none opacity-0" : "opacity-100"}`}>
-      <p className="animate-pulse text-[clamp(1.8rem,4.4vw,2.9rem)] text-[#F1EFE9]" style={{ fontFamily: "'Inter Tight',Arial,sans-serif", fontWeight: 300, letterSpacing: "-0.045em" }}>RCS</p>
-      <span className="mt-5 block h-px w-24 overflow-hidden bg-white/10"><span className="block h-full w-1/2 animate-[rcs-load_1.2s_ease-in-out_infinite] bg-[#D9A441]" /></span>
-    </div>
-  );
-}
-
 export default function Home() {
   const rootRef = useRef(null);
   const povVideoRef = useRef(null);
@@ -2219,10 +2232,11 @@ export default function Home() {
   const railRef = useRef(null);
   const stageNoRef = useRef(null);
   const stageNameRef = useRef(null);
-  const [cfg, setCfg] = useState(null);
+  const [cfg] = useState(() =>
+    typeof window !== "undefined" ? getDeviceProfile() : null
+  );
   const [inView, setInView] = useState(true);
-  const [ready, setReady] = useState(false); // first 3D frame painted
-  const [ctxKey, setCtxKey] = useState(0); // bump to remount the canvas after a GPU context loss
+  const [ctxKey, setCtxKey] = useState(0); // remount the canvas after a GPU context loss
   const fontsOk = useFonts();
   const vw = useViewportWidth();
 
@@ -2231,7 +2245,32 @@ export default function Home() {
     canvas?.__rcsContextCleanup?.();
   }, [ctxKey]);
 
-  useEffect(() => { setCfg(getDeviceProfile()); }, []);
+  // Begin opening-character network requests before the first browser paint.
+  // The opening four get high fetch priority; film-set characters are deferred
+  // until the opening models have downloaded and parsed.
+  useLayoutEffect(() => {
+    const removePreloads = addCharacterPreloads();
+    const preconnect = document.createElement("link");
+    preconnect.rel = "preconnect";
+    preconnect.href = R2_FBX_BASE;
+    preconnect.crossOrigin = "anonymous";
+    document.head.appendChild(preconnect);
+
+    preloadRCSCharacters().then(({ openingResults, filmResults }) => {
+      const allResults = [...openingResults, ...filmResults];
+      const failed = allResults.filter((result) => result.status === "rejected").length;
+      if (failed) {
+        console.error(
+          `[RCS FBX] ${failed} of ${Object.keys(FBX_CHARACTERS).length} character assets failed. Check R2 CORS, public access, and the Network tab.`
+        );
+      }
+    });
+
+    return () => {
+      removePreloads();
+      preconnect.remove();
+    };
+  }, []);
 
   /* no sideways scrolling while this page is mounted */
   useEffect(() => {
@@ -2271,12 +2310,6 @@ export default function Home() {
     io.observe(rootRef.current);
     return () => io.disconnect();
   }, [cfg, fontsOk]);
-
-  /* loader failsafe: never leave the visitor on a black screen */
-  useEffect(() => {
-    const t = setTimeout(() => setReady(true), 6000);
-    return () => clearTimeout(t);
-  }, []);
 
   /* keep ScrollTrigger in sync with size changes */
   useEffect(() => {
@@ -2419,18 +2452,14 @@ export default function Home() {
 
   if (!cfg) return <div className="min-h-[100svh] bg-[#0B0B0C]" />;
   if (cfg.mode === "fallback") return <FallbackStory />;
-  if (!fontsOk) return <Loader />; // canvas textures need the fonts first
-
   const onCreated = ({ gl }) => {
     const el = gl.domElement;
-    const onLost = (event) => { event.preventDefault(); setReady(false); };
+    const onLost = (event) => { event.preventDefault(); };
     const onRestored = () => {
       setCtxKey((key) => key + 1);
-      requestAnimationFrame(() => requestAnimationFrame(() => setReady(true)));
     };
     el.addEventListener("webglcontextlost", onLost, false);
     el.addEventListener("webglcontextrestored", onRestored, false);
-    requestAnimationFrame(() => requestAnimationFrame(() => setReady(true)));
     el.__rcsContextCleanup = () => {
       el.removeEventListener("webglcontextlost", onLost, false);
       el.removeEventListener("webglcontextrestored", onRestored, false);
@@ -2443,7 +2472,6 @@ export default function Home() {
 
   return (
     <>
-      <Loader fade={ready} />
       <main
         ref={rootRef}
         className="rcs-cine relative isolate block min-w-0 bg-[#0B0B0C] text-[#F1EFE9]"
@@ -2483,11 +2511,17 @@ export default function Home() {
                 flat={cfg.quality !== "low"}
                 dpr={[cfg.dprMin, cfg.dprMax]}
                 frameloop={inView ? "always" : "never"}
-                gl={{ antialias: cfg.antialias, powerPreference: "high-performance", stencil: false, depth: true, preserveDrawingBuffer: false }}
+                gl={{
+                  antialias: cfg.antialias,
+                  powerPreference: cfg.quality === "high" && !cfg.mobile ? "high-performance" : "default",
+                  stencil: false,
+                  depth: true,
+                  preserveDrawingBuffer: false
+                }}
                 camera={{ fov: 36, near: 0.05, far: 320, position: [0, 1.7, 6.4] }}
                 onCreated={onCreated}
               >
-                <Scene quality={cfg.quality} reduced={cfg.reduced} dprMax={cfg.dprMax} dprMin={cfg.dprMin} />
+                <Scene quality={cfg.quality} reduced={cfg.reduced} dprMax={cfg.dprMax} dprMin={cfg.dprMin} fontsReady={fontsOk} />
               </Canvas>
             </SceneBoundary>
           </div>
