@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 
 import Navbar from "./components/layout/Navbar";
@@ -8,6 +8,44 @@ import LoadingScreen from "./components/LoadingScreen";
 import CustomCursor from "./components/CustomCursor";
 import ScrollToTop from "./components/ScrollToTop";
 
+/* ---------------------------------------------------------------------
+   DESKTOP ZOOM-OUT
+   On computer screens (>= DESKTOP_MIN px wide) the whole site is rendered
+   at DESKTOP_ZOOM (0.75 = zoomed out by 25%). Below that width (phones,
+   small tablets) nothing changes at all.
+
+   - CustomCursor and LoadingScreen sit OUTSIDE the zoomed wrapper, so the
+     cursor still follows the real pointer position and the loader still
+     covers the full screen.
+   - Viewport-height units (vh / svh) get scaled by CSS zoom in some
+     browsers, which would make "full screen" sections too short. A tiny
+     probe measures this once and sets --rcs-vh-comp so that min-height and
+     the Home page's full-screen scroll scene stay exactly full-screen.
+   --------------------------------------------------------------------- */
+const DESKTOP_ZOOM = 0.75;
+const DESKTOP_MIN = 1024;
+const DESKTOP_QUERY = `(min-width: ${DESKTOP_MIN}px)`;
+
+const ZOOM_CSS = `
+  .rcs-app-zoom { min-height: 100vh; }
+
+  @media ${DESKTOP_QUERY} {
+    .rcs-app-zoom {
+      zoom: ${DESKTOP_ZOOM};
+      min-height: calc(100vh * var(--rcs-vh-comp, 1));
+    }
+
+    /* Home page: keep the pinned 3D scene full-screen and its scroll length
+       identical to before, even though the page is zoomed out. */
+    .rcs-app-zoom .rcs-cine {
+      height: calc(1100vh * var(--rcs-vh-comp, 1)) !important;
+    }
+    .rcs-app-zoom .rcs-cine > .sticky {
+      height: calc(100svh * var(--rcs-vh-comp, 1)) !important;
+    }
+  }
+`;
+
 export default function App() {
   const location = useLocation();
 
@@ -16,6 +54,49 @@ export default function App() {
 
   const isFirstRender = useRef(true);
   const navigationTimer = useRef(null);
+  const zoomRef = useRef(null);
+
+  /* Measure whether this browser scales vh units under CSS zoom, and
+     compensate so full-screen sections still fill the screen. */
+  useLayoutEffect(() => {
+    const mq = window.matchMedia(DESKTOP_QUERY);
+
+    const apply = () => {
+      const el = zoomRef.current;
+      if (!el) return;
+
+      if (!mq.matches) {
+        el.style.removeProperty("--rcs-vh-comp");
+        return;
+      }
+
+      const probe = document.createElement("div");
+      probe.setAttribute("aria-hidden", "true");
+      probe.style.cssText = `position:fixed;left:-9999px;top:0;width:10px;height:100vh;zoom:${DESKTOP_ZOOM};visibility:hidden;pointer-events:none;`;
+      document.body.appendChild(probe);
+      const ratio = probe.getBoundingClientRect().height / window.innerHeight;
+      document.body.removeChild(probe);
+
+      // ratio is ~0.75 when vh is scaled by zoom, ~1 when it is not.
+      const comp =
+        ratio > 0.5 && ratio < 0.95 ? Math.min(1.5, 1 / ratio) : 1;
+
+      el.style.setProperty("--rcs-vh-comp", String(comp));
+
+      // let ScrollTrigger / the 3D canvas re-measure
+      window.dispatchEvent(new Event("resize"));
+    };
+
+    apply();
+
+    if (mq.addEventListener) {
+      mq.addEventListener("change", apply);
+      return () => mq.removeEventListener("change", apply);
+    }
+
+    mq.addListener(apply);
+    return () => mq.removeListener(apply);
+  }, []);
 
   useEffect(() => {
     // Initial website load.
@@ -54,25 +135,36 @@ export default function App() {
   }, [location.pathname, location.search, location.hash]);
 
   return (
-    <div className="min-h-screen bg-[#F5F2EA] text-[#111111]">
-      <ScrollToTop />
+    <>
+      <style>{ZOOM_CSS}</style>
 
-      <Navbar />
+      {/* Zoomed on desktop only. Everything that is part of the page lives here. */}
+      <div
+        ref={zoomRef}
+        className="rcs-app-zoom bg-[#F5F2EA] text-[#111111]"
+      >
+        <ScrollToTop />
 
-      <main>
-        <AppRoutes />
-      </main>
+        <Navbar />
 
-      <Footer />
+        <main>
+          <AppRoutes />
+        </main>
 
-      <CustomCursor />
+        <Footer />
+      </div>
 
-      {loading && (
-        <LoadingScreen
-          key={pageKey}
-          onComplete={() => setLoading(false)}
-        />
-      )}
-    </div>
+      {/* Overlays stay at 100% so pointer tracking and full-screen cover are exact. */}
+      <div className="text-[#111111]">
+        <CustomCursor />
+
+        {loading && (
+          <LoadingScreen
+            key={pageKey}
+            onComplete={() => setLoading(false)}
+          />
+        )}
+      </div>
+    </>
   );
 }
