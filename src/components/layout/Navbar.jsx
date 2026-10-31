@@ -6,7 +6,6 @@ const NAV_LINKS = [
   { label: "Work", section: "work" },
   { label: "What We Do", path: "/services" },
   { label: "About", path: "/about" },
-  { label: "Journal", section: "journal" },
 ];
 
 const CTA = {

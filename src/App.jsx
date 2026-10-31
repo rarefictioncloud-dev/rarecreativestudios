@@ -171,7 +171,7 @@ export default function App() {
 
       {/* Overlays stay at 100% so pointer tracking and full-screen cover are exact. */}
       <div className="text-[#111111]">
-        <CustomCursor />
+       
 
         {loading && (
           <LoadingScreen
