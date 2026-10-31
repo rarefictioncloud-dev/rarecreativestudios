@@ -1,4 +1,4 @@
-import { Component, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Component, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import * as THREE from "three";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
@@ -12,7 +12,7 @@ import Lenis from "lenis";
 import { ArrowUpRight } from "lucide-react";
 
 /* ====================================================================
-   RARE CREATIVE STUDIOS: HOME  (v4)
+   RARE CREATIVE STUDIOS: HOME  (v4 + apartment GLB)
    One continuous, scroll-controlled camera journey
    (React Three Fiber + GSAP ScrollTrigger + Lenis).
    Navbar and Footer are NOT part of this file.
@@ -52,7 +52,14 @@ import { ArrowUpRight } from "lucide-react";
        into the lens, a gentle roll, handheld breathing and an iris
        vignette inside the viewfinder.
 
-   TUNING KNOBS: GAIN (overall light), POSE / PATH (camera path), ASSETS (GLB models).
+   APARTMENT GLB
+     The procedural office architecture (floor, walls, ceiling, feature
+     wall, windows, console, plant...) is replaced by modern_apartment.glb.
+     See the APARTMENT config block (next to GlbModel) to tune scale,
+     rotation, offset and hidden nodes. The old office is kept only as a
+     fallback (while loading, on error / CORS failure, and on low-power devices).
+
+   TUNING KNOBS: GAIN (overall light), POSE / PATH (camera path), ASSETS (GLB models), APARTMENT (room GLB).
    The Navbar sits on a dark scene: give it light text on this page.
    ==================================================================== */
 
@@ -816,6 +823,64 @@ function GlbModel({ url, ...p }) {
   return <primitive object={c} {...p} />;
 }
 
+/* ---------- apartment GLB: replaces the procedural office shell ---------- */
+const APARTMENT = {
+  url: "https://pub-c068270ff2f94b2691bb54438e646383.r2.dev/modern_apartment.glb",
+  scale: 1,                // multiplier on top of the model's native size (assumed metres)
+  fitLongestSide: null,    // e.g. 12 => scale so the longest horizontal side is 12 units (overrides scale)
+  rotY: 0,                 // radians: try Math.PI / 2, Math.PI, -Math.PI / 2
+  offset: [0, 0.004, 0],   // applied AFTER centring + floor-snap: slide the living room under the table
+  hide: [],                // name fragments to hide, e.g. ["ceiling", "roof"]
+  debug: true,             // logs size, centre and node names to the console
+};
+
+class ModelBoundary extends Component {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch(err) { console.error("[RCS] apartment GLB failed (CORS / network / decode), using procedural office:", err); }
+  render() { return this.state.failed ? this.props.fallback : this.props.children; }
+}
+
+function ApartmentModel() {
+  const { scene } = useGLTF(APARTMENT.url);
+  const fit = useMemo(() => {
+    const box = new THREE.Box3().setFromObject(scene);
+    const size = box.getSize(new THREE.Vector3());
+    const ctr = box.getCenter(new THREE.Vector3());
+    const s = APARTMENT.fitLongestSide ? APARTMENT.fitLongestSide / Math.max(size.x, size.z) : APARTMENT.scale;
+    if (APARTMENT.debug) console.info("[RCS] apartment size", size.toArray(), "centre", ctr.toArray(), "min.y", box.min.y, "scale", s);
+    return { s, pos: [-ctr.x * s, -box.min.y * s, -ctr.z * s] }; // centre on x/z, floor at y = 0
+  }, [scene]);
+  useLayoutEffect(() => {
+    scene.traverse((o) => {
+      if (!o.isMesh) return;
+      o.receiveShadow = true;  // takes the pendant / ceiling spot shadows
+      o.castShadow = false;    // keeps a 299 MB model cheap to render
+      const n = `${o.name} ${o.material?.name || ""}`.toLowerCase();
+      if (APARTMENT.hide.some((h) => n.includes(h))) o.visible = false;
+      if (APARTMENT.debug && o.name) console.debug("[RCS] apartment node:", o.name);
+    });
+  }, [scene]);
+  return (
+    <group position={APARTMENT.offset} rotation-y={APARTMENT.rotY}>
+      <group position={fit.pos} scale={fit.s}>
+        <primitive object={scene} />
+      </group>
+    </group>
+  );
+}
+
+/* shows the GLB; while it streams in (or if it fails, or on low-power devices)
+   the old procedural office is rendered instead. Delete the fallback later if you like. */
+function Apartment({ low, children }) {
+  if (low) return children;
+  return (
+    <ModelBoundary fallback={children}>
+      <Suspense fallback={children}><ApartmentModel /></Suspense>
+    </ModelBoundary>
+  );
+}
+
 /* ---------- people: articulated procedural figures (GLB-swappable) ---------- */
 
 const ARM = {
@@ -1144,7 +1209,8 @@ function StudioSet({ tx, low, reduced }) {
   const trim = <meshBasicMaterial color={HOT_AMBER} toneMapped={false} />;
   return (
     <group>
-      {/* PREMIUM CREATIVE OFFICE ARCHITECTURE */}
+      {/* PREMIUM CREATIVE OFFICE ARCHITECTURE (now the fallback; the apartment GLB replaces it) */}
+      <Apartment low={low}><>
       {/* honed-stone floor and soft textured meeting rug */}
       <mesh rotation-x={-Math.PI / 2} position={[0, 0.003, -0.05]} receiveShadow>
         <planeGeometry args={[9.6, 7]} />
@@ -1333,6 +1399,7 @@ function StudioSet({ tx, low, reduced }) {
 
       {/* restrained brass details and practical production object */}
       <mesh position={[0, 3.52, -3.12]}><boxGeometry args={[7.5, 0.025, 0.025]} /><meshBasicMaterial color="#b38c55" toneMapped={false} /></mesh>
+      </></Apartment>
       <Tripod pos={[3.45, 0, -2.15]} yaw={0.6} h={1.25}><CinemaCamera scale={0.72} /></Tripod>
       <ChLight as="rectAreaLight" base={5} ch="studio" position={[-3.7, 2.3, -0.4]} rotation-y={Math.PI / 2} width={2.4} height={2.5} color="#f0d8b4" />
       <ChLight as="rectAreaLight" base={7} ch="studio" position={[4.5, 2.1, -0.7]} rotation-y={Math.PI / 2} width={2.7} height={2.6} color="#7d9fc7" />
