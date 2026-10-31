@@ -5,6 +5,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Lightformer, PerformanceMonitor, useGLTF } from "@react-three/drei";
 import { EffectComposer, Bloom, DepthOfField, ToneMapping, SMAA, Vignette } from "@react-three/postprocessing";
 import { RectAreaLightUniformsLib } from "three/examples/jsm/lights/RectAreaLightUniformsLib.js";
+import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
 import { ToneMappingMode } from "postprocessing";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -73,6 +74,17 @@ const FONT_LINK =
    models. Example: car: "/models/car.glb". For people use ids
    seatA, seatB, standA, standB, operator, crewA, crewB. */
 const ASSETS = { car: null, carScale: 1, people: {} };
+
+// Temporary one-character FBX integration test.
+// Only standA in the opening studio scene is replaced; all other figures remain procedural.
+const FBX_TEST_CHARACTER = {
+  id: "standA",
+  url: "/__rcs_fbx__/Flair.fbx",
+  targetHeight: 1.72,
+  // FBX/Mixamo assets commonly face +Z; the studio figures face local -Z.
+  // Change to 0 if the model appears to face away from the table.
+  rotationY: Math.PI,
+};
 
 gsap.registerPlugin(ScrollTrigger);
 RectAreaLightUniformsLib.init(); // soft window / ceiling area lights
@@ -870,7 +882,180 @@ function Limb({ len, r, mat, rot = [0, 0, 0], pos = [0, 0, 0], gref, children })
 /* gestL / gestR switch on conversation: the figure takes turns "speaking"
    (phase offsets stagger who talks), gestures with that arm, leans in and turns
    the head; while listening it nods slowly. */
-function Figure({ id, pose = "standing", pos, yaw = 0, scale = 1, palette, armL = "rest", armR = "rest", head = 0, lean = 0, long = false, animate = true, phase = 0, gestL = false, gestR = false }) {
+function disposeFBXObject(root) {
+  if (!root) return;
+  const geometries = new Set();
+  const materials = new Set();
+  const textures = new Set();
+
+  root.traverse((child) => {
+    if (!child.isMesh) return;
+    if (child.geometry) geometries.add(child.geometry);
+
+    const list = Array.isArray(child.material) ? child.material : [child.material];
+    list.filter(Boolean).forEach((material) => {
+      materials.add(material);
+      Object.values(material).forEach((value) => {
+        if (value && value.isTexture) textures.add(value);
+      });
+    });
+  });
+
+  geometries.forEach((geometry) => geometry.dispose());
+  textures.forEach((texture) => texture.dispose());
+  materials.forEach((material) => material.dispose());
+}
+
+/**
+ * Loads one FBX through the Vite same-origin development proxy to Cloudflare R2.
+ * While loading or if the request fails, the original procedural character
+ * remains visible. The model is normalized to a predictable height and
+ * grounded at y = 0.
+ */
+function FBXCharacter({
+  url,
+  position,
+  yaw = 0,
+  scale = 1,
+  targetHeight = 1.72,
+  rotationY = Math.PI,
+  fallback = null,
+}) {
+  const [asset, setAsset] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    let request = null;
+    let ownedRoot = null;
+    let ownedMixer = null;
+
+    const loader = new FBXLoader();
+    loader.setCrossOrigin("anonymous");
+
+    console.info("[RCS FBX] Starting character request:", url);
+    request = loader.load(
+      url,
+      (loadedRoot) => {
+        console.info("[RCS FBX] Character loaded successfully.", {
+          meshes: (() => {
+            let count = 0;
+            loadedRoot.traverse((node) => { if (node.isMesh) count += 1; });
+            return count;
+          })(),
+          animations: loadedRoot.animations?.length ?? 0,
+        });
+        if (!active) {
+          disposeFBXObject(loadedRoot);
+          return;
+        }
+
+        loadedRoot.updateMatrixWorld(true);
+        const bounds = new THREE.Box3().setFromObject(loadedRoot);
+        const size = bounds.getSize(new THREE.Vector3());
+        const center = bounds.getCenter(new THREE.Vector3());
+        const safeHeight = Math.max(size.y, 0.001);
+        const fitScale = targetHeight / safeHeight;
+
+        loadedRoot.traverse((child) => {
+          if (!child.isMesh) return;
+          child.castShadow = true;
+          child.receiveShadow = true;
+          child.frustumCulled = true;
+          if (child.geometry && !child.geometry.boundingSphere) {
+            child.geometry.computeBoundingSphere();
+          }
+        });
+
+        // If the FBX contains animation clips, play the first one.
+        // A static posed FBX remains static when no clips are present.
+        if (loadedRoot.animations && loadedRoot.animations.length) {
+          ownedMixer = new THREE.AnimationMixer(loadedRoot);
+          ownedMixer.clipAction(loadedRoot.animations[0]).reset().play();
+        }
+
+        ownedRoot = loadedRoot;
+        setAsset({
+          root: loadedRoot,
+          fitScale,
+          mixer: ownedMixer,
+          offset: [
+            -center.x * fitScale,
+            -bounds.min.y * fitScale,
+            -center.z * fitScale,
+          ],
+        });
+      },
+      (event) => {
+        if (event.lengthComputable) {
+          console.info(
+            `[RCS FBX] Download progress: ${Math.round((event.loaded / event.total) * 100)}%`
+          );
+        } else {
+          console.info(`[RCS FBX] Downloaded ${(event.loaded / (1024 * 1024)).toFixed(1)} MB`);
+        }
+      },
+      (error) => {
+        if (active) {
+          console.error(
+            "[RCS FBX] Character request/parse failed. Check DevTools > Network for the FBX request. " +
+            "If the console reports a CORS policy error, add an R2 CORS rule allowing GET from http://localhost:5173.",
+            error
+          );
+          setAsset({ error: true });
+        }
+      }
+    );
+
+    return () => {
+      active = false;
+      if (request && typeof request.abort === "function") request.abort();
+
+      if (ownedMixer && ownedRoot) {
+        ownedMixer.stopAllAction();
+        ownedMixer.uncacheRoot(ownedRoot);
+      }
+
+      disposeFBXObject(ownedRoot);
+    };
+  }, [url, targetHeight]);
+
+  useFrame((_, delta) => {
+    if (asset?.mixer) asset.mixer.update(Math.min(delta, 0.05));
+  });
+
+  if (!asset || asset.error) return fallback;
+
+  return (
+    <group position={position} rotation-y={yaw} scale={scale}>
+      <group
+        position={asset.offset}
+        scale={asset.fitScale}
+        rotation-y={rotationY}
+      >
+        <primitive object={asset.root} />
+      </group>
+    </group>
+  );
+}
+
+function Figure({
+  id,
+  pose = "standing",
+  pos,
+  yaw = 0,
+  scale = 1,
+  palette,
+  armL = "rest",
+  armR = "rest",
+  head = 0,
+  lean = 0,
+  long = false,
+  animate = true,
+  phase = 0,
+  gestL = false,
+  gestR = false,
+  useProcedural = false,
+}) {
   const glb = ASSETS.people[id];
   const m = useMemo(() => {
     const std = (color, roughness = 0.85) => new THREE.MeshStandardMaterial({ color, roughness });
@@ -924,6 +1109,42 @@ function Figure({ id, pose = "standing", pos, yaw = 0, scale = 1, palette, armL 
     animateArm(aR, armR, 1, gestR);
     animateArm(aL, armL, -1, gestL);
   });
+
+  if (id === FBX_TEST_CHARACTER.id && !useProcedural) {
+    const proceduralFallback = (
+      <Figure
+        id={id}
+        pose={pose}
+        pos={pos}
+        yaw={yaw}
+        scale={scale}
+        palette={palette}
+        armL={armL}
+        armR={armR}
+        head={head}
+        lean={lean}
+        long={long}
+        animate={animate}
+        phase={phase}
+        gestL={gestL}
+        gestR={gestR}
+        useProcedural
+      />
+    );
+
+    return (
+      <FBXCharacter
+        url={FBX_TEST_CHARACTER.url}
+        position={pos}
+        yaw={yaw}
+        scale={scale}
+        targetHeight={FBX_TEST_CHARACTER.targetHeight}
+        rotationY={FBX_TEST_CHARACTER.rotationY}
+        fallback={proceduralFallback}
+      />
+    );
+  }
+
   if (glb) return <GlbModel url={glb} position={pos} rotation-y={yaw} scale={scale} />;
   const seated = pose === "seated";
   const hipY = seated ? 0.5 : 0.92;
