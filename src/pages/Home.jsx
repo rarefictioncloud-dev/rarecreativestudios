@@ -13,137 +13,105 @@ import Lenis from "lenis";
 import { ArrowUpRight } from "lucide-react";
 
 /* ====================================================================
-   RARE CREATIVE STUDIOS: HOME  (performance-balanced build, original visual direction retained)
-   One continuous, scroll-controlled camera journey
-   (React Three Fiber + GSAP ScrollTrigger + Lenis).
-   Navbar and Footer are NOT part of this file.
+   RARE CREATIVE STUDIOS: HOME  (v6: fast-load + smooth-everywhere build)
+   Same story, same look. Navbar and Footer are NOT part of this file.
 
    INSTALL
      npm i three @react-three/fiber @react-three/drei @react-three/postprocessing postprocessing gsap lenis lucide-react react-router-dom
      (React 18 projects: @react-three/fiber@8, @react-three/drei@9, @react-three/postprocessing@2)
 
-   THE STORY (scroll order)
-     1. OPEN      Camera behind four people. Two sit facing each other across
-                  the table, two stand close behind them. They are mid
-                  conversation: taking turns, gesturing, nodding.
-     2. TABLE     A slow curved dolly in towards the table.
-     3. NOTES     Push onto the storyboard and notes they are discussing.
-     4. CAMERA    Pull back off the notes, crane up out of the studio and
-                  reveal the film set next door.
-     5. LENS      Dive into the cinema camera: you see the car through the
-                  viewfinder (REC overlay, iris vignette).
-     6. THIRD     Scroll out of the lens, swing round and settle behind the
-                  operator in a third person view of the shoot.
-     7. END       Resolve on the hero frame of the black BMW-style coupe.
-                  The page then ends.
+   WHAT CHANGED IN v6  (why it loaded slowly and stuttered on PC)
+   LOAD SPEED
+     - The scene no longer waits for web fonts. The page paints at once, the
+       canvas mounts on the next tick and fades in after its first frames.
+       Text textures are redrawn IN PLACE when the fonts arrive (no rebuild).
+     - FBX files still download in parallel, but PARSING is serialised with a
+       yield between files, so the main thread is never frozen by seven
+       back-to-back synchronous parses.
+     - Canvas textures are cheaper (fewer noise rects, lower default scale).
+     - Shaders for the whole scene are pre-compiled once (gl.compileAsync), so
+       the film set and characters no longer hitch the first time they appear.
+   SMOOTHNESS
+     - Light count cut from ~33 to ~16 (the per-pixel cost of forward lighting
+       scales with it). 10 point lights became emissive meshes, duplicate
+       rect-area lights merged, one film spot merged into its twin.
+     - Depth of field is OFF by default (ENABLE_DOF). It was the single most
+       expensive pass. Set ENABLE_DOF = true to restore it on "high" only.
+     - Bloom / DOF buffers are smaller. Only ONE shadow map on balanced, two on high.
+     - Characters only animate and render while the camera is near them
+       (see the range in makeFBXConfig). Skinned meshes no longer cost
+       anything when you are looking at something else.
+     - Caption blur filters and the full-screen mix-blend grain were removed
+       (both force expensive re-compositing over a WebGL canvas every frame).
+     - Intro easing no longer uses a second GSAP tween loop.
+   RECOMMENDED OUTSIDE THIS FILE
+     - Load this route with React.lazy so three.js is not in your main bundle.
+     - Convert the FBX characters to meshopt/Draco GLB (typically 5-10x smaller).
 
-   WHAT CHANGED IN v5
-     - SMOOTHNESS. Scroll no longer drives the camera directly. ScrollTrigger
-       (scrub: true, so Lenis is the only scroll smoothing) writes a target
-       time into TIME.target; the render loop chases it with a critically
-       damped spring (see stepTime) and samples the camera spline ONCE per
-       frame, before any light or object reads STATE. One clock, no competing
-       loops, continuous velocity AND acceleration, equally smooth in reverse.
-       Tune it with TIME.smooth (seconds to settle: 0.25 tight, 0.4 default,
-       0.6 floaty).
-     - The responsive lens framing is now driven by a spline channel (lm)
-       instead of the fov value, so entering and leaving the lens blends
-       smoothly on narrow screens.
-     - Handheld sway: high-frequency terms removed, pointer follow is
-       frame-rate independent, and the camera steadies inside the viewfinder.
-     - Scene root is memoised, and an adaptive resolution guard drops the
-       pixel ratio only if the frame rate stays low, then restores it.
-     - v5.1: Sparkles removed everywhere. Image is crisper (softer depth of
-       field via DOF_STRENGTH, no chromatic aberration, higher min pixel ratio,
-       lighter bloom). The POV clip restarts from frame 0 when the camera POV
-       begins and then plays continuously (looping) until the POV ends.
-     - The modern_apartment.glb implementation has been removed. The
-       procedural office architecture is now the permanent studio shell.
-
-   TUNING KNOBS: GAIN (overall light), POSE / PATH (camera path), TIME.smooth (smoothness), ASSETS (GLB models for car; FBX models for opening and film-set characters).
+   TUNING KNOBS: GAIN, ENABLE_DOF, POSE / PATH, TIME.smooth, ASSETS, FBX_CHARACTERS.
    The Navbar sits on a dark scene: give it light text on this page.
    ==================================================================== */
 
 const CONTACT_EMAIL = "info@rarecreativestudios.com";
 const COL = { obsidian: "#0B0B0C", charcoal: "#191A1C", ivory: "#F1EFE9", blue: "#234A78", amber: "#D9A441", copper: "#7C3F30" };
 const GAIN = 1; // multiplies every light: raise if the scene feels too dark
+const ENABLE_DOF = false; // depth of field: costly. true = enabled on "high" quality only
+const DOF_STRENGTH = 0.3;
 const FONT_LINK =
   "https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=Caveat:wght@500;600&display=swap";
 
-/* Optional GLB model overrides for non-opening figures and the car.
-   Opening and film-set people are loaded from FBX_CHARACTERS below. */
+/* Optional GLB model overrides for non-opening figures and the car. */
 const ASSETS = { car: null, carScale: 1, people: {} };
 
-// Four production FBX characters for the opening studio scene.
-// Local development goes through the Vite proxy; GitHub Pages loads R2 directly.
-const R2_FBX_BASE =
-  "https://pub-c068270ff2f94b2691bb54438e646383.r2.dev";
+const R2_FBX_BASE = "https://pub-c068270ff2f94b2691bb54438e646383.r2.dev";
+const T_TOTAL = 118; // master timeline length
 
-const makeFBXConfig = (filename, targetHeight) => ({
+/* range = [from, to] on the master timeline: the character only renders and
+   animates while the camera time is inside it. */
+const makeFBXConfig = (filename, targetHeight, range) => ({
   url: import.meta.env.DEV
     ? `/__rcs_fbx__/${encodeURIComponent(filename)}`
     : `${R2_FBX_BASE}/${encodeURIComponent(filename)}`,
   targetHeight,
-  // Mixamo/FBX exports commonly face +Z; the scene figures face local -Z.
-  rotationY: Math.PI,
+  rotationY: Math.PI, // Mixamo/FBX exports commonly face +Z; scene figures face local -Z
+  range,
 });
+const OPEN_RANGE = [0, 76];
+const SET_RANGE = [40, T_TOTAL];
 
 const FBX_CHARACTERS = {
-  // Opening studio: seated models enlarged for clearer visibility.
-  seatA: makeFBXConfig("Sitting Idle.fbx", 1.62),
-  seatB: makeFBXConfig("Sitting Idle (1).fbx", 1.62),
-  // Opening studio: standing characters.
-  standA: makeFBXConfig("Searching Pockets.fbx", 1.72),
-  standB: makeFBXConfig("Thinking.fbx", 1.72),
-
-  // Film set: camera operator and the two crew members around the camera.
-  operator: makeFBXConfig("Angry.fbx", 1.72),
-  crewA: makeFBXConfig("Standing Clap.fbx", 1.72),
-  crewB: makeFBXConfig("Arm Stretching.fbx", 1.72),
+  seatA: makeFBXConfig("Sitting Idle.fbx", 1.62, OPEN_RANGE),
+  seatB: makeFBXConfig("Sitting Idle (1).fbx", 1.62, OPEN_RANGE),
+  standA: makeFBXConfig("Searching Pockets.fbx", 1.72, OPEN_RANGE),
+  standB: makeFBXConfig("Thinking.fbx", 1.72, OPEN_RANGE),
+  operator: makeFBXConfig("Angry.fbx", 1.72, SET_RANGE),
+  crewA: makeFBXConfig("Standing Clap.fbx", 1.72, SET_RANGE),
+  crewB: makeFBXConfig("Arm Stretching.fbx", 1.72, SET_RANGE),
 };
 
-// Shared download/parse cache. Opening characters are prioritized first;
-// film-set characters are requested after the opening group is ready.
+/* Downloads run in parallel; PARSING is serialised with a pause between files
+   so each synchronous FBXLoader.parse never stacks up on the main thread. */
 const FBX_PROMISE_CACHE = new Map();
+let parseChain = Promise.resolve();
+const pause = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function getFBXPromise(url, priority = "high") {
   if (FBX_PROMISE_CACHE.has(url)) return FBX_PROMISE_CACHE.get(url);
-
   const promise = (async () => {
-    const response = await fetch(url, {
-      mode: "cors",
-      credentials: "omit",
-      cache: "force-cache",
-      priority,
-    });
-
-    if (!response.ok) {
-      throw new Error(`FBX request failed (${response.status} ${response.statusText}): ${url}`);
-    }
-
+    const response = await fetch(url, { mode: "cors", credentials: "omit", cache: "force-cache", priority });
+    if (!response.ok) throw new Error(`FBX request failed (${response.status} ${response.statusText}): ${url}`);
     const buffer = await response.arrayBuffer();
-    const absoluteUrl = new URL(url, window.location.href);
-    const resourcePath = new URL(".", absoluteUrl).href;
-
-    // Parsing the downloaded ArrayBuffer avoids a second loader-managed request.
-    // FBXLoader.parse is synchronous; downloads are prioritized to make the
-    // opening characters available first.
-    const loader = new FBXLoader();
-    const root = loader.parse(buffer, resourcePath);
-    root.updateMatrixWorld(true);
-
-    console.info(
-      `[RCS FBX] Parsed: ${url} (${(buffer.byteLength / 1048576).toFixed(1)} MB)`
-    );
-    return root;
+    const resourcePath = new URL(".", new URL(url, window.location.href)).href;
+    const job = parseChain.then(() => pause(24)).then(() => {
+      const root = new FBXLoader().parse(buffer, resourcePath);
+      root.updateMatrixWorld(true);
+      return root;
+    });
+    parseChain = job.catch(() => {});
+    return job;
   })();
-
   FBX_PROMISE_CACHE.set(url, promise);
-  promise.catch(() => {
-    // Allow a later remount/retry instead of permanently caching a rejection.
-    if (FBX_PROMISE_CACHE.get(url) === promise) FBX_PROMISE_CACHE.delete(url);
-  });
-
+  promise.catch(() => { if (FBX_PROMISE_CACHE.get(url) === promise) FBX_PROMISE_CACHE.delete(url); });
   return promise;
 }
 
@@ -151,41 +119,14 @@ const OPENING_CHARACTER_IDS = ["seatA", "seatB", "standA", "standB"];
 const FILM_SET_CHARACTER_IDS = ["operator", "crewA", "crewB"];
 
 function preloadRCSCharacters() {
-  const loadGroup = (ids, priority) =>
-    Promise.allSettled(
-      ids.map((id) => getFBXPromise(FBX_CHARACTERS[id].url, priority))
-    );
-
-  // The opening four are the first visual priority. The three film-set
-  // characters begin downloading as soon as the opening group is parsed.
+  const loadGroup = (ids, priority) => Promise.allSettled(ids.map((id) => getFBXPromise(FBX_CHARACTERS[id].url, priority)));
   return loadGroup(OPENING_CHARACTER_IDS, "high").then((openingResults) =>
-    loadGroup(FILM_SET_CHARACTER_IDS, "low").then((filmResults) => ({
-      openingResults,
-      filmResults,
-    }))
+    loadGroup(FILM_SET_CHARACTER_IDS, "low").then((filmResults) => ({ openingResults, filmResults }))
   );
 }
 
-function addCharacterPreloads() {
-  const links = [];
-
-  OPENING_CHARACTER_IDS.forEach((id) => {
-    const url = FBX_CHARACTERS[id].url;
-    const link = document.createElement("link");
-    link.rel = "preload";
-    link.as = "fetch";
-    link.href = url;
-    link.crossOrigin = "anonymous";
-    link.setAttribute("fetchpriority", "high");
-    document.head.appendChild(link);
-    links.push(link);
-  });
-
-  return () => links.forEach((link) => link.remove());
-}
-
 gsap.registerPlugin(ScrollTrigger);
-RectAreaLightUniformsLib.init(); // soft window / ceiling area lights
+RectAreaLightUniformsLib.init();
 ScrollTrigger.config({ ignoreMobileResize: true });
 
 /* ---------- shared mutable state: written by GSAP, read by the scene ---------- */
@@ -194,60 +135,45 @@ const C = V3(15, 0, 9); // centre of the film set
 const CAR_POS = C.clone();
 const OP_POS = V3(C.x - 3.8, 0, C.z + 3.5);
 const TO_CAR = CAR_POS.clone().sub(OP_POS).setY(0).normalize();
-const SET_YAW = Math.atan2(-TO_CAR.x, -TO_CAR.z); // car front and operator gaze share this yaw maths
+const SET_YAW = Math.atan2(-TO_CAR.x, -TO_CAR.z);
 const BACK = { x: -TO_CAR.x, z: -TO_CAR.z };
-const SIDE = { x: -TO_CAR.z, z: TO_CAR.x }; // perpendicular to the shooting line
+const SIDE = { x: -TO_CAR.z, z: TO_CAR.x };
 const HERO_A = -0.96;
 const HERO_DIR = { x: BACK.x * Math.cos(HERO_A) - BACK.z * Math.sin(HERO_A), z: BACK.x * Math.sin(HERO_A) + BACK.z * Math.cos(HERO_A) };
 const HERO_RIGHT = { x: HERO_DIR.z, z: -HERO_DIR.x };
 const lerp = THREE.MathUtils.lerp;
-const rel = (dx, dz) => [C.x + dx, C.z + dz]; // position relative to film-set centre
+const rel = (dx, dz) => [C.x + dx, C.z + dz];
 
-/* position of the film-set camera lens (used by the "inside the camera" shot) */
 const LENS_POS = {
   x: OP_POS.x + TO_CAR.x * (0.85 + 0.62),
   y: 1.22 + 0.05 + 0.12,
   z: OP_POS.z + TO_CAR.z * (0.85 + 0.62),
 };
 
-/* studio / set = light channels (never below ~0.4 so nothing ever goes black).
-   roll = camera banking in degrees. lm = "inside the lens" blend (0..1), used
-   only to ease the responsive framing on narrow screens. */
 const POSE = {
-  /* 1. open: behind the four people, looking across the table */
   wide: { px: 0.0, py: 1.7, pz: 6.4, lx: 0, ly: 1.05, lz: -0.4, fov: 36, studio: 1, set: 0.5, env: 0.35, fb: 0.33, bk: 0.7, roll: 0 },
-  /* 1b. gentle arc to the right while we start moving in */
   arcA: { px: 0.8, py: 1.62, pz: 5.0, lx: 0.05, ly: 1.0, lz: -0.4, fov: 36, studio: 1, set: 0.5, env: 0.35, fb: 0.28, bk: 1.3, roll: 0.7 },
-  /* 2. approach the table between the two standing people */
   table: { px: 0.05, py: 1.5, pz: 3.5, lx: 0, ly: 0.95, lz: -0.3, fov: 36, studio: 1, set: 0.5, env: 0.35, fb: 0.2, bk: 2.2, roll: 0 },
-  /* 3. onto the notes */
   notes: { px: 0.2, py: 1.8, pz: 0.4, lx: 0.2, ly: 0.76, lz: -0.12, fov: 38, studio: 1, set: 0.5, env: 0.35, fb: 0, bk: 3.2, roll: 0 },
   notes2: { px: 0.27, py: 1.74, pz: 0.36, lx: 0.25, ly: 0.76, lz: -0.14, fov: 38, studio: 1, set: 0.5, env: 0.35, fb: 0, bk: 3.2, roll: 0 },
-  /* 4a. crane up and out of the studio */
   rise: { px: 4.6, py: 3.5, pz: 10.5, lx: 3.6, ly: 1.0, lz: 2.0, fov: 44, studio: 0.95, set: 0.7, env: 0.5, fb: 0.4, bk: 0.8, roll: -1.1 },
-  /* 4b. the reveal: studio on the left, film set on the right, both lit */
   pullMid: { px: 7.6, py: 5.4, pz: 21, lx: 7.6, ly: 0.9, lz: 4.2, fov: 50, studio: 0.9, set: 0.9, env: 0.7, fb: 0.5, bk: 0.4, roll: 0 },
-  /* 4c. swooping down towards the lens, banking slightly */
   dive: { px: 10.3, py: 2.7, pz: 15.6, lx: 12.2, ly: 0.9, lz: 8.2, fov: 38, studio: 0.55, set: 1, env: 0.9, fb: 0.7, bk: 1.0, roll: 1.4, lm: 0.4 },
-  /* 5. inside the camera: the viewfinder shot of the car */
   lens: {
     px: LENS_POS.x, py: LENS_POS.y, pz: LENS_POS.z,
     lx: CAR_POS.x, ly: 0.82, lz: CAR_POS.z,
     fov: 26, studio: 0.4, set: 1, env: 1, fb: 0.9, bk: 1.2, roll: 0, lm: 1,
   },
-  /* 6a. scrolling out of the lens, swinging round the operator */
   orbit: {
     px: OP_POS.x + SIDE.x * 2.4 + BACK.x * 1.6, py: 1.55, pz: OP_POS.z + SIDE.z * 2.4 + BACK.z * 1.6,
     lx: lerp(OP_POS.x, CAR_POS.x, 0.5), ly: 1.0, lz: lerp(OP_POS.z, CAR_POS.z, 0.5),
     fov: 38, studio: 0.5, set: 1, env: 0.9, fb: 0.5, bk: 1.6, roll: 0.8,
   },
-  /* 6b. third person, behind the operator shooting the car */
   behind: {
     px: OP_POS.x + BACK.x * 4.1, py: 1.9, pz: OP_POS.z + BACK.z * 4.1,
     lx: lerp(OP_POS.x, CAR_POS.x, 0.6), ly: 1, lz: lerp(OP_POS.z, CAR_POS.z, 0.6),
     fov: 40, studio: 0.5, set: 1, env: 0.85, fb: 0.5, bk: 1.8, roll: 0,
   },
-  /* 7. hero frame of the car */
   hero: {
     px: CAR_POS.x + HERO_DIR.x * 6.1, py: 0.8, pz: CAR_POS.z + HERO_DIR.z * 6.1,
     lx: CAR_POS.x - HERO_RIGHT.x * 1.5, ly: 0.78, lz: CAR_POS.z - HERO_RIGHT.z * 1.5,
@@ -260,7 +186,6 @@ const STATE = { ...pick(POSE.wide), intro: 0 };
 const FOCUS = new THREE.Vector3();
 const PTR = new THREE.Vector2();
 
-const T_TOTAL = 118; // master timeline length (arbitrary units, scrubbed by scroll)
 const STAGES = [
   { t: 0, n: "Idea" },
   { t: 5, n: "Collaboration" },
@@ -271,27 +196,10 @@ const STAGES = [
   { t: 102, n: "Final frame" },
 ];
 
-/* The camera path: [time, pose]. Repeated poses are "holds". Between keys the
-   path is a monotone cubic spline (PCHIP), so velocity is continuous through
-   every waypoint, there is no stop-start and nothing ever overshoots. */
 const PATH = [
-  [0, "wide"],
-  [4, "wide"],
-  [11, "arcA"],
-  [18, "table"],
-  [34, "notes"],
-  [44, "notes2"],
-  [51, "table"],
-  [58, "rise"],
-  [66, "pullMid"],
-  [71, "dive"],
-  [76, "lens"],
-  [81, "lens"],
-  [90, "orbit"],
-  [98, "behind"],
-  [101, "behind"],
-  [112, "hero"],
-  [T_TOTAL, "hero"],
+  [0, "wide"], [4, "wide"], [11, "arcA"], [18, "table"], [34, "notes"], [44, "notes2"], [51, "table"],
+  [58, "rise"], [66, "pullMid"], [71, "dive"], [76, "lens"], [81, "lens"], [90, "orbit"], [98, "behind"],
+  [101, "behind"], [112, "hero"], [T_TOTAL, "hero"],
 ];
 
 function makeTrack(ts, vs) {
@@ -321,14 +229,12 @@ const TRACKS = POSE_KEYS.reduce((o, k) => {
 const sampleTrack = (t) => { for (const k of POSE_KEYS) STATE[k] = TRACKS[k](t); };
 
 /* Scroll writes TIME.target ONLY. The render loop chases it with a critically
-   damped spring and samples the spline once per frame (see CameraRig), so there
-   is a single clock and the camera never fights a second animation loop.
-   smooth = seconds to settle: raise for floatier, lower for tighter. */
-const TIME = { target: 0, t: 0, v: 0, snap: true, smooth: 0.4 };
+   damped spring and samples the spline once per frame (see CameraRig). */
+const TIME = { target: 0, t: 0, v: 0, snap: true, smooth: 0.35 };
 function stepTime(dt, instant) {
   const T = TIME;
   if (instant || T.snap || T.smooth <= 0) { T.t = T.target; T.v = 0; T.snap = false; return; }
-  const h = Math.min(dt, 0.05); // a tab-switch hitch can never fling the camera
+  const h = Math.min(dt, 0.05);
   const w = 2 / T.smooth, x = w * h;
   const e = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x);
   const d = T.t - T.target;
@@ -342,10 +248,10 @@ function stepTime(dt, instant) {
    2. PROCEDURAL TEXTURES (canvas): storyboards, notes, photos, wood
    ==================================================================== */
 
-const FD = "'Inter Tight','Helvetica Neue',Arial,sans-serif"; // display + UI (light neo-grotesque)
-const FS = FD; // editorial text on textures uses the same family
-const FI = FD; // UI
-const FH = "'Caveat','Segoe Script',cursive"; // handwriting
+const FD = "'Inter Tight','Helvetica Neue',Arial,sans-serif";
+const FS = FD;
+const FI = FD;
+const FH = "'Caveat','Segoe Script',cursive";
 
 const rnd = (seed) => {
   let s = seed % 2147483647;
@@ -357,9 +263,9 @@ function paper(g, w, h, base = "#efe8d6", grain = 0.07, seed = 3) {
   g.fillStyle = base;
   g.fillRect(0, 0, w, h);
   const r = rnd(seed);
-  for (let i = 0; i < (w * h) / 110; i++) {
+  for (let i = 0; i < (w * h) / 260; i++) { // v6: ~2.4x fewer grain rects
     g.fillStyle = `rgba(${r() > 0.5 ? "90,70,40" : "255,255,255"},${r() * grain})`;
-    g.fillRect(r() * w, r() * h, 1 + r() * 2, 1 + r() * 2);
+    g.fillRect(r() * w, r() * h, 1 + r() * 2.4, 1 + r() * 2.4);
   }
   const gr = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.3, w / 2, h / 2, Math.max(w, h) * 0.75);
   gr.addColorStop(0, "rgba(0,0,0,0)");
@@ -395,12 +301,12 @@ function hatch(g, x, y, w, h, gap = 14, color = "rgba(40,40,45,.35)") {
   g.clip();
   g.strokeStyle = color;
   g.lineWidth = 2;
+  g.beginPath(); // v6: one path, one stroke
   for (let i = -h; i < w; i += gap) {
-    g.beginPath();
     g.moveTo(x + i, y + h);
     g.lineTo(x + i + h, y);
-    g.stroke();
   }
+  g.stroke();
   g.restore();
 }
 
@@ -423,7 +329,7 @@ function arrow(g, x1, y1, x2, y2, color = "#1d3f6e", lw = 4) {
 }
 
 function text(g, s, x, y, { font = FH, size = 44, color = "#222", weight = 500, rot = 0, align = "left" } = {}) {
-  const sz = font === FH ? size * 1.22 : size; // handwriting face runs small
+  const sz = font === FH ? size * 1.22 : size;
   g.save();
   g.translate(x, y);
   g.rotate(rot);
@@ -534,8 +440,8 @@ function photo(g, w, h, kind = 0) {
   g.fillStyle = gl;
   g.fillRect(0, 0, w, h);
   const r = rnd(kind + 40);
-  for (let i = 0; i < 900; i++) {
-    g.fillStyle = `rgba(255,255,255,${r() * 0.06})`;
+  for (let i = 0; i < 300; i++) { // v6: 900 -> 300
+    g.fillStyle = `rgba(255,255,255,${r() * 0.07})`;
     g.fillRect(r() * w, r() * h, 2, 2);
   }
 }
@@ -591,8 +497,10 @@ function drawHero(g, w, h) {
   paper(g, w, h, "#efe8d6", 0.08, 11);
   g.strokeStyle = "rgba(50,90,150,.09)";
   g.lineWidth = 1.5;
-  for (let x = 0; x < w; x += 64) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); }
-  for (let y = 0; y < h; y += 64) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
+  g.beginPath();
+  for (let x = 0; x < w; x += 64) { g.moveTo(x, 0); g.lineTo(x, h); }
+  for (let y = 0; y < h; y += 64) { g.moveTo(0, y); g.lineTo(w, y); }
+  g.stroke();
   text(g, "Night Drive", 110, 140, { font: FS, size: 120, weight: 300, color: "#1a1a1c" });
   text(g, "30 sec automotive spot  /  storyboard v3  /  RCS", 114, 192, { font: FI, size: 28, color: "#555", weight: 600 });
   stroke(g, [[110, 160], [760, 154]], { color: COL.blue, lw: 6, seed: 3 });
@@ -723,9 +631,9 @@ function drawBoard(g, w, h) {
   g.fillStyle = "#2b2824";
   g.fillRect(0, 0, w, h);
   const r = rnd(21);
-  for (let i = 0; i < 9000; i++) {
-    g.fillStyle = `rgba(${r() > 0.5 ? "0,0,0" : "120,100,80"},${r() * 0.12})`;
-    g.fillRect(r() * w, r() * h, 2, 2);
+  for (let i = 0; i < 3500; i++) { // v6: 9000 -> 3500
+    g.fillStyle = `rgba(${r() > 0.5 ? "0,0,0" : "120,100,80"},${r() * 0.14})`;
+    g.fillRect(r() * w, r() * h, 2.4, 2.4);
   }
   const cols = 7, rows = 3, cw = w / cols, ch = h / rows;
   const words = ["Light", "Speed", "Silence", "Precision", "Night", "Chrome"];
@@ -774,7 +682,7 @@ function drawWood(g, w, h) {
   g.fillStyle = "#4a3426";
   g.fillRect(0, 0, w, h);
   const r = rnd(5);
-  for (let i = 0; i < 260; i++) {
+  for (let i = 0; i < 180; i++) {
     const y = r() * h;
     g.strokeStyle = `rgba(${r() > 0.5 ? "20,10,5" : "120,80,50"},${0.05 + r() * 0.12})`;
     g.lineWidth = 1 + r() * 3;
@@ -794,7 +702,6 @@ function drawBlob(g, w, h) {
   g.fillRect(0, 0, w, h);
 }
 
-/* soft blue-to-black glow used behind the film set */
 function drawGlow(g, w, h) {
   const gr = g.createRadialGradient(w / 2, h * 0.78, 10, w / 2, h * 0.78, w * 0.62);
   gr.addColorStop(0, "rgba(66,112,190,.55)");
@@ -804,17 +711,16 @@ function drawGlow(g, w, h) {
   g.fillRect(0, 0, w, h);
 }
 
-/* scuffed, streaky roughness map: makes the black floors read as real polished concrete */
 function drawFloorRough(g, w, h) {
   g.fillStyle = "rgb(78,78,78)";
   g.fillRect(0, 0, w, h);
   const r = rnd(77);
-  for (let i = 0; i < 2600; i++) {
+  for (let i = 0; i < 1400; i++) { // v6: 2600 -> 1400
     const v = 70 + r() * 70;
     g.fillStyle = `rgba(${v},${v},${v},${0.12 + r() * 0.2})`;
     g.fillRect(r() * w, r() * h, 1 + r() * 3, 1 + r() * 3);
   }
-  for (let i = 0; i < 110; i++) {
+  for (let i = 0; i < 90; i++) {
     const x = r() * w, y = r() * h, l = 40 + r() * 170, v = 120 + r() * 70;
     g.strokeStyle = `rgba(${v},${v},${v},${0.08 + r() * 0.18})`;
     g.lineWidth = 0.6 + r() * 1.8;
@@ -825,7 +731,6 @@ function drawFloorRough(g, w, h) {
   }
 }
 
-/* glowing studio sign behind the car */
 function drawSign(g, w, h) {
   g.clearRect(0, 0, w, h);
   g.textAlign = "center";
@@ -841,10 +746,13 @@ function drawSign(g, w, h) {
   g.fillText("RARE CREATIVE STUDIOS", w / 2, h * 0.92);
 }
 
+/* v6: textures that contain text are tracked so they can be redrawn IN PLACE
+   when the web fonts arrive, instead of rebuilding every texture. */
 function makeTextures(q, maxAnisotropy = 4) {
   if (typeof document === "undefined") return null;
   const T = {};
-  const mk = (bw, bh, draw) => {
+  const fontTex = [];
+  const mk = (bw, bh, draw, usesFont = false) => {
     const w = Math.round(bw * q), h = Math.round(bh * q);
     const c = document.createElement("canvas");
     c.width = w;
@@ -855,24 +763,25 @@ function makeTextures(q, maxAnisotropy = 4) {
     const t = new THREE.CanvasTexture(c);
     t.colorSpace = THREE.SRGBColorSpace;
     t.anisotropy = Math.min(8, Math.max(1, maxAnisotropy));
+    if (usesFont) fontTex.push({ t, g, w, h, bw, bh, draw });
     return t;
   };
-  T.hero = mk(2048, 1490, drawHero);
-  T.sheetB = mk(1024, 724, drawSketchSheet);
-  T.sheetC = mk(1024, 724, drawCameraList);
+  T.hero = mk(2048, 1490, drawHero, true);
+  T.sheetB = mk(1024, 724, drawSketchSheet, true);
+  T.sheetC = mk(1024, 724, drawCameraList, true);
   T.sheetD = mk(1024, 724, drawContact);
-  T.board = mk(2048, 860, drawBoard);
+  T.board = mk(2048, 860, drawBoard, true);
   T.photoA = mk(512, 362, (g, w, h) => photo(g, w, h, 0));
   T.photoB = mk(512, 362, (g, w, h) => photo(g, w, h, 1));
   T.photoC = mk(512, 362, (g, w, h) => photo(g, w, h, 2));
-  T.poster = mk(1024, 680, (g, w, h) => photo(g, w, h, 2));
-  T.laptop = mk(1024, 640, drawLaptop);
+  T.poster = T.photoC; // v6: identical art, so share it instead of building a 1024x680 duplicate
+  T.laptop = mk(1024, 640, drawLaptop, true);
   T.wood = mk(512, 512, drawWood);
   T.wood.wrapS = T.wood.wrapT = THREE.RepeatWrapping;
   T.wood.repeat.set(2, 1);
   T.blob = mk(256, 256, drawBlob);
   T.glow = mk(512, 256, drawGlow);
-  T.sign = mk(1024, 256, drawSign);
+  T.sign = mk(1024, 256, drawSign, true);
   T.floorRough = mk(512, 512, drawFloorRough);
   T.floorRough.colorSpace = THREE.NoColorSpace;
   T.floorRough.wrapS = T.floorRough.wrapT = THREE.RepeatWrapping;
@@ -880,7 +789,18 @@ function makeTextures(q, maxAnisotropy = 4) {
   T.hallRough = T.floorRough.clone();
   T.hallRough.repeat.set(40, 40);
   T.hallRough.needsUpdate = true;
+  T.__fontTex = fontTex;
   return T;
+}
+
+function redrawFontTextures(T) {
+  (T?.__fontTex || []).forEach(({ t, g, w, h, bw, bh, draw }) => {
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, w, h);
+    g.scale(w / bw, h / bh);
+    draw(g, bw, bh);
+    t.needsUpdate = true;
+  });
 }
 
 /* ====================================================================
@@ -893,7 +813,6 @@ const HOT_AMBER = new THREE.Color(COL.amber).multiplyScalar(2.2);
 const BLUE_GLOW = new THREE.Color("#4f86d6").multiplyScalar(1.1);
 const yawTo = (a, b) => Math.atan2(-(b[0] - a[0]), -(b[2] - a[2]));
 
-/* lights whose level follows the timeline (studio / set channel) */
 function ChLight({ as: As = "pointLight", base, ch, ...p }) {
   const r = useRef();
   useFrame(() => { if (r.current) r.current.intensity = base * GAIN * STATE[ch]; });
@@ -917,7 +836,6 @@ function Spot({ pos, aim, base, ch, ...p }) {
   );
 }
 
-/* faint volumetric light cone: sells the "studio haze" and gives depth */
 const SHAFT_VS = "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }";
 const SHAFT_FS = "uniform vec3 uColor; uniform float uOp; varying vec2 vUv; void main(){ float a = pow(vUv.y, 1.7) * uOp; gl_FragColor = vec4(uColor, a); }";
 
@@ -941,7 +859,7 @@ function Shaft({ from, to, r = 1.2, color = "#ffd9a0", op = 0.12, ch = "studio" 
   useEffect(() => () => mat.dispose(), [mat]);
   return (
     <mesh position={geo.mid} quaternion={geo.quat} renderOrder={5}>
-      <coneGeometry args={[r, geo.len, 40, 1, true]} />
+      <coneGeometry args={[r, geo.len, 24, 1, true]} />
       <primitive object={mat} attach="material" />
     </mesh>
   );
@@ -952,8 +870,6 @@ function GlbModel({ url, ...p }) {
   const c = useMemo(() => scene.clone(true), [scene]);
   return <primitive object={c} {...p} />;
 }
-
-/* ---------- opening people: preloaded FBX models + procedural fallback code for other figures ---------- */
 
 const ARM = {
   rest: { f: 0.06, a: 0.09, e: 0.28 },
@@ -977,67 +893,42 @@ function Limb({ len, r, mat, rot = [0, 0, 0], pos = [0, 0, 0], gref, children })
   );
 }
 
-/* gestL / gestR switch on conversation: the figure takes turns "speaking"
-   (phase offsets stagger who talks), gestures with that arm, leans in and turns
-   the head; while listening it nods slowly. */
 /**
- * Renders one preloaded FBX character.
- * The shared prioritized preload cache avoids duplicate downloads when React
- * remounts the scene or WebGL is restored.
- * The model is normalized to the requested height and grounded at y = 0.
+ * One preloaded FBX character, normalised to a target height and grounded at y = 0.
+ * v6: it only renders and animates while the camera time is inside `range`,
+ * and it pre-compiles its shaders once so it never hitches when it appears.
  */
-function FBXCharacter({
-  url,
-  position,
-  yaw = 0,
-  scale = 1,
-  targetHeight = 1.72,
-  rotationY = Math.PI,
-  shadows = true,
-}) {
+function FBXCharacter({ url, position, yaw = 0, scale = 1, targetHeight = 1.72, rotationY = Math.PI, range = [0, T_TOTAL], shadows = true }) {
   const [asset, setAsset] = useState(null);
+  const grp = useRef();
+  const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
+  const camera = useThree((s) => s.camera);
 
   useEffect(() => {
     let active = true;
     let mixer = null;
     let rootForCleanup = null;
-
     getFBXPromise(url)
       .then((loadedRoot) => {
         if (!active) return;
-
         loadedRoot.updateMatrixWorld(true);
         const bounds = new THREE.Box3().setFromObject(loadedRoot);
         const size = bounds.getSize(new THREE.Vector3());
         const center = bounds.getCenter(new THREE.Vector3());
         const fitScale = targetHeight / Math.max(size.y, 0.001);
-
         loadedRoot.traverse((child) => {
           if (!child.isMesh) return;
           child.castShadow = shadows;
           child.receiveShadow = false;
-          child.frustumCulled = true;
-          if (child.geometry && !child.geometry.boundingSphere) {
-            child.geometry.computeBoundingSphere();
-          }
+          child.frustumCulled = false; // skinned bounds are unreliable; the group visibility does the culling
         });
-
         if (loadedRoot.animations?.length) {
           mixer = new THREE.AnimationMixer(loadedRoot);
           mixer.clipAction(loadedRoot.animations[0]).reset().play();
         }
-
         rootForCleanup = loadedRoot;
-        setAsset({
-          root: loadedRoot,
-          fitScale,
-          mixer,
-          offset: [
-            -center.x * fitScale,
-            -bounds.min.y * fitScale,
-            -center.z * fitScale,
-          ],
-        });
+        setAsset({ root: loadedRoot, fitScale, mixer, offset: [-center.x * fitScale, -bounds.min.y * fitScale, -center.z * fitScale] });
       })
       .catch((error) => {
         if (active) {
@@ -1045,34 +936,39 @@ function FBXCharacter({
           setAsset({ error: true });
         }
       });
-
     return () => {
       active = false;
       if (mixer && rootForCleanup) {
         mixer.stopAllAction();
         mixer.uncacheRoot(rootForCleanup);
       }
-      // Keep the parsed FBX in the module cache. This avoids another network
-      // transfer if the route or WebGL context is mounted again.
       rootForCleanup?.removeFromParent();
     };
   }, [url, targetHeight, shadows]);
 
+  // compile the new materials off the critical path, right after the model mounts
+  useEffect(() => {
+    if (!asset || asset.error) return;
+    const id = requestAnimationFrame(() => {
+      try {
+        const p = gl.compileAsync ? gl.compileAsync(scene, camera) : Promise.resolve(gl.compile(scene, camera));
+        p.catch(() => {});
+      } catch { /* ignore */ }
+    });
+    return () => cancelAnimationFrame(id);
+  }, [asset, gl, scene, camera]);
+
   useFrame((_, delta) => {
-    if (asset?.mixer) asset.mixer.update(Math.min(delta, 1 / 30));
+    const t = TIME.t;
+    const on = t >= range[0] && t <= range[1];
+    if (grp.current && grp.current.visible !== on) grp.current.visible = on;
+    if (on && asset?.mixer) asset.mixer.update(Math.min(delta, 1 / 30));
   });
 
-  // No procedural substitute: each requested FBX appears as soon as its own
-  // download and parse completes; the rest of the scene is never blocked.
   if (!asset || asset.error) return null;
-
   return (
-    <group position={position} rotation-y={yaw} scale={scale}>
-      <group
-        position={asset.offset}
-        scale={asset.fitScale}
-        rotation-y={rotationY}
-      >
+    <group ref={grp} position={position} rotation-y={yaw} scale={scale}>
+      <group position={asset.offset} scale={asset.fitScale} rotation-y={rotationY}>
         <primitive object={asset.root} />
       </group>
     </group>
@@ -1080,22 +976,9 @@ function FBXCharacter({
 }
 
 function Figure({
-  id,
-  pose = "standing",
-  pos,
-  yaw = 0,
-  scale = 1,
-  palette,
-  armL = "rest",
-  armR = "rest",
-  head = 0,
-  lean = 0,
-  long = false,
-  animate = true,
-  phase = 0,
-  gestL = false,
-  gestR = false,
-  low = false,
+  id, pose = "standing", pos, yaw = 0, scale = 1, palette,
+  armL = "rest", armR = "rest", head = 0, lean = 0, long = false,
+  animate = true, phase = 0, gestL = false, gestR = false, low = false,
 }) {
   const glb = ASSETS.people[id];
   const isFBX = Boolean(FBX_CHARACTERS[id]);
@@ -1107,48 +990,27 @@ function Figure({
   const torso = useRef(), headRef = useRef(), aR = useRef(), aL = useRef();
   useFrame(({ clock }) => {
     if (isFBX || !animate || !torso.current) return;
-
-    // A slow, staggered conversation rhythm: one person speaks while the
-    // others listen, breathe, make small nods and subtly shift their weight.
     const t = clock.elapsedTime + phase;
-    const sp = THREE.MathUtils.smoothstep(
-      Math.sin(t * 0.38 + phase * 1.9),
-      -0.28,
-      0.62
-    );
+    const sp = THREE.MathUtils.smoothstep(Math.sin(t * 0.38 + phase * 1.9), -0.28, 0.62);
     const breath = Math.sin(t * 1.18 + phase * 0.7);
     const sway = Math.sin(t * 0.63 + phase) * 0.012;
     const gestureBeat = Math.max(0, Math.sin(t * 2.35 + phase * 1.35));
-
     torso.current.scale.y = 1 + breath * 0.006;
-    torso.current.rotation.x =
-      lean + sway + breath * 0.008 + sp * (0.025 + gestureBeat * 0.025);
-    torso.current.rotation.z =
-      Math.sin(t * 0.52 + phase) * 0.012 + sp * Math.sin(t * 1.7 + phase) * 0.012;
+    torso.current.rotation.x = lean + sway + breath * 0.008 + sp * (0.025 + gestureBeat * 0.025);
+    torso.current.rotation.z = Math.sin(t * 0.52 + phase) * 0.012 + sp * Math.sin(t * 1.7 + phase) * 0.012;
     torso.current.rotation.y = Math.sin(t * 0.42 + phase * 0.8) * 0.018;
-
-    headRef.current.rotation.y =
-      head + Math.sin(t * 0.47 + phase) * 0.055 +
-      sp * Math.sin(t * 0.82 + phase) * 0.105;
-    headRef.current.rotation.x =
-      Math.sin(t * 0.39 + phase * 0.6) * 0.022 +
-      (1 - sp) * Math.max(0, Math.sin(t * 1.75 + phase)) * 0.075 -
-      sp * (0.012 + gestureBeat * 0.018);
-    headRef.current.rotation.z =
-      Math.sin(t * 0.31 + phase) * 0.018 +
-      (1 - sp) * Math.sin(t * 0.9 + phase) * 0.018;
-
+    headRef.current.rotation.y = head + Math.sin(t * 0.47 + phase) * 0.055 + sp * Math.sin(t * 0.82 + phase) * 0.105;
+    headRef.current.rotation.x = Math.sin(t * 0.39 + phase * 0.6) * 0.022 + (1 - sp) * Math.max(0, Math.sin(t * 1.75 + phase)) * 0.075 - sp * (0.012 + gestureBeat * 0.018);
+    headRef.current.rotation.z = Math.sin(t * 0.31 + phase) * 0.018 + (1 - sp) * Math.sin(t * 0.9 + phase) * 0.018;
     const animateArm = (ref, key, side, on) => {
       if (!ref.current) return;
       const b = ARM[key];
       const idle = Math.sin(t * 0.8 + phase + side) * 0.025;
       const speakingMotion = sp * (0.055 + gestureBeat * 0.16);
       ref.current.rotation.x = b.f + (on ? speakingMotion + idle : idle);
-      ref.current.rotation.z =
-        side * b.a + (on ? sp * Math.sin(t * 1.8 + phase + side) * 0.065 : idle * side * 0.35);
+      ref.current.rotation.z = side * b.a + (on ? sp * Math.sin(t * 1.8 + phase + side) * 0.065 : idle * side * 0.35);
       ref.current.rotation.y = on ? Math.sin(t * 1.35 + phase + side) * sp * 0.035 : 0;
     };
-
     animateArm(aR, armR, 1, gestR);
     animateArm(aL, armL, -1, gestL);
   });
@@ -1157,17 +1019,12 @@ function Figure({
   if (fbxConfig) {
     return (
       <FBXCharacter
-        url={fbxConfig.url}
-        position={pos}
-        yaw={yaw}
-        scale={scale}
-        targetHeight={fbxConfig.targetHeight}
-        rotationY={fbxConfig.rotationY}
-        shadows={!low}
+        url={fbxConfig.url} position={pos} yaw={yaw} scale={scale}
+        targetHeight={fbxConfig.targetHeight} rotationY={fbxConfig.rotationY}
+        range={fbxConfig.range} shadows={!low}
       />
     );
   }
-
   if (glb) return <GlbModel url={glb} position={pos} rotation-y={yaw} scale={scale} />;
   const seated = pose === "seated";
   const hipY = seated ? 0.5 : 0.92;
@@ -1204,9 +1061,7 @@ function Figure({
             <mesh position={[0, 0.1, 0]} material={m.skin} scale={[1, 1.12, 1]} castShadow><sphereGeometry args={[0.1, 18, 16]} /></mesh>
             <mesh position={[0, 0.095, -0.1]} material={m.skin}><sphereGeometry args={[0.014, 8, 8]} /></mesh>
             <mesh position={[0, 0.125, 0.025]} material={m.hair} scale={[1.02, 1, 1.04]}><sphereGeometry args={[0.108, 18, 16]} /></mesh>
-            {long && (
-              <mesh position={[0, 0.0, 0.075]} material={m.hair}><capsuleGeometry args={[0.085, 0.24, 4, 10]} /></mesh>
-            )}
+            {long && <mesh position={[0, 0.0, 0.075]} material={m.hair}><capsuleGeometry args={[0.085, 0.24, 4, 10]} /></mesh>}
           </group>
         </group>
       </group>
@@ -1228,8 +1083,6 @@ function Chair({ pos, yaw }) {
     </group>
   );
 }
-
-/* ---------- table props ---------- */
 
 function Sheet({ pos, rot = 0, size, map, glow = 0.07 }) {
   return (
@@ -1270,6 +1123,7 @@ function Pencil({ pos, rot, color = "#d6a23a", len = 0.17 }) {
   );
 }
 
+const WHITE_BOOST = new THREE.Color(1.15, 1.15, 1.15);
 function Laptop({ pos, rot, map }) {
   return (
     <group position={pos} rotation-y={rot}>
@@ -1278,13 +1132,14 @@ function Laptop({ pos, rot, map }) {
         <mesh position={[0, 0.11, 0]} material={METAL}><boxGeometry args={[0.34, 0.22, 0.008]} /></mesh>
         <mesh position={[0, 0.11, 0.0045]}>
           <planeGeometry args={[0.32, 0.2]} />
-          <meshBasicMaterial map={map} toneMapped={false} color={new THREE.Color(1.15, 1.15, 1.15)} />
+          <meshBasicMaterial map={map} toneMapped={false} color={WHITE_BOOST} />
         </mesh>
       </group>
     </group>
   );
 }
 
+/* v6: the lamp's point light became an emissive bulb + cone (the pendant spot lights the table) */
 function DeskLamp({ pos }) {
   return (
     <group position={pos}>
@@ -1293,15 +1148,13 @@ function DeskLamp({ pos }) {
       <mesh position={[-0.07, 0.33, 0]} rotation-z={0.9} material={METAL}><cylinderGeometry args={[0.007, 0.007, 0.26, 8]} /></mesh>
       <mesh position={[-0.15, 0.4, 0]} rotation-z={0.55}>
         <cylinderGeometry args={[0.03, 0.09, 0.12, 20, 1, true]} />
-        <meshStandardMaterial color="#111" metalness={0.7} roughness={0.35} side={THREE.DoubleSide} emissive={COL.amber} emissiveIntensity={0.4} />
+        <meshStandardMaterial color="#111" metalness={0.7} roughness={0.35} side={THREE.DoubleSide} emissive={COL.amber} emissiveIntensity={0.6} />
       </mesh>
       <mesh position={[-0.158, 0.37, 0]}><sphereGeometry args={[0.03, 12, 12]} /><meshBasicMaterial color={HOT_AMBER} toneMapped={false} /></mesh>
-      <ChLight base={0.5} ch="studio" position={[-0.17, 0.36, 0]} color="#ffb85c" distance={4} decay={2} />
     </group>
   );
 }
 
-/* the pendant lamp sways a hair, so the room feels alive */
 function Pendant({ reduced }) {
   const g = useRef();
   useFrame(({ clock }) => {
@@ -1326,8 +1179,6 @@ function Pendant({ reduced }) {
   );
 }
 
-/* ---------- camera equipment ---------- */
-
 function Tripod({ pos, yaw = 0, h = 1.25, children }) {
   const legs = useMemo(
     () => [0, 1, 2].map((i) => {
@@ -1351,6 +1202,7 @@ function Tripod({ pos, yaw = 0, h = 1.25, children }) {
   );
 }
 
+const LED_RED = new THREE.Color("#ff2a1a").multiplyScalar(3);
 function CinemaCamera({ scale = 1 }) {
   const led = useRef();
   useFrame(({ clock }) => { if (led.current) led.current.visible = Math.sin(clock.elapsedTime * 4) > -0.2; });
@@ -1361,7 +1213,7 @@ function CinemaCamera({ scale = 1 }) {
       <mesh position={[0, 0.12, -0.45]}><boxGeometry args={[0.22, 0.2, 0.12]} /><meshStandardMaterial color="#0a0a0b" roughness={0.8} /></mesh>
       <mesh position={[0, 0.24, 0]} material={METAL}><boxGeometry args={[0.03, 0.05, 0.22]} /></mesh>
       <mesh position={[0.13, 0.17, 0.02]}><boxGeometry args={[0.02, 0.13, 0.17]} /><meshBasicMaterial color={HOT_BLUE} toneMapped={false} /></mesh>
-      <mesh ref={led} position={[0, 0.2, -0.14]}><sphereGeometry args={[0.009, 8, 8]} /><meshBasicMaterial color={new THREE.Color("#ff2a1a").multiplyScalar(3)} toneMapped={false} /></mesh>
+      <mesh ref={led} position={[0, 0.2, -0.14]}><sphereGeometry args={[0.009, 8, 8]} /><meshBasicMaterial color={LED_RED} toneMapped={false} /></mesh>
     </group>
   );
 }
@@ -1379,16 +1231,8 @@ function Softbox({ pos, aim, size = [1.6, 1.2], hot = HOT_WHITE }) {
 
 /* ---------- studio set (the meeting room) ---------- */
 
-/* Seating plan, seen from the camera (which sits behind everyone, on +z):
-   two people sit at the short ends of a compact table FACING EACH OTHER
-   (profile to the camera); two people stand close behind the table, angled in
-   towards the notes. Everyone is huddled around the same table and talking.
-   Figure faces local -z, so yaw -PI/2 faces +x and yaw +PI/2 faces -x. */
-// Keep the group compact so all four people read as one active discussion.
 const SEAT_X = 1.28;
 const TABLE_Z = -0.2;
-// Move only the seated people and their chairs slightly toward the far side;
-// keep the table and the rest of the set in their original positions.
 const SEATED_Z = TABLE_Z - 0.28;
 const NOTES_AT = [0.1, 0, -0.1];
 const STAND_A = [-0.78, 0, 0.82];
@@ -1400,6 +1244,14 @@ const PEOPLE = [
   { id: "standB", pose: "standing", pos: STAND_B, yaw: yawTo(STAND_B, NOTES_AT), head: 0.3, armL: "talk", armR: "mug", gestL: true, scale: 1.04, palette: { top: "#1b1c20", bottom: "#222428", skin: "#a8734f", hair: "#0f0c0a" }, phase: 3.4 },
 ];
 
+const CEILING_X = [-3.25, -1.1, 1.1, 3.25];
+const FLOOR_JOINTS = [-2.8, -1.4, 0, 1.4, 2.8];
+const SLAT_IDX = Array.from({ length: 42 }, (_, i) => i);
+const PENDANTS = [
+  [-3.55, 3.48, -0.25, 0.34], [-2.82, 3.42, 0.72, 0.27], [-2.15, 3.52, -1.18, 0.31],
+  [2.15, 3.52, -1.18, 0.31], [2.82, 3.42, 0.72, 0.27], [3.55, 3.48, -0.25, 0.34],
+];
+
 function StudioSet({ tx, low, reduced }) {
   const coveRef = useRef();
   const displayRef = useRef();
@@ -1408,17 +1260,8 @@ function StudioSet({ tx, low, reduced }) {
     if (coveRef.current) coveRef.current.emissiveIntensity = 0.72 + Math.sin(t * 0.42) * 0.045;
     if (displayRef.current) displayRef.current.emissiveIntensity = 0.18 + Math.sin(t * 0.7) * 0.025;
   });
-  const shelfItems = useMemo(() => {
-    const r = rnd(9), out = [];
-    for (let s = 0; s < 4; s++) for (let i = 0; i < 9; i++) {
-      out.push({ s, z: -2.9 + i * 0.62 + r() * 0.1, w: 0.1 + r() * 0.2, h: 0.14 + r() * 0.2, c: ["#2b2f36", "#7C3F30", "#d9d4c4", "#234A78", "#15161a", "#D9A441"][Math.floor(r() * 6)] });
-    }
-    return out;
-  }, []);
-  const trim = <meshBasicMaterial color={HOT_AMBER} toneMapped={false} />;
   return (
     <group>
-      {/* PREMIUM CREATIVE OFFICE ARCHITECTURE (the permanent studio shell) */}
       {/* honed-stone floor and soft textured meeting rug */}
       <mesh rotation-x={-Math.PI / 2} position={[0, 0.003, -0.05]} receiveShadow>
         <planeGeometry args={[9.6, 7]} />
@@ -1428,8 +1271,7 @@ function StudioSet({ tx, low, reduced }) {
         <planeGeometry args={[5.8, 3.8]} />
         <meshStandardMaterial color="#81766a" roughness={0.94} />
       </mesh>
-      {/* fine brass perimeter inlay and soft stone floor joints */}
-      {[-2.8, -1.4, 0, 1.4, 2.8].map((x, i) => (
+      {FLOOR_JOINTS.map((x, i) => (
         <mesh key={`floor-joint-${i}`} rotation-x={-Math.PI / 2} position={[x, 0.006, 0.05]}>
           <planeGeometry args={[0.008, 6.4]} />
           <meshBasicMaterial color="#d5c7b5" transparent opacity={0.2} />
@@ -1450,7 +1292,7 @@ function StudioSet({ tx, low, reduced }) {
         <meshStandardMaterial color="#17191c" roughness={0.72} />
       </mesh>
 
-      {/* floating ceiling raft with recessed architectural lighting */}
+      {/* floating ceiling raft with recessed lighting (emissive strips, no per-strip lights) */}
       <mesh position={[0, 3.76, -0.15]} receiveShadow>
         <boxGeometry args={[9.35, 0.12, 6.75]} />
         <meshStandardMaterial color="#b6aa9a" roughness={0.72} metalness={0.04} />
@@ -1463,21 +1305,14 @@ function StudioSet({ tx, low, reduced }) {
         <boxGeometry args={[7.8, 0.018, 0.035]} />
         <meshStandardMaterial ref={coveRef} color="#e4c58e" emissive="#d9a441" emissiveIntensity={0.82} toneMapped={false} />
       </mesh>
-      {[-3.25, -1.1, 1.1, 3.25].map((x, i) => (
-        <group key={`ceiling-light-${i}`} position={[x, 3.61, -1.0]}>
-          <mesh><boxGeometry args={[0.78, 0.025, 0.12]} /><meshBasicMaterial color="#f0dfbd" toneMapped={false} /></mesh>
-          <pointLight position={[0, -0.15, 0]} intensity={1.4} distance={3.2} color="#f4dfbf" />
-        </group>
+      {CEILING_X.map((x, i) => (
+        <mesh key={`ceiling-light-${i}`} position={[x, 3.61, -1.0]}>
+          <boxGeometry args={[0.78, 0.025, 0.12]} />
+          <meshBasicMaterial color="#f0dfbd" toneMapped={false} />
+        </mesh>
       ))}
-      {/* sculptural brass-and-smoked-glass pendants: warm pools of light */}
-      {[
-        [-3.55, 3.48, -0.25, 0.34],
-        [-2.82, 3.42, 0.72, 0.27],
-        [-2.15, 3.52, -1.18, 0.31],
-        [2.15, 3.52, -1.18, 0.31],
-        [2.82, 3.42, 0.72, 0.27],
-        [3.55, 3.48, -0.25, 0.34],
-      ].map(([x, y, z, r], i) => (
+      {/* brass-and-smoked-glass pendants: glowing shades, no per-pendant lights */}
+      {PENDANTS.map(([x, y, z, r], i) => (
         <group key={`designer-pendant-${i}`} position={[x, y, z]}>
           <mesh position={[0, 0.11, 0]}><cylinderGeometry args={[0.012, 0.012, 0.22, 12]} /><meshStandardMaterial color="#b18a55" metalness={0.9} roughness={0.22} /></mesh>
           <mesh position={[0, -0.035, 0]}><torusGeometry args={[r * 0.78, 0.012, 8, 32]} /><meshStandardMaterial color="#c5a16b" metalness={0.92} roughness={0.2} /></mesh>
@@ -1489,22 +1324,20 @@ function StudioSet({ tx, low, reduced }) {
             <circleGeometry args={[r * 0.7, 32]} />
             <meshBasicMaterial color="#f5dfb8" toneMapped={false} side={THREE.DoubleSide} />
           </mesh>
-          <pointLight position={[0, -0.32, 0]} intensity={1.1} distance={2.8} color="#f4d9b0" />
         </group>
       ))}
 
-      {/* walnut feature wall: vertical slats frame a clean presentation display */}
+      {/* walnut feature wall */}
       <mesh position={[0, 1.92, -3.34]}>
         <boxGeometry args={[7.35, 3.42, 0.045]} />
         <meshStandardMaterial color="#4a3022" roughness={0.54} />
       </mesh>
-      {Array.from({ length: 42 }, (_, i) => (
+      {SLAT_IDX.map((i) => (
         <mesh key={`walnut-slat-${i}`} position={[-3.58 + i * 0.175, 1.92, -3.285]}>
           <boxGeometry args={[0.075, 3.35, 0.055]} />
           <meshStandardMaterial color={i % 3 === 0 ? "#79543a" : "#5b3b29"} roughness={0.48} />
         </mesh>
       ))}
-      {/* blackened-brass frame around the central creative moodboard */}
       <mesh position={[-0.25, 1.92, -3.235]}>
         <boxGeometry args={[6.45, 2.45, 0.075]} />
         <meshStandardMaterial color="#c09a62" metalness={0.86} roughness={0.22} />
@@ -1513,7 +1346,6 @@ function StudioSet({ tx, low, reduced }) {
         <planeGeometry args={[6.28, 2.28]} />
         <meshStandardMaterial ref={displayRef} map={tx.board} emissiveMap={tx.board} emissive="#d9c8a7" emissiveIntensity={0.18} roughness={0.88} />
       </mesh>
-      {/* slim display shelf */}
       <mesh position={[-0.25, 0.58, -3.02]} castShadow>
         <boxGeometry args={[6.85, 0.09, 0.42]} />
         <meshStandardMaterial color="#171719" metalness={0.55} roughness={0.32} />
@@ -1523,7 +1355,7 @@ function StudioSet({ tx, low, reduced }) {
         <meshBasicMaterial color="#d7b276" toneMapped={false} />
       </mesh>
 
-      {/* understated executive credenza beneath the presentation wall */}
+      {/* credenza */}
       <group position={[0, 0, -2.82]}>
         <mesh position={[0, 0.36, 0]} castShadow receiveShadow>
           <boxGeometry args={[5.9, 0.68, 0.48]} />
@@ -1540,7 +1372,7 @@ function StudioSet({ tx, low, reduced }) {
         ))}
       </group>
 
-      {/* left-side glass partition with slim dark mullions */}
+      {/* left glass partition */}
       <mesh position={[-4.72, 1.9, -0.15]} rotation-y={Math.PI / 2}>
         <planeGeometry args={[6.4, 3.25]} />
         <meshBasicMaterial color="#26384a" transparent opacity={0.28} side={THREE.DoubleSide} />
@@ -1556,7 +1388,7 @@ function StudioSet({ tx, low, reduced }) {
         <meshStandardMaterial color="#11161c" metalness={0.8} roughness={0.25} />
       </mesh>
 
-      {/* right-side floor-to-ceiling windows: cool dusk city glow */}
+      {/* right windows */}
       <mesh position={[4.72, 1.95, -0.72]} rotation-y={-Math.PI / 2}>
         <planeGeometry args={[3.55, 2.95]} />
         <meshBasicMaterial color="#344d68" toneMapped={false} side={THREE.DoubleSide} />
@@ -1578,7 +1410,7 @@ function StudioSet({ tx, low, reduced }) {
         </mesh>
       ))}
 
-      {/* refined side console, books and sculptural objects */}
+      {/* side console */}
       <group position={[-3.85, 0, -0.75]}>
         <mesh position={[0, 0.52, 0]}><boxGeometry args={[0.62, 1.04, 2.85]} /><meshStandardMaterial color="#1b1b1d" roughness={0.38} metalness={0.28} /></mesh>
         {[0.22, 0.78].map((y, i) => (
@@ -1592,7 +1424,7 @@ function StudioSet({ tx, low, reduced }) {
         ))}
       </group>
 
-      {/* sculptural indoor plant in a stone planter */}
+      {/* plant */}
       <group position={[4.0, 0, -2.72]}>
         <mesh position={[0, 0.27, 0]}><cylinderGeometry args={[0.27, 0.2, 0.54, 24]} /><meshStandardMaterial color="#b8aa98" roughness={0.72} /></mesh>
         {Array.from({ length: 9 }, (_, i) => {
@@ -1605,14 +1437,15 @@ function StudioSet({ tx, low, reduced }) {
         })}
       </group>
 
-      {/* restrained brass details and practical production object */}
       <mesh position={[0, 3.52, -3.12]}><boxGeometry args={[7.5, 0.025, 0.025]} /><meshBasicMaterial color="#b38c55" toneMapped={false} /></mesh>
 
       <Tripod pos={[3.45, 0, -2.15]} yaw={0.6} h={1.25}><CinemaCamera scale={0.72} /></Tripod>
-      <ChLight as="rectAreaLight" base={5} ch="studio" position={[-3.7, 2.3, -0.4]} rotation-y={Math.PI / 2} width={2.4} height={2.5} color="#f0d8b4" />
-      <ChLight as="rectAreaLight" base={7} ch="studio" position={[4.5, 2.1, -0.7]} rotation-y={Math.PI / 2} width={2.7} height={2.6} color="#7d9fc7" />
 
-      {/* table (compact, so everyone is close), chairs */}
+      {/* v6: two area lights (was four; the right window pair is merged) */}
+      <ChLight as="rectAreaLight" base={5} ch="studio" position={[-3.7, 2.3, -0.4]} rotation-y={Math.PI / 2} width={2.4} height={2.5} color="#f0d8b4" />
+      <ChLight as="rectAreaLight" base={13} ch="studio" position={[4.55, 2.0, -0.8]} rotation-y={Math.PI / 2} width={2.7} height={2.4} color="#8eaacb" />
+
+      {/* table + chairs */}
       <group position={[0, 0, TABLE_Z]}>
         <mesh position={[0, 0.72, 0]} castShadow receiveShadow><boxGeometry args={[2.6, 0.06, 1.3]} /><meshStandardMaterial map={tx.wood} color="#c9b0a0" roughness={0.42} metalness={0.05} /></mesh>
         {[[-1.15, -0.55], [1.15, -0.55], [-1.15, 0.55], [1.15, 0.55]].map(([x, z], i) => (
@@ -1620,7 +1453,6 @@ function StudioSet({ tx, low, reduced }) {
         ))}
       </group>
       <Pendant reduced={reduced} />
-      {/* chairs sit just behind each seated person, backs away from the table */}
       <Chair pos={[-SEAT_X - 0.02, 0, SEATED_Z]} yaw={-Math.PI / 2} />
       <Chair pos={[SEAT_X + 0.02, 0, SEATED_Z]} yaw={Math.PI / 2} />
 
@@ -1644,21 +1476,14 @@ function StudioSet({ tx, low, reduced }) {
       <Pencil pos={[-0.1, 0.76, 0.34]} rot={-0.3} color="#234A78" len={0.14} />
       <Pencil pos={[0.45, 0.76, 0.34]} rot={1.2} color="#111" len={0.14} />
 
-      {/* the four people */}
       {PEOPLE.map((p) => <Figure key={p.id} {...p} animate={!reduced} low={low} />)}
 
-      {/* atmosphere: light cone under the pendant */}
       <Shaft from={[0, 2.25, -0.2]} to={[0, 0.76, -0.2]} r={1.35} color="#ffd9a0" op={0.16} ch="studio" />
 
-      {/* soft area lights: window spill + ceiling bounce */}
-      <ChLight as="rectAreaLight" base={7} ch="studio" position={[4.6, 1.9, -0.9]} rotation-y={Math.PI / 2} width={2.4} height={1.7} color="#9bb4cf" />
-      <ChLight as="rectAreaLight" base={3} ch="studio" position={[0, 2.35, -0.2]} rotation-x={-Math.PI / 2} width={1.6} height={1.0} color="#ffd9a0" />
-
-      {/* practical lights */}
+      {/* practical lights (one shadow caster) */}
       <Spot pos={[0, 2.22, -0.2]} aim={[0, 0.75, -0.2]} base={9} ch="studio" angle={0.8} penumbra={0.9} decay={2} color="#ffd9a0" castShadow={!low} shadow-mapSize={[1024, 1024]} shadow-bias={-0.0006} />
       <Spot pos={[-1.6, 3.4, -1.6]} aim={[-1.6, 1.9, -3.4]} base={40} ch="studio" angle={0.7} penumbra={0.8} decay={2} color="#f2d2a8" />
       <Spot pos={[2.6, 3.4, -1.6]} aim={[2.6, 1.9, -3.4]} base={40} ch="studio" angle={0.7} penumbra={0.8} decay={2} color="#f2d2a8" />
-      {/* soft front fill so the four people read clearly from behind at the open */}
       <Spot pos={[0, 3.4, 4.2]} aim={[0, 0.9, 0.4]} base={28} ch="studio" angle={0.75} penumbra={1} decay={2} color="#e7d5bd" />
       <ChLight as="directionalLight" base={2.4} ch="studio" position={[-6, 3, 1]} color="#5d8ed0" />
       <ChLight as="directionalLight" base={1.5} ch="studio" position={[0.5, 3, 9]} color="#8aa6d6" />
@@ -1666,7 +1491,7 @@ function StudioSet({ tx, low, reduced }) {
   );
 }
 
-/* ---------- the car (procedural stand-in, GLB-swappable) ---------- */
+/* ---------- the car ---------- */
 
 function ProceduralCar() {
   const geo = useMemo(() => {
@@ -1688,7 +1513,7 @@ function ProceduralCar() {
     cabin.quadraticCurveTo(-1.5, 1.2, -1.8, 1.02);
     cabin.lineTo(0.95, 0.98);
     const mk = (shape, width) => {
-      const g = new THREE.ExtrudeGeometry(shape, { depth: width - 2 * bt, bevelEnabled: true, bevelThickness: bt, bevelSize: bt, bevelSegments: 10, curveSegments: 40 });
+      const g = new THREE.ExtrudeGeometry(shape, { depth: width - 2 * bt, bevelEnabled: true, bevelThickness: bt, bevelSize: bt, bevelSegments: 8, curveSegments: 32 });
       g.translate(0, 0, -(width - 2 * bt) / 2);
       g.rotateY(-Math.PI / 2);
       g.computeVertexNormals();
@@ -1715,7 +1540,6 @@ function ProceduralCar() {
       <mesh position={[0, 1.395, -0.35]} material={M.paint}><boxGeometry args={[1.18, 0.035, 1.35]} /></mesh>
       <mesh position={[0, 0.31, 0]}><boxGeometry args={[1.7, 0.1, 4.5]} /><meshStandardMaterial color="#020203" roughness={1} /></mesh>
 
-      {/* wheels, arches, brakes */}
       {wheels.map(([x, z], i) => {
         const s = Math.sign(x);
         return (
@@ -1736,7 +1560,6 @@ function ProceduralCar() {
         );
       })}
 
-      {/* panel seams, handles, window trim */}
       {[-1, 1].map((s) => (
         <group key={s}>
           {[0.9, -0.4].map((zz) => (
@@ -1751,7 +1574,6 @@ function ProceduralCar() {
         </group>
       ))}
 
-      {/* front: kidney grille, hex headlights, splitter, fog lamps, plate */}
       {[-0.2, 0.2].map((x) => (
         <mesh key={x} position={[x, 0.6, 2.5]}><boxGeometry args={[0.32, 0.17, 0.05]} /><meshStandardMaterial color="#020202" metalness={0.9} roughness={0.3} /></mesh>
       ))}
@@ -1768,13 +1590,10 @@ function ProceduralCar() {
         </group>
       ))}
 
-      {/* rear: light bar, lip spoiler, plate */}
       <mesh position={[0, 0.88, -2.37]}><boxGeometry args={[0.9, 0.018, 0.03]} /><meshBasicMaterial color={new THREE.Color("#ff2a1a").multiplyScalar(1.1)} toneMapped={false} /></mesh>
       <mesh position={[0, 0.99, -2.15]} material={M.paint}><boxGeometry args={[1.5, 0.04, 0.22]} /></mesh>
       <mesh position={[0, 0.55, -2.51]}><boxGeometry args={[0.46, 0.11, 0.01]} /><meshStandardMaterial color="#e9e7df" roughness={0.5} /></mesh>
-
-      {/* headlight spill on the floor */}
-      <ChLight base={5} ch="set" position={[0, 0.5, 3.4]} color="#6a9be8" distance={7} decay={2} />
+      {/* v6: the headlight-spill point light was removed; the film-set blue spots cover the floor */}
     </group>
   );
 }
@@ -1791,9 +1610,9 @@ function Car({ reduced = false }) {
   );
 }
 
-/* ---------- the film set (a soundstage built around the studio) ---------- */
+/* ---------- the film set ---------- */
 
-function FilmSet({ tx, low, reduced }) {
+function FilmSet({ tx, shadows, reduced }) {
   const ring = useRef();
   useFrame((_, dt) => { if (ring.current && !reduced) ring.current.rotation.y += dt * 0.12; });
   const cx = C.x, cz = C.z;
@@ -1805,25 +1624,23 @@ function FilmSet({ tx, low, reduced }) {
   const flag = rel(-4.6, -0.6), refl = rel(3, 1.2), mon = rel(5.2, 3.2);
   const ticks = useMemo(() => Array.from({ length: 48 }, (_, i) => i * (Math.PI * 2) / 48), []);
   const backZ = cz - 7.2;
+  const noCharShadow = !shadows;
   return (
     <group>
-      {/* always-on fill so the stage is legible during the whole transition */}
-      <pointLight position={[cx, 5.5, cz + 1]} color="#7897c7" intensity={22 * GAIN} distance={30} decay={2} />
-      <pointLight position={[cx - 5, 3.2, cz - 2]} color="#d9a441" intensity={9 * GAIN} distance={18} decay={2} />
+      {/* v6: one always-on blue fill (the extra amber point light was dropped) */}
+      <pointLight position={[cx, 5.5, cz + 1]} color="#7897c7" intensity={26 * GAIN} distance={30} decay={2} />
 
-      {/* polished black stage floor */}
       <mesh rotation-x={-Math.PI / 2} position={[cx, 0.004, cz]} receiveShadow>
-        <circleGeometry args={[9, 96]} />
+        <circleGeometry args={[9, 72]} />
         <meshStandardMaterial color="#0c0d10" roughness={1} roughnessMap={tx.floorRough} metalness={0.72} envMapIntensity={1.4} />
       </mesh>
       <mesh rotation-x={-Math.PI / 2} position={[cx, 0.007, cz]}>
-        <ringGeometry args={[8.85, 9, 96]} />
+        <ringGeometry args={[8.85, 9, 72]} />
         <meshBasicMaterial color={HOT_BLUE} toneMapped={false} />
       </mesh>
 
-      {/* turntable with rotating amber ring */}
-      <mesh position={[cx, 0.03, cz]} receiveShadow><cylinderGeometry args={[3.2, 3.2, 0.06, 64]} /><meshStandardMaterial color="#0a0a0b" roughness={0.3} metalness={0.8} /></mesh>
-      <mesh position={[cx, 0.062, cz]} rotation-x={Math.PI / 2}><torusGeometry args={[3.18, 0.012, 8, 96]} /><meshBasicMaterial color={HOT_AMBER} toneMapped={false} /></mesh>
+      <mesh position={[cx, 0.03, cz]} receiveShadow><cylinderGeometry args={[3.2, 3.2, 0.06, 48]} /><meshStandardMaterial color="#0a0a0b" roughness={0.3} metalness={0.8} /></mesh>
+      <mesh position={[cx, 0.062, cz]} rotation-x={Math.PI / 2}><torusGeometry args={[3.18, 0.012, 8, 72]} /><meshBasicMaterial color={HOT_AMBER} toneMapped={false} /></mesh>
       <group ref={ring} position={[cx, 0.066, cz]}>
         {ticks.map((a, i) => (
           <mesh key={i} position={[Math.cos(a) * 2.9, 0, Math.sin(a) * 2.9]} rotation-y={-a}>
@@ -1834,7 +1651,6 @@ function FilmSet({ tx, low, reduced }) {
       </group>
       <ContactShadow pos={[cx, 0.07, cz]} size={[6.4, 3.4]} blob={tx.blob} opacity={0.9} />
 
-      {/* backdrop: stays fully behind the car and clear of the studio walls */}
       <mesh position={[cx + 1, 4.2, backZ]}><planeGeometry args={[22, 8.4]} /><meshStandardMaterial color="#070a10" roughness={1} /></mesh>
       <mesh position={[cx, 3.2, backZ + 0.02]}><planeGeometry args={[18, 7]} /><meshBasicMaterial map={tx.glow} transparent depthWrite={false} toneMapped={false} /></mesh>
       {[-4.2, 4.2].map((dx) => (
@@ -1847,7 +1663,6 @@ function FilmSet({ tx, low, reduced }) {
       ))}
       <mesh position={[cx, 4.5, cz]}><boxGeometry args={[7.4, 0.06, 0.06]} /><meshStandardMaterial color="#050505" metalness={0.8} /></mesh>
 
-      {/* lighting equipment: softboxes, flag, reflector */}
       <Softbox pos={[sbA[0], 2.6, sbA[1]]} aim={[cx, 1, cz]} size={[1.8, 1.3]} />
       <Softbox pos={[sbB[0], 2.3, sbB[1]]} aim={[cx, 1, cz]} size={[1.2, 1.6]} hot={HOT_BLUE} />
       <Softbox pos={[sbC[0], 1.4, sbC[1]]} aim={[cx, 0.7, cz]} size={[0.5, 1.6]} hot={HOT_AMBER} />
@@ -1860,31 +1675,26 @@ function FilmSet({ tx, low, reduced }) {
         <mesh position={[0, 1.4, -0.05]} rotation-x={-0.12}><cylinderGeometry args={[0.6, 0.6, 0.015, 32]} /><meshStandardMaterial color="#d8dde6" metalness={1} roughness={0.2} /></mesh>
       </group>
 
-      {/* video village */}
       <group position={[mon[0], 0, mon[1]]} rotation-y={yawTo([mon[0], 0, mon[1]], [cx, 0, cz])}>
         <mesh position={[0, 0.7, 0]} material={METAL}><cylinderGeometry args={[0.02, 0.02, 1.4, 8]} /></mesh>
         <mesh position={[0, 1.5, 0]}><boxGeometry args={[0.55, 0.34, 0.03]} /><meshStandardMaterial color="#050505" /></mesh>
         <mesh position={[0, 1.5, -0.018]}><planeGeometry args={[0.5, 0.29]} /><meshBasicMaterial color={HOT_BLUE} toneMapped={false} side={THREE.DoubleSide} /></mesh>
       </group>
 
-      {/* cinema camera on tripod, operator filming the car */}
       <Tripod pos={opCam} yaw={SET_YAW} h={1.22}><CinemaCamera /></Tripod>
-      <Figure id="operator" pose="standing" pos={[OP_POS.x, 0, OP_POS.z]} yaw={SET_YAW} armL="cam" armR="cam" lean={-0.14} head={0} palette={{ top: "#14151a", bottom: "#101114", skin: "#c08a64", hair: "#1a120d" }} animate={!reduced} />
-      <Figure id="crewA" pose="standing" pos={crewA} yaw={yawTo(crewA, [cx, 0, cz])} armL="hip" armR="rest" {...crew} animate={!reduced} />
-      <Figure id="crewB" pose="standing" pos={crewB} yaw={yawTo(crewB, [cx, 0, cz])} armL="rest" armR="mug" palette={{ top: "#2d2a26", bottom: "#17181b", skin: "#8f5e41", hair: "#0c0a09" }} animate={!reduced} />
+      <Figure id="operator" pose="standing" pos={[OP_POS.x, 0, OP_POS.z]} yaw={SET_YAW} armL="cam" armR="cam" lean={-0.14} head={0} palette={{ top: "#14151a", bottom: "#101114", skin: "#c08a64", hair: "#1a120d" }} animate={!reduced} low={noCharShadow} />
+      <Figure id="crewA" pose="standing" pos={crewA} yaw={yawTo(crewA, [cx, 0, cz])} armL="hip" armR="rest" {...crew} animate={!reduced} low={noCharShadow} />
+      <Figure id="crewB" pose="standing" pos={crewB} yaw={yawTo(crewB, [cx, 0, cz])} armL="rest" armR="mug" palette={{ top: "#2d2a26", bottom: "#17181b", skin: "#8f5e41", hair: "#0c0a09" }} animate={!reduced} low={noCharShadow} />
 
-      {/* the car */}
       <group position={[cx, 0.06, cz]} rotation-y={SET_YAW}><Car reduced={reduced} /></group>
 
-      {/* atmosphere */}
       <Shaft from={[sbA[0], 3.2, sbA[1]]} to={[cx, 0.1, cz]} r={1.6} color="#6f9be0" op={0.1} ch="set" />
       <Shaft from={[sbB[0], 3.0, sbB[1]]} to={[cx, 0.1, cz]} r={1.5} color="#5f8fdc" op={0.09} ch="set" />
       <Shaft from={[cx, 6, cz]} to={[cx, 0.05, cz]} r={3.1} color="#cfe0ff" op={0.07} ch="set" />
 
-      {/* set lights */}
-      <Spot pos={[sbA[0], 3.2, sbA[1] + 0.2]} aim={[cx, 0.9, cz]} base={150} ch="set" angle={0.5} penumbra={0.8} decay={2} color="#4a82d6" />
-      <Spot pos={[sbB[0] + 0.2, 3.0, sbB[1] + 0.2]} aim={[cx, 0.9, cz]} base={140} ch="set" angle={0.5} penumbra={0.8} decay={2} color="#3f74c4" />
-      <Spot pos={[cx, 6, cz + 1]} aim={[cx, 0.6, cz]} base={110} ch="set" angle={0.5} penumbra={0.9} decay={2} color="#cfe0ff" castShadow={!low} shadow-mapSize={[1024, 1024]} shadow-bias={-0.0005} />
+      {/* v6: the two blue key spots are merged into one stronger spot */}
+      <Spot pos={[(sbA[0] + sbB[0]) / 2, 3.1, sbA[1] + 0.2]} aim={[cx, 0.9, cz]} base={300} ch="set" angle={0.7} penumbra={0.85} decay={2} color="#4278cc" />
+      <Spot pos={[cx, 6, cz + 1]} aim={[cx, 0.6, cz]} base={110} ch="set" angle={0.5} penumbra={0.9} decay={2} color="#cfe0ff" castShadow={shadows} shadow-mapSize={[1024, 1024]} shadow-bias={-0.0005} />
       <Spot pos={[cx - 4.8, 1.2, cz + 5.5]} aim={[cx, 0.6, cz]} base={55} ch="set" angle={0.6} penumbra={0.9} decay={2} color={COL.amber} />
       <Spot pos={[cx - 6, 3.0, cz + 9.5]} aim={[OP_POS.x, 1.2, OP_POS.z]} base={90} ch="set" angle={0.5} penumbra={0.9} decay={2} color="#ffcf8f" />
       <ChLight as="hemisphereLight" base={1.1} ch="set" args={["#3a557f", "#1b140e", 1]} />
@@ -1892,7 +1702,7 @@ function FilmSet({ tx, low, reduced }) {
   );
 }
 
-/* ---------- the soundstage hall around everything ---------- */
+/* ---------- the soundstage hall ---------- */
 
 const DOME_VS = "varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }";
 const DOME_FS = `uniform vec3 uTop; uniform vec3 uHor; uniform vec3 uBot; varying vec3 vP;
@@ -1915,7 +1725,7 @@ function Dome() {
   useEffect(() => () => mat.dispose(), [mat]);
   return (
     <mesh position={[7.5, 0, 6]} renderOrder={-10} frustumCulled={false}>
-      <sphereGeometry args={[160, 32, 16]} />
+      <sphereGeometry args={[160, 24, 12]} />
       <primitive object={mat} attach="material" />
     </mesh>
   );
@@ -1935,8 +1745,7 @@ function Hall({ tx }) {
   return (
     <group>
       <Dome />
-      {/* hall floor + faint grid for parallax and scale */}
-      <mesh rotation-x={-Math.PI / 2} position={[7.5, -0.001, 6]} receiveShadow>
+      <mesh rotation-x={-Math.PI / 2} position={[7.5, -0.001, 6]}>
         <planeGeometry args={[260, 260]} />
         <meshStandardMaterial color="#13161c" roughness={1} roughnessMap={tx.hallRough} metalness={0.4} envMapIntensity={1.2} />
       </mesh>
@@ -1947,7 +1756,6 @@ function Hall({ tx }) {
           <mesh position={[0, p.h / 2, 0.27]}><boxGeometry args={[0.07, p.h, 0.03]} /><meshBasicMaterial color={p.hot} toneMapped={false} /></mesh>
         </group>
       ))}
-      {/* overhead truss lines */}
       {[-12, 0, 12, 24].map((z) => (
         <mesh key={z} position={[7.5, 9.5, z]}><boxGeometry args={[70, 0.12, 0.12]} /><meshStandardMaterial color="#0a0c11" metalness={0.8} roughness={0.4} /></mesh>
       ))}
@@ -1962,22 +1770,21 @@ function Hall({ tx }) {
    4. SCENE, CAMERA RIG, EFFECTS
    ==================================================================== */
 
-/* The ONLY place the camera path is sampled. It runs first each frame (it is
-   mounted before every light and object), so everything downstream reads a
-   consistent STATE for that exact frame. */
+/* The ONLY place the camera path is sampled. It runs first each frame. */
 function CameraRig({ reduced }) {
   const { camera, size, scene } = useThree();
-  const tmp = useMemo(() => ({ pos: new THREE.Vector3(), look: new THREE.Vector3(), ptr: new THREE.Vector2() }), []);
+  const tmp = useMemo(() => ({ pos: new THREE.Vector3(), look: new THREE.Vector3(), ptr: new THREE.Vector2(), age: 0 }), []);
   useFrame(({ clock }, dt) => {
     stepTime(dt, reduced);
     sampleTrack(TIME.t);
     const s = STATE;
+    /* intro dolly eases out on the same clock (no second GSAP loop); starts after 0.4 s */
+    if (!reduced) {
+      tmp.age += Math.min(dt, 0.05);
+      if (tmp.age > 0.4) s.intro *= Math.exp(-Math.min(dt, 0.05) * 1.5);
+      if (s.intro < 0.0005) s.intro = 0;
+    }
     const aspect = size.width / Math.max(1, size.height);
-    /* responsive framing: below a 1.6 aspect we widen the lens AND dolly back,
-       splitting the extra horizontal coverage between the two so nothing distorts.
-       Inside the camera lens we skip the dolly-back so we never leave the lens.
-       lm is a spline channel, so the blend is continuous with no pop entering
-       or leaving the shot. */
     const need = Math.max(1, 1.6 / aspect);
     const lensMix = THREE.MathUtils.smootherstep(THREE.MathUtils.clamp(s.lm, 0, 1), 0, 1);
     const f = lerp(Math.min(Math.sqrt(need), 1.8), 1, lensMix);
@@ -1988,9 +1795,8 @@ function CameraRig({ reduced }) {
     let sway = 0;
     if (!reduced) {
       const t = clock.elapsedTime;
-      const calm = 1 - lensMix * 0.85; // steadier inside the viewfinder
-      tmp.ptr.lerp(PTR, 1 - Math.exp(-dt * 2.5)); // frame-rate independent pointer follow
-      /* gentle handheld breathing + pointer parallax (low frequency only) */
+      const calm = 1 - lensMix * 0.85;
+      tmp.ptr.lerp(PTR, 1 - Math.exp(-dt * 2.5));
       tmp.pos.x += (tmp.ptr.x * 0.04 + Math.sin(t * 0.37) * 0.008) * calm;
       tmp.pos.y += (tmp.ptr.y * 0.025 + Math.sin(t * 0.51) * 0.006) * calm;
       sway = Math.sin(t * 0.43) * 0.08 * calm;
@@ -2009,17 +1815,15 @@ function CameraRig({ reduced }) {
   return null;
 }
 
-/* CRISP: depth of field is kept as a gentle accent (bokeh scaled down, wide focus
-   range, higher internal resolution) and chromatic aberration is removed, so the
-   people, the table and the board stay sharp. Raise DOF_STRENGTH for more blur. */
-const DOF_STRENGTH = 0.3;
+/* v6: DOF is optional and high-quality only; Bloom/DOF buffers are smaller. */
 function Effects({ quality = "high" }) {
   const dof = useRef();
+  const useDof = ENABLE_DOF && quality === "high";
   useFrame(() => { if (dof.current) dof.current.bokehScale = STATE.bk * DOF_STRENGTH; });
   return (
     <EffectComposer multisampling={0} disableNormalPass>
-      <DepthOfField ref={dof} target={FOCUS} focalLength={0.045} bokehScale={1} focusRange={0.08} height={quality === "low" ? 560 : quality === "balanced" ? 760 : 900} />
-      <Bloom intensity={0.6} luminanceThreshold={0.85} luminanceSmoothing={0.2} mipmapBlur height={quality === "low" ? 320 : quality === "balanced" ? 480 : 640} />
+      {useDof && <DepthOfField ref={dof} target={FOCUS} focalLength={0.045} bokehScale={1} focusRange={0.08} height={480} />}
+      <Bloom intensity={0.6} luminanceThreshold={0.85} luminanceSmoothing={0.2} mipmapBlur height={quality === "low" ? 240 : quality === "balanced" ? 320 : 400} />
       <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
       <Vignette offset={0.3} darkness={0.6} />
       {quality !== "low" && <SMAA />}
@@ -2027,7 +1831,6 @@ function Effects({ quality = "high" }) {
   );
 }
 
-/* Runtime DPR adaptation is bounded by the device profile and has hysteresis. */
 function AdaptiveQuality({ dprMax, dprMin }) {
   const setDpr = useThree((s) => s.setDpr);
   const lastChange = useRef(0);
@@ -2037,15 +1840,52 @@ function AdaptiveQuality({ dprMax, dprMin }) {
     lastChange.current = now;
     setDpr(value);
   };
-  return <PerformanceMonitor flipflops={4} onDecline={() => apply(dprMin)} onIncline={() => apply(dprMax)} />;
+  return <PerformanceMonitor flipflops={3} onDecline={() => apply(dprMin)} onIncline={() => apply(dprMax)} />;
 }
 
-const Scene = memo(function Scene({ quality, reduced, dprMax, dprMin, fontsReady }) {
+/* pre-compiles every shader in the scene once (async when the GPU supports it),
+   so nothing hitches the first time it scrolls into view. Also signals "ready". */
+function Warmup({ onReady }) {
+  const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
+  const camera = useThree((s) => s.camera);
+  const frames = useRef(0);
+  const done = useRef(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      try {
+        const p = gl.compileAsync ? gl.compileAsync(scene, camera) : Promise.resolve(gl.compile(scene, camera));
+        p.catch(() => {});
+      } catch { /* ignore */ }
+    });
+    return () => cancelAnimationFrame(id);
+  }, [gl, scene, camera]);
+  useFrame(() => {
+    if (done.current) return;
+    if (++frames.current >= 3) { done.current = true; onReady?.(); }
+  });
+  return null;
+}
+
+const Scene = memo(function Scene({ quality, reduced, dprMax, dprMin, fontsReady, onReady }) {
   const maxAnisotropy = useThree((s) => s.gl.capabilities.getMaxAnisotropy());
-  const textureScale = quality === "low" ? 0.62 : quality === "balanced" ? 0.82 : 1;
-  const tx = useMemo(() => makeTextures(textureScale, maxAnisotropy), [textureScale, maxAnisotropy, fontsReady]);
+  const textureScale = quality === "low" ? 0.5 : quality === "balanced" ? 0.7 : 0.85;
+  const fontsAtBuild = useRef(false);
+  const tx = useMemo(() => {
+    fontsAtBuild.current = fontsReady; // only the INITIAL value matters here
+    return makeTextures(textureScale, maxAnisotropy);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [textureScale, maxAnisotropy]);
+  /* fonts arrived after the textures were drawn: redraw the text ones in place */
+  useEffect(() => {
+    if (tx && fontsReady && !fontsAtBuild.current) {
+      fontsAtBuild.current = true;
+      redrawFontTextures(tx);
+    }
+  }, [fontsReady, tx]);
   const low = quality === "low";
-  useEffect(() => () => { if (tx) Object.values(tx).forEach((t) => t.dispose()); }, [tx]);
+  const filmShadows = quality === "high";
+  useEffect(() => () => { if (tx) Object.values(tx).forEach((t) => t?.dispose?.()); }, [tx]);
   if (!tx) return null;
   return (
     <>
@@ -2057,20 +1897,20 @@ const Scene = memo(function Scene({ quality, reduced, dprMax, dprMin, fontsReady
         <Lightformer form="rect" intensity={2.2} color={COL.amber} position={[7, 2, 2]} rotation-y={-Math.PI / 2} scale={[6, 2, 1]} />
         <Lightformer form="rect" intensity={2.6} color="#ffffff" position={[0, 7, 0]} rotation-x={Math.PI / 2} scale={[10, 4, 1]} />
         <Lightformer form="rect" intensity={1.8} color="#4d7fd0" position={[0, 1.5, -8]} scale={[12, 1.2, 1]} />
-        {/* long strip softboxes: these are the streaks you see running along the car paint */}
         <Lightformer form="rect" intensity={4.2} color="#ffffff" position={[0, 5, -3]} rotation-x={Math.PI / 2} scale={[16, 0.7, 1]} />
         <Lightformer form="rect" intensity={3.4} color="#b8d2ff" position={[0, 5, 3]} rotation-x={Math.PI / 2} scale={[16, 0.5, 1]} />
         <Lightformer form="rect" intensity={2.6} color="#ffd9a0" position={[-6, 1, 6]} rotation-y={Math.PI / 2} scale={[10, 0.35, 1]} />
         <Lightformer form="rect" intensity={2.6} color="#6f9be8" position={[6, 1.2, 6]} rotation-y={-Math.PI / 2} scale={[10, 0.35, 1]} />
       </Environment>
-      <ambientLight intensity={0.5} color="#aab7ca" />
-      <hemisphereLight args={["#2c4468", "#14110e", 0.7 * GAIN]} />
-      <ChLight as="hemisphereLight" base={1.6} ch="studio" args={["#3a4f73", "#2a1d14", 1]} />
+      {/* v6: the plain hemisphere was folded into the ambient light (one fewer light) */}
+      <ambientLight intensity={0.8} color="#9fb0c8" />
+      <ChLight as="hemisphereLight" base={1.8} ch="studio" args={["#3a4f73", "#2a1d14", 1]} />
       <Hall tx={tx} />
       <StudioSet tx={tx} low={low} reduced={reduced} />
-      <FilmSet tx={tx} low={low} reduced={reduced} />
+      <FilmSet tx={tx} shadows={filmShadows} reduced={reduced} />
       <AdaptiveQuality dprMax={dprMax} dprMin={dprMin} />
       <Effects quality={quality} />
+      <Warmup onReady={onReady} />
     </>
   );
 });
@@ -2080,8 +1920,7 @@ const Scene = memo(function Scene({ quality, reduced, dprMax, dprMin, fontsReady
    ==================================================================== */
 
 function getDeviceProfile() {
-  const mobile = window.matchMedia("(max-width: 819px)").matches ||
-    window.matchMedia("(pointer: coarse)").matches;
+  const mobile = window.matchMedia("(max-width: 819px)").matches || window.matchMedia("(pointer: coarse)").matches;
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const memory = navigator.deviceMemory || 0;
   const cores = navigator.hardwareConcurrency || 0;
@@ -2091,8 +1930,7 @@ function getDeviceProfile() {
   let maxRenderbufferSize = 0;
   try {
     const canvas = document.createElement("canvas");
-    gl = canvas.getContext("webgl2", { powerPreference: "high-performance" }) ||
-      canvas.getContext("webgl", { powerPreference: "high-performance" });
+    gl = canvas.getContext("webgl2", { powerPreference: "high-performance" }) || canvas.getContext("webgl", { powerPreference: "high-performance" });
     webgl2 = !!gl && typeof WebGL2RenderingContext !== "undefined" && gl instanceof WebGL2RenderingContext;
     if (gl) {
       maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
@@ -2118,13 +1956,13 @@ function getDeviceProfile() {
   };
 }
 
-/* loads the web fonts and resolves once they are ready (3 s failsafe) */
+/* v6: fonts load in the background; nothing waits on them except the text textures' redraw */
 function useFonts() {
   const [ok, setOk] = useState(false);
   useEffect(() => {
     let dead = false;
     const done = () => { if (!dead) setOk(true); };
-    const timer = setTimeout(done, 3000);
+    const timer = setTimeout(done, 1500);
     let link = document.getElementById("rcs-fonts");
     const load = () =>
       Promise.all([
@@ -2133,10 +1971,13 @@ function useFonts() {
         document.fonts.load("500 20px 'Inter Tight'"),
         document.fonts.load("600 20px 'Inter Tight'"),
         document.fonts.load("500 40px Caveat"),
-      ])
-        .catch(() => {})
-        .then(() => { clearTimeout(timer); done(); });
+      ]).catch(() => {}).then(() => { clearTimeout(timer); done(); });
     if (!link) {
+      const pre1 = document.createElement("link");
+      pre1.rel = "preconnect"; pre1.href = "https://fonts.googleapis.com";
+      const pre2 = document.createElement("link");
+      pre2.rel = "preconnect"; pre2.href = "https://fonts.gstatic.com"; pre2.crossOrigin = "anonymous";
+      document.head.append(pre1, pre2);
       link = document.createElement("link");
       link.id = "rcs-fonts";
       link.rel = "stylesheet";
@@ -2150,7 +1991,6 @@ function useFonts() {
   return ok;
 }
 
-/* viewport width WITHOUT the scrollbar: fixes the horizontal scrollbar / clipped canvas */
 function useViewportWidth() {
   const [vw, setVw] = useState(0);
   useEffect(() => {
@@ -2202,7 +2042,6 @@ function ContactCTA({ className = "" }) {
   );
 }
 
-/* shown when WebGL is unavailable: the same story as a calm, readable stack */
 function FallbackStory() {
   return (
     <main className="bg-[#0B0B0C] text-[#F1EFE9]">
@@ -2232,11 +2071,11 @@ export default function Home() {
   const railRef = useRef(null);
   const stageNoRef = useRef(null);
   const stageNameRef = useRef(null);
-  const [cfg] = useState(() =>
-    typeof window !== "undefined" ? getDeviceProfile() : null
-  );
+  const [cfg] = useState(() => (typeof window !== "undefined" ? getDeviceProfile() : null));
   const [inView, setInView] = useState(true);
-  const [ctxKey, setCtxKey] = useState(0); // remount the canvas after a GPU context loss
+  const [ctxKey, setCtxKey] = useState(0);
+  const [mountScene, setMountScene] = useState(false); // canvas mounts one tick after first paint
+  const [sceneReady, setSceneReady] = useState(false); // canvas fades in after its first frames
   const fontsOk = useFonts();
   const vw = useViewportWidth();
 
@@ -2245,34 +2084,26 @@ export default function Home() {
     canvas?.__rcsContextCleanup?.();
   }, [ctxKey]);
 
-  // Begin opening-character network requests before the first browser paint.
-  // The opening four get high fetch priority; film-set characters are deferred
-  // until the opening models have downloaded and parsed.
+  /* paint the page first, then build the 3D world on the next tick */
+  useEffect(() => {
+    const id = setTimeout(() => setMountScene(true), 40);
+    return () => clearTimeout(id);
+  }, []);
+
+  /* start the character downloads immediately (before the canvas exists) */
   useLayoutEffect(() => {
-    const removePreloads = addCharacterPreloads();
     const preconnect = document.createElement("link");
     preconnect.rel = "preconnect";
     preconnect.href = R2_FBX_BASE;
     preconnect.crossOrigin = "anonymous";
     document.head.appendChild(preconnect);
-
     preloadRCSCharacters().then(({ openingResults, filmResults }) => {
-      const allResults = [...openingResults, ...filmResults];
-      const failed = allResults.filter((result) => result.status === "rejected").length;
-      if (failed) {
-        console.error(
-          `[RCS FBX] ${failed} of ${Object.keys(FBX_CHARACTERS).length} character assets failed. Check R2 CORS, public access, and the Network tab.`
-        );
-      }
+      const failed = [...openingResults, ...filmResults].filter((r) => r.status === "rejected").length;
+      if (failed) console.error(`[RCS FBX] ${failed} of ${Object.keys(FBX_CHARACTERS).length} character assets failed. Check R2 CORS, public access, and the Network tab.`);
     });
-
-    return () => {
-      removePreloads();
-      preconnect.remove();
-    };
+    return () => preconnect.remove();
   }, []);
 
-  /* no sideways scrolling while this page is mounted */
   useEffect(() => {
     const h = document.documentElement, b = document.body;
     const prev = [h.style.overflowX, b.style.overflowX];
@@ -2281,12 +2112,11 @@ export default function Home() {
     return () => { h.style.overflowX = prev[0]; b.style.overflowX = prev[1]; };
   }, []);
 
-  /* inertial smooth scrolling, wired into ScrollTrigger and the GSAP ticker.
-     Lenis is the ONLY scroll smoothing: the timeline uses scrub: true, and the
-     camera spring (stepTime) then removes any remaining step in the input. */
+  /* Lenis is the ONLY scroll smoothing, ticked from the GSAP ticker; the camera
+     spring (stepTime) then removes any remaining step in the input. */
   useEffect(() => {
     if (!cfg || cfg.mode !== "webgl" || cfg.reduced) return;
-    const lenis = new Lenis({ lerp: 0.085, wheelMultiplier: 0.9, smoothWheel: true });
+    const lenis = new Lenis({ lerp: 0.1, wheelMultiplier: 0.9, smoothWheel: true });
     lenis.on("scroll", ScrollTrigger.update);
     const tick = (t) => lenis.raf(t * 1000);
     gsap.ticker.add(tick);
@@ -2309,18 +2139,18 @@ export default function Home() {
     const io = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), { rootMargin: "160px 0px" });
     io.observe(rootRef.current);
     return () => io.disconnect();
-  }, [cfg, fontsOk]);
+  }, [cfg]);
 
-  /* keep ScrollTrigger in sync with size changes */
   useEffect(() => {
     if (!vw) return;
     const t = setTimeout(() => ScrollTrigger.refresh(), 150);
     return () => clearTimeout(t);
   }, [vw]);
 
-  /* ---- the master timeline: scroll position is the only clock ---- */
+  /* ---- the master timeline: scroll position is the only clock ----
+     v6: it no longer waits for fonts (it only touches DOM nodes) */
   useEffect(() => {
-    if (!cfg || cfg.mode !== "webgl" || !fontsOk || !rootRef.current) return;
+    if (!cfg || cfg.mode !== "webgl" || !rootRef.current) return;
     const root = rootRef.current;
     Object.assign(STATE, pick(POSE.wide), { intro: cfg.reduced ? 0 : 1 });
     const ctx = gsap.context(() => {
@@ -2341,14 +2171,10 @@ export default function Home() {
         scrollTrigger: { trigger: root, start: "top top", end: "bottom bottom", scrub: true, onUpdate: (self) => hud(self.progress) },
       });
       hud(0);
-      /* camera time starts at 0 and snaps on the first frame; from then on the
-         render loop springs towards TIME.target (see stepTime / CameraRig) */
       TIME.target = 0;
       TIME.snap = true;
-      TIME.smooth = cfg.reduced ? 0 : 0.4;
+      TIME.smooth = cfg.reduced ? 0 : 0.35;
 
-      /* the whole camera journey is ONE tween over the spline in PATH. It only
-         writes the target time: the render loop does the sampling. */
       const proxy = { t: 0 };
       tl.to(proxy, {
         t: T_TOTAL,
@@ -2356,8 +2182,6 @@ export default function Home() {
         ease: "none",
         onUpdate: () => {
           TIME.target = proxy.t;
-          // Play the live-action clip only during the camera viewfinder POV.
-          // This follows the same scroll-scrubbed timeline, including reverse scrolling.
           const video = povVideoRef.current;
           const approachingPOV = proxy.t >= 67.5 && proxy.t < 82.8;
           if (video && approachingPOV && video.preload === "none" && !video.dataset.prepared) {
@@ -2367,19 +2191,15 @@ export default function Home() {
           }
           const inCameraPOV = proxy.t >= 75.6 && proxy.t < 82.8;
           if (video && inCameraPOV && !povVideoActiveRef.current) {
-            // POV starts: always begin from frame 0, then play continuously (loops)
             if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
               try { video.currentTime = 0; } catch {}
             } else {
-              video.addEventListener("loadedmetadata", () => {
-                try { video.currentTime = 0; } catch {}
-              }, { once: true });
+              video.addEventListener("loadedmetadata", () => { try { video.currentTime = 0; } catch {} }, { once: true });
             }
             const playback = video.play();
             if (playback && typeof playback.catch === "function") playback.catch((err) => console.warn("[RCS] camera POV video could not autoplay:", err));
             povVideoActiveRef.current = true;
           } else if (video && inCameraPOV && video.paused) {
-            // never let it stall while we are inside the viewfinder
             const resume = video.play();
             if (resume && typeof resume.catch === "function") resume.catch(() => {});
           } else if (video && !inCameraPOV && povVideoActiveRef.current) {
@@ -2390,16 +2210,18 @@ export default function Home() {
         },
       }, 0);
 
+      /* v6: captions fade and slide only (opacity + transform stay on the GPU;
+         the old blur filters re-rasterised full-screen layers over the canvas every frame) */
       const cap = (sel, inAt, outAt, dur = 2.8) => {
         const el = root.querySelector(`[data-cap="${sel}"]`);
         if (!el) return;
-        gsap.set(el, { autoAlpha: 0, y: 34, filter: "blur(12px)" });
-        tl.fromTo(el, { autoAlpha: 0, y: 34, filter: "blur(12px)" }, { autoAlpha: 1, y: 0, filter: "blur(0px)", duration: dur, ease: "power3.out", immediateRender: false }, inAt);
-        if (outAt != null) tl.to(el, { autoAlpha: 0, y: -22, filter: "blur(10px)", duration: dur, ease: "power2.in", immediateRender: false }, outAt);
+        gsap.set(el, { autoAlpha: 0, y: 34, force3D: true });
+        tl.fromTo(el, { autoAlpha: 0, y: 34 }, { autoAlpha: 1, y: 0, duration: dur, ease: "power3.out", immediateRender: false }, inAt);
+        if (outAt != null) tl.to(el, { autoAlpha: 0, y: -22, duration: dur, ease: "power2.in", immediateRender: false }, outAt);
       };
       const open = root.querySelector('[data-cap="open"]');
       const cue = root.querySelector('[data-cap="cue"]');
-      if (open) tl.to(open, { autoAlpha: 0, y: -28, filter: "blur(8px)", duration: 3.2, ease: "power2.in", immediateRender: false }, 3);
+      if (open) tl.to(open, { autoAlpha: 0, y: -28, duration: 3.2, ease: "power2.in", immediateRender: false }, 3);
       if (cue) tl.to(cue, { autoAlpha: 0, duration: 1.5, immediateRender: false }, 1);
       cap("collab", 8, 16);
       cap("notes", 28, 42);
@@ -2409,8 +2231,6 @@ export default function Home() {
       cap("rec", 68, 104, 1.6);
       cap("vf", 70, 82, 2);
 
-      // The MP4 takes over the camera's viewfinder only; the surrounding journey
-      // and all existing overlays remain untouched.
       const povVideo = root.querySelector("[data-pov-video]");
       if (povVideo) {
         gsap.set(povVideo, { autoAlpha: 0 });
@@ -2418,8 +2238,6 @@ export default function Home() {
         tl.to(povVideo, { autoAlpha: 0, duration: 1.2, ease: "power2.in", immediateRender: false }, 81.6);
       }
 
-      /* iris: the frame closes in around us as we dive into the lens,
-         then opens again as we scroll back out */
       const iris = root.querySelector("[data-iris]");
       if (iris) {
         gsap.set(iris, { autoAlpha: 0, scale: 1.6 });
@@ -2427,7 +2245,6 @@ export default function Home() {
         tl.to(iris, { autoAlpha: 0, scale: 1.5, duration: 6, ease: "power2.out", immediateRender: false }, 80);
       }
 
-      // cinematic letterbox slides in as we leave the studio and out for the final frame
       const bars = root.querySelectorAll("[data-bar]");
       if (bars.length) {
         gsap.set(bars, { scaleY: 0 });
@@ -2435,8 +2252,6 @@ export default function Home() {
         tl.to(bars, { scaleY: 0, duration: 4, ease: "power2.inOut", immediateRender: false }, 104);
       }
       cap("final", 107, null, 5);
-
-      if (!cfg.reduced) gsap.to(STATE, { intro: 0, duration: 3.8, ease: "power3.out", delay: 0.4 });
     }, root);
     const refresh = setTimeout(() => ScrollTrigger.refresh(), 400);
     return () => {
@@ -2448,16 +2263,14 @@ export default function Home() {
       povVideoActiveRef.current = false;
       ctx.revert();
     };
-  }, [cfg, fontsOk]);
+  }, [cfg]);
 
   if (!cfg) return <div className="min-h-[100svh] bg-[#0B0B0C]" />;
   if (cfg.mode === "fallback") return <FallbackStory />;
   const onCreated = ({ gl }) => {
     const el = gl.domElement;
     const onLost = (event) => { event.preventDefault(); };
-    const onRestored = () => {
-      setCtxKey((key) => key + 1);
-    };
+    const onRestored = () => { setSceneReady(false); setCtxKey((key) => key + 1); };
     el.addEventListener("webglcontextlost", onLost, false);
     el.addEventListener("webglcontextrestored", onRestored, false);
     el.__rcsContextCleanup = () => {
@@ -2482,9 +2295,8 @@ export default function Home() {
           .rcs-cine ::selection { background: #D9A441; color: #0B0B0C; }
           .rcs-ui { font-family: 'Inter Tight', 'Helvetica Neue', Arial, sans-serif; }
           .rcs-display { font-family: 'Inter Tight', 'Helvetica Neue', Arial, sans-serif; font-weight: 300; letter-spacing: -0.045em; }
-          /* caption face: same light grotesque, kept as a separate class so captions can be tuned alone */
           .rcs-serif { font-family: 'Inter Tight', 'Helvetica Neue', Arial, sans-serif; font-style: normal; font-weight: 300; letter-spacing: -0.04em; }
-          .rcs-mute { background: linear-gradient(180deg, #a6a6a1 0%, #6f6f6b 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; text-shadow: none; filter: drop-shadow(0 2px 22px rgba(0,0,0,.75)); }
+          .rcs-mute { background: linear-gradient(180deg, #a6a6a1 0%, #6f6f6b 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; text-shadow: none; }
           .rcs-hand { font-family: 'Caveat', cursive; font-weight: 600; }
           .rcs-shadow { text-shadow: 0 2px 28px rgba(0,0,0,.9), 0 0 3px rgba(0,0,0,.55); }
           .rcs-mask { display: block; overflow: hidden; padding: .04em 0 .14em; margin-bottom: -.1em; }
@@ -2494,35 +2306,39 @@ export default function Home() {
           .rcs-a { animation: rcs-rise 1.8s cubic-bezier(.2,.65,.25,1) var(--d, 0s) backwards; }
           @keyframes rcs-cue { 0% { transform: scaleY(0); transform-origin: top; } 50% { transform: scaleY(1); transform-origin: top; } 51% { transform-origin: bottom; } 100% { transform: scaleY(0); transform-origin: bottom; } }
           .rcs-cue-line { animation: rcs-cue 2.2s ease-in-out infinite; }
-          @keyframes rcs-load { 0% { transform: translateX(-100%); } 100% { transform: translateX(200%); } }
-          .rcs-grain { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); mix-blend-mode: overlay; opacity: .09; }
+          /* v6: plain-alpha grain (the old mix-blend-mode forced a full-screen blend over the WebGL canvas every frame) */
+          .rcs-grain { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); opacity: .035; }
+          .rcs-canvas { transition: opacity 1.1s ease; }
           .rcs-corner { position: absolute; width: clamp(22px, 3vw, 40px); height: clamp(22px, 3vw, 40px); border-color: rgba(241,239,233,.85); }
-          @media (prefers-reduced-motion: reduce) { .rcs-a, .rcs-line, .rcs-cue-line { animation: none; } }
+          [data-cap], [data-iris], [data-bar], [data-pov-video] { will-change: opacity, transform; }
+          @media (prefers-reduced-motion: reduce) { .rcs-a, .rcs-line, .rcs-cue-line { animation: none; } .rcs-canvas { transition: none; } }
         `}</style>
 
         <div className="sticky top-0 isolate h-[100svh] min-h-[520px] w-full min-w-0 overflow-hidden bg-[#0a111c]">
           {/* ---------- the 3D world ---------- */}
-          <div className="absolute inset-0" style={{ pointerEvents: "none", touchAction: "pan-y" }}>
+          <div className="rcs-canvas absolute inset-0" style={{ pointerEvents: "none", touchAction: "pan-y", opacity: sceneReady ? 1 : 0 }}>
             <SceneBoundary>
-              <Canvas
-                key={ctxKey}
-                style={{ width: "100%", height: "100%", display: "block" }}
-                shadows={cfg.quality !== "low"}
-                flat={cfg.quality !== "low"}
-                dpr={[cfg.dprMin, cfg.dprMax]}
-                frameloop={inView ? "always" : "never"}
-                gl={{
-                  antialias: cfg.antialias,
-                  powerPreference: cfg.quality === "high" && !cfg.mobile ? "high-performance" : "default",
-                  stencil: false,
-                  depth: true,
-                  preserveDrawingBuffer: false
-                }}
-                camera={{ fov: 36, near: 0.05, far: 320, position: [0, 1.7, 6.4] }}
-                onCreated={onCreated}
-              >
-                <Scene quality={cfg.quality} reduced={cfg.reduced} dprMax={cfg.dprMax} dprMin={cfg.dprMin} fontsReady={fontsOk} />
-              </Canvas>
+              {mountScene && (
+                <Canvas
+                  key={ctxKey}
+                  style={{ width: "100%", height: "100%", display: "block" }}
+                  shadows={cfg.quality !== "low"}
+                  flat={cfg.quality !== "low"}
+                  dpr={[cfg.dprMin, cfg.dprMax]}
+                  frameloop={inView ? "always" : "never"}
+                  gl={{
+                    antialias: cfg.antialias,
+                    powerPreference: cfg.quality === "high" && !cfg.mobile ? "high-performance" : "default",
+                    stencil: false,
+                    depth: true,
+                    preserveDrawingBuffer: false,
+                  }}
+                  camera={{ fov: 36, near: 0.05, far: 320, position: [0, 1.7, 6.4] }}
+                  onCreated={onCreated}
+                >
+                  <Scene quality={cfg.quality} reduced={cfg.reduced} dprMax={cfg.dprMax} dprMin={cfg.dprMin} fontsReady={fontsOk} onReady={() => setSceneReady(true)} />
+                </Canvas>
+              )}
             </SceneBoundary>
           </div>
 
@@ -2542,19 +2358,15 @@ export default function Home() {
             <source src="https://pub-c068270ff2f94b2691bb54438e646383.r2.dev/BBTedit1.mp4" type="video/mp4" />
           </video>
 
-          {/* legibility scrim, grain, vignette */}
           <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-[50%] bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
           <div aria-hidden="true" className="rcs-grain pointer-events-none absolute inset-0" />
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_50%,transparent_58%,rgba(0,0,0,.5)_100%)]" />
 
-          {/* iris vignette: closes in around the viewfinder shot */}
           <div data-iris aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ opacity: 0, background: "radial-gradient(ellipse at 50% 50%, transparent 46%, rgba(0,0,0,.82) 100%)" }} />
 
-          {/* cinematic letterbox */}
           <div data-bar="top" aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 hidden h-[5.5svh] bg-black sm:block" style={{ transform: "scaleY(0)", transformOrigin: "top" }} />
           <div data-bar="bot" aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-[5.5svh] bg-black sm:block" style={{ transform: "scaleY(0)", transformOrigin: "bottom" }} />
 
-          {/* viewfinder frame: only visible while we are inside the camera */}
           <div data-cap="vf" aria-hidden="true" className="pointer-events-none absolute inset-[7svh] sm:inset-x-[6vw]">
             <span className="rcs-corner left-0 top-0 border-l-2 border-t-2" />
             <span className="rcs-corner right-0 top-0 border-r-2 border-t-2" />
@@ -2568,7 +2380,6 @@ export default function Home() {
             <p className="rcs-ui absolute bottom-3 right-4 text-[12px] font-medium tracking-wide text-[#F1EFE9]/80 sm:bottom-5 sm:right-6">00:00:24:12</p>
           </div>
 
-          {/* ---------- typography: driven by the same timeline ---------- */}
           <div data-cap="open" className="pointer-events-none absolute bottom-[16svh] left-5 max-w-[82vw] sm:bottom-[17svh] sm:left-[5vw] sm:max-w-[42vw]">
             <p className="rcs-ui rcs-a rcs-shadow text-[11px] font-medium tracking-[0.16em] text-[#D9A441] sm:text-[12px]" style={{ "--d": "0.5s" }}>Rare Creative Studios</p>
             <h1 className="rcs-display rcs-shadow mt-2 text-[clamp(1.85rem,3.7vw,3.55rem)] leading-[0.98] text-[#F1EFE9]">
@@ -2623,7 +2434,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* scroll progress + stage name */}
           <div aria-hidden="true" className="pointer-events-none absolute right-0 top-0 h-full w-[2px] bg-white/10 sm:right-6 sm:top-1/2 sm:h-40 sm:-translate-y-1/2">
             <span ref={railRef} className="block h-full w-full origin-top bg-[#D9A441]" style={{ transform: "scaleY(0)" }} />
           </div>
