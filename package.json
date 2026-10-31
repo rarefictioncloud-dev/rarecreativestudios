@@ -38,5 +38,13 @@
     "gh-pages": "^6.3.0",
     "globals": "^17.12.0",
     "vite": "^8.3.0"
+  },
+    "AllowedOrigins": [
+      "https://rarefictioncloud-dev.github.io"
+    ],
+    "AllowedMethods": ["GET", "HEAD"],
+    "AllowedHeaders": ["*"],
+    "ExposeHeaders": ["Content-Length", "ETag"],
+    "MaxAgeSeconds": 3600
   }
-}
+
