@@ -1,9 +1,9 @@
-import { Component, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Component, memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import * as THREE from "three";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Environment, Lightformer, Sparkles, useGLTF } from "@react-three/drei";
-import { EffectComposer, Bloom, DepthOfField, ToneMapping, SMAA, ChromaticAberration, Vignette } from "@react-three/postprocessing";
+import { Environment, Lightformer, PerformanceMonitor, useGLTF } from "@react-three/drei";
+import { EffectComposer, Bloom, DepthOfField, ToneMapping, SMAA, Vignette } from "@react-three/postprocessing";
 import { RectAreaLightUniformsLib } from "three/examples/jsm/lights/RectAreaLightUniformsLib.js";
 import { ToneMappingMode } from "postprocessing";
 import gsap from "gsap";
@@ -12,7 +12,7 @@ import Lenis from "lenis";
 import { ArrowUpRight } from "lucide-react";
 
 /* ====================================================================
-   RARE CREATIVE STUDIOS: HOME  (v4 + apartment GLB)
+   RARE CREATIVE STUDIOS: HOME  (v5: smooth camera, no apartment GLB)
    One continuous, scroll-controlled camera journey
    (React Three Fiber + GSAP ScrollTrigger + Lenis).
    Navbar and Footer are NOT part of this file.
@@ -36,30 +36,30 @@ import { ArrowUpRight } from "lucide-react";
      7. END       Resolve on the hero frame of the black BMW-style coupe.
                   The page then ends.
 
-   WHAT CHANGED IN v4
-     - Font: the whole page now uses the light neo-grotesque from the
-       reference screenshot (Inter Tight, weight 300 for display). To swap
-       it for another family, change FONT_LINK and the FD constant only.
-       Caveat is kept for the handwriting on the storyboards.
-     - Hero heading matches the reference: "Ideas, framed" in ivory,
-       "in motion." in soft grey, amber label above.
-     - Characters on the first screen stand closer together around a
-       smaller table and are visibly discussing (turn taking, hand
-       gestures, nodding, leaning in).
-     - Animation: the camera now follows ONE continuous spline through all
-       the waypoints (monotone cubic, no overshoot) instead of separate
-       stop-start tweens. Added curved arcs, a crane move, a banking dive
-       into the lens, a gentle roll, handheld breathing and an iris
-       vignette inside the viewfinder.
+   WHAT CHANGED IN v5
+     - SMOOTHNESS. Scroll no longer drives the camera directly. ScrollTrigger
+       (scrub: true, so Lenis is the only scroll smoothing) writes a target
+       time into TIME.target; the render loop chases it with a critically
+       damped spring (see stepTime) and samples the camera spline ONCE per
+       frame, before any light or object reads STATE. One clock, no competing
+       loops, continuous velocity AND acceleration, equally smooth in reverse.
+       Tune it with TIME.smooth (seconds to settle: 0.25 tight, 0.4 default,
+       0.6 floaty).
+     - The responsive lens framing is now driven by a spline channel (lm)
+       instead of the fov value, so entering and leaving the lens blends
+       smoothly on narrow screens.
+     - Handheld sway: high-frequency terms removed, pointer follow is
+       frame-rate independent, and the camera steadies inside the viewfinder.
+     - Scene root is memoised, and an adaptive resolution guard drops the
+       pixel ratio only if the frame rate stays low, then restores it.
+     - v5.1: Sparkles removed everywhere. Image is crisper (softer depth of
+       field via DOF_STRENGTH, no chromatic aberration, higher min pixel ratio,
+       lighter bloom). The POV clip restarts from frame 0 when the camera POV
+       begins and then plays continuously (looping) until the POV ends.
+     - The modern_apartment.glb implementation has been removed. The
+       procedural office architecture is now the permanent studio shell.
 
-   APARTMENT GLB
-     The procedural office architecture (floor, walls, ceiling, feature
-     wall, windows, console, plant...) is replaced by modern_apartment.glb.
-     See the APARTMENT config block (next to GlbModel) to tune scale,
-     rotation, offset and hidden nodes. The old office is kept only as a
-     fallback (while loading, on error / CORS failure, and on low-power devices).
-
-   TUNING KNOBS: GAIN (overall light), POSE / PATH (camera path), ASSETS (GLB models), APARTMENT (room GLB).
+   TUNING KNOBS: GAIN (overall light), POSE / PATH (camera path), TIME.smooth (smoothness), ASSETS (GLB models for car / people).
    The Navbar sits on a dark scene: give it light text on this page.
    ==================================================================== */
 
@@ -101,7 +101,8 @@ const LENS_POS = {
 };
 
 /* studio / set = light channels (never below ~0.4 so nothing ever goes black).
-   roll = camera banking in degrees. */
+   roll = camera banking in degrees. lm = "inside the lens" blend (0..1), used
+   only to ease the responsive framing on narrow screens. */
 const POSE = {
   /* 1. open: behind the four people, looking across the table */
   wide: { px: 0.0, py: 1.7, pz: 6.4, lx: 0, ly: 1.05, lz: -0.4, fov: 36, studio: 1, set: 0.5, env: 0.35, fb: 0.33, bk: 0.7, roll: 0 },
@@ -117,12 +118,12 @@ const POSE = {
   /* 4b. the reveal: studio on the left, film set on the right, both lit */
   pullMid: { px: 7.6, py: 5.4, pz: 21, lx: 7.6, ly: 0.9, lz: 4.2, fov: 50, studio: 0.9, set: 0.9, env: 0.7, fb: 0.5, bk: 0.4, roll: 0 },
   /* 4c. swooping down towards the lens, banking slightly */
-  dive: { px: 10.3, py: 2.7, pz: 15.6, lx: 12.2, ly: 0.9, lz: 8.2, fov: 38, studio: 0.55, set: 1, env: 0.9, fb: 0.7, bk: 1.0, roll: 1.4 },
+  dive: { px: 10.3, py: 2.7, pz: 15.6, lx: 12.2, ly: 0.9, lz: 8.2, fov: 38, studio: 0.55, set: 1, env: 0.9, fb: 0.7, bk: 1.0, roll: 1.4, lm: 0.4 },
   /* 5. inside the camera: the viewfinder shot of the car */
   lens: {
     px: LENS_POS.x, py: LENS_POS.y, pz: LENS_POS.z,
     lx: CAR_POS.x, ly: 0.82, lz: CAR_POS.z,
-    fov: 26, studio: 0.4, set: 1, env: 1, fb: 0.9, bk: 1.2, roll: 0,
+    fov: 26, studio: 0.4, set: 1, env: 1, fb: 0.9, bk: 1.2, roll: 0, lm: 1,
   },
   /* 6a. scrolling out of the lens, swinging round the operator */
   orbit: {
@@ -143,7 +144,7 @@ const POSE = {
     fov: 30, studio: 0.4, set: 1, env: 1, fb: 0, bk: 1.4, roll: 0,
   },
 };
-const POSE_KEYS = ["px", "py", "pz", "lx", "ly", "lz", "fov", "studio", "set", "env", "fb", "bk", "roll"];
+const POSE_KEYS = ["px", "py", "pz", "lx", "ly", "lz", "fov", "studio", "set", "env", "fb", "bk", "roll", "lm"];
 const pick = (p) => POSE_KEYS.reduce((o, k) => ((o[k] = p[k] ?? 0), o), {});
 const STATE = { ...pick(POSE.wide), intro: 0 };
 const FOCUS = new THREE.Vector3();
@@ -208,6 +209,24 @@ const TRACKS = POSE_KEYS.reduce((o, k) => {
   return o;
 }, {});
 const sampleTrack = (t) => { for (const k of POSE_KEYS) STATE[k] = TRACKS[k](t); };
+
+/* Scroll writes TIME.target ONLY. The render loop chases it with a critically
+   damped spring and samples the spline once per frame (see CameraRig), so there
+   is a single clock and the camera never fights a second animation loop.
+   smooth = seconds to settle: raise for floatier, lower for tighter. */
+const TIME = { target: 0, t: 0, v: 0, snap: true, smooth: 0.4 };
+function stepTime(dt, instant) {
+  const T = TIME;
+  if (instant || T.snap || T.smooth <= 0) { T.t = T.target; T.v = 0; T.snap = false; return; }
+  const h = Math.min(dt, 0.05); // a tab-switch hitch can never fling the camera
+  const w = 2 / T.smooth, x = w * h;
+  const e = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x);
+  const d = T.t - T.target;
+  const tmp = (T.v + w * d) * h;
+  T.v = (T.v - w * tmp) * e;
+  T.t = T.target + (d + tmp) * e;
+  if (Math.abs(T.target - T.t) < 1e-4 && Math.abs(T.v) < 1e-4) { T.t = T.target; T.v = 0; }
+}
 
 /* ====================================================================
    2. PROCEDURAL TEXTURES (canvas): storyboards, notes, photos, wood
@@ -823,64 +842,6 @@ function GlbModel({ url, ...p }) {
   return <primitive object={c} {...p} />;
 }
 
-/* ---------- apartment GLB: replaces the procedural office shell ---------- */
-const APARTMENT = {
-  url: "https://pub-c068270ff2f94b2691bb54438e646383.r2.dev/modern_apartment.glb",
-  scale: 1,                // multiplier on top of the model's native size (assumed metres)
-  fitLongestSide: null,    // e.g. 12 => scale so the longest horizontal side is 12 units (overrides scale)
-  rotY: 0,                 // radians: try Math.PI / 2, Math.PI, -Math.PI / 2
-  offset: [0, 0.004, 0],   // applied AFTER centring + floor-snap: slide the living room under the table
-  hide: [],                // name fragments to hide, e.g. ["ceiling", "roof"]
-  debug: true,             // logs size, centre and node names to the console
-};
-
-class ModelBoundary extends Component {
-  state = { failed: false };
-  static getDerivedStateFromError() { return { failed: true }; }
-  componentDidCatch(err) { console.error("[RCS] apartment GLB failed (CORS / network / decode), using procedural office:", err); }
-  render() { return this.state.failed ? this.props.fallback : this.props.children; }
-}
-
-function ApartmentModel() {
-  const { scene } = useGLTF(APARTMENT.url);
-  const fit = useMemo(() => {
-    const box = new THREE.Box3().setFromObject(scene);
-    const size = box.getSize(new THREE.Vector3());
-    const ctr = box.getCenter(new THREE.Vector3());
-    const s = APARTMENT.fitLongestSide ? APARTMENT.fitLongestSide / Math.max(size.x, size.z) : APARTMENT.scale;
-    if (APARTMENT.debug) console.info("[RCS] apartment size", size.toArray(), "centre", ctr.toArray(), "min.y", box.min.y, "scale", s);
-    return { s, pos: [-ctr.x * s, -box.min.y * s, -ctr.z * s] }; // centre on x/z, floor at y = 0
-  }, [scene]);
-  useLayoutEffect(() => {
-    scene.traverse((o) => {
-      if (!o.isMesh) return;
-      o.receiveShadow = true;  // takes the pendant / ceiling spot shadows
-      o.castShadow = false;    // keeps a 299 MB model cheap to render
-      const n = `${o.name} ${o.material?.name || ""}`.toLowerCase();
-      if (APARTMENT.hide.some((h) => n.includes(h))) o.visible = false;
-      if (APARTMENT.debug && o.name) console.debug("[RCS] apartment node:", o.name);
-    });
-  }, [scene]);
-  return (
-    <group position={APARTMENT.offset} rotation-y={APARTMENT.rotY}>
-      <group position={fit.pos} scale={fit.s}>
-        <primitive object={scene} />
-      </group>
-    </group>
-  );
-}
-
-/* shows the GLB; while it streams in (or if it fails, or on low-power devices)
-   the old procedural office is rendered instead. Delete the fallback later if you like. */
-function Apartment({ low, children }) {
-  if (low) return children;
-  return (
-    <ModelBoundary fallback={children}>
-      <Suspense fallback={children}><ApartmentModel /></Suspense>
-    </ModelBoundary>
-  );
-}
-
 /* ---------- people: articulated procedural figures (GLB-swappable) ---------- */
 
 const ARM = {
@@ -1209,8 +1170,7 @@ function StudioSet({ tx, low, reduced }) {
   const trim = <meshBasicMaterial color={HOT_AMBER} toneMapped={false} />;
   return (
     <group>
-      {/* PREMIUM CREATIVE OFFICE ARCHITECTURE (now the fallback; the apartment GLB replaces it) */}
-      <Apartment low={low}><>
+      {/* PREMIUM CREATIVE OFFICE ARCHITECTURE (the permanent studio shell) */}
       {/* honed-stone floor and soft textured meeting rug */}
       <mesh rotation-x={-Math.PI / 2} position={[0, 0.003, -0.05]} receiveShadow>
         <planeGeometry args={[9.6, 7]} />
@@ -1399,7 +1359,7 @@ function StudioSet({ tx, low, reduced }) {
 
       {/* restrained brass details and practical production object */}
       <mesh position={[0, 3.52, -3.12]}><boxGeometry args={[7.5, 0.025, 0.025]} /><meshBasicMaterial color="#b38c55" toneMapped={false} /></mesh>
-      </></Apartment>
+
       <Tripod pos={[3.45, 0, -2.15]} yaw={0.6} h={1.25}><CinemaCamera scale={0.72} /></Tripod>
       <ChLight as="rectAreaLight" base={5} ch="studio" position={[-3.7, 2.3, -0.4]} rotation-y={Math.PI / 2} width={2.4} height={2.5} color="#f0d8b4" />
       <ChLight as="rectAreaLight" base={7} ch="studio" position={[4.5, 2.1, -0.7]} rotation-y={Math.PI / 2} width={2.7} height={2.6} color="#7d9fc7" />
@@ -1439,9 +1399,8 @@ function StudioSet({ tx, low, reduced }) {
       {/* the four people */}
       {PEOPLE.map((p) => <Figure key={p.id} {...p} animate={!reduced} />)}
 
-      {/* atmosphere: light cone under the pendant + floating dust */}
+      {/* atmosphere: light cone under the pendant */}
       <Shaft from={[0, 2.25, -0.2]} to={[0, 0.76, -0.2]} r={1.35} color="#ffd9a0" op={0.16} ch="studio" />
-      {!low && <Sparkles count={70} scale={[7, 3.4, 5]} position={[0, 1.8, 0]} size={1.8} speed={reduced ? 0 : 0.25} opacity={0.55} color="#f3d7b0" />}
 
       {/* soft area lights: window spill + ceiling bounce */}
       <ChLight as="rectAreaLight" base={7} ch="studio" position={[4.6, 1.9, -0.9]} rotation-y={Math.PI / 2} width={2.4} height={1.7} color="#9bb4cf" />
@@ -1671,7 +1630,6 @@ function FilmSet({ tx, low, reduced }) {
       <Shaft from={[sbA[0], 3.2, sbA[1]]} to={[cx, 0.1, cz]} r={1.6} color="#6f9be0" op={0.1} ch="set" />
       <Shaft from={[sbB[0], 3.0, sbB[1]]} to={[cx, 0.1, cz]} r={1.5} color="#5f8fdc" op={0.09} ch="set" />
       <Shaft from={[cx, 6, cz]} to={[cx, 0.05, cz]} r={3.1} color="#cfe0ff" op={0.07} ch="set" />
-      {!low && <Sparkles count={110} scale={[14, 5, 12]} position={[cx, 2.4, cz]} size={2} speed={reduced ? 0 : 0.3} opacity={0.5} color="#9fc0ff" />}
 
       {/* set lights */}
       <Spot pos={[sbA[0], 3.2, sbA[1] + 0.2]} aim={[cx, 0.9, cz]} base={150} ch="set" angle={0.5} penumbra={0.8} decay={2} color="#4a82d6" />
@@ -1753,18 +1711,24 @@ function Hall({ tx }) {
    4. SCENE, CAMERA RIG, EFFECTS
    ==================================================================== */
 
+/* The ONLY place the camera path is sampled. It runs first each frame (it is
+   mounted before every light and object), so everything downstream reads a
+   consistent STATE for that exact frame. */
 function CameraRig({ reduced }) {
   const { camera, size, scene } = useThree();
   const tmp = useMemo(() => ({ pos: new THREE.Vector3(), look: new THREE.Vector3(), ptr: new THREE.Vector2() }), []);
-  useFrame(({ clock }) => {
+  useFrame(({ clock }, dt) => {
+    stepTime(dt, reduced);
+    sampleTrack(TIME.t);
     const s = STATE;
     const aspect = size.width / Math.max(1, size.height);
     /* responsive framing: below a 1.6 aspect we widen the lens AND dolly back,
        splitting the extra horizontal coverage between the two so nothing distorts.
-       Inside the camera lens we skip the dolly-back so we never leave the lens;
-       the blend is continuous so there is no pop entering or leaving the shot. */
+       Inside the camera lens we skip the dolly-back so we never leave the lens.
+       lm is a spline channel, so the blend is continuous with no pop entering
+       or leaving the shot. */
     const need = Math.max(1, 1.6 / aspect);
-    const lensMix = THREE.MathUtils.clamp((29 - s.fov) / 3, 0, 1);
+    const lensMix = THREE.MathUtils.smootherstep(THREE.MathUtils.clamp(s.lm, 0, 1), 0, 1);
     const f = lerp(Math.min(Math.sqrt(need), 1.8), 1, lensMix);
     tmp.look.set(s.lx, s.ly, s.lz);
     tmp.pos.set(s.px, s.py, s.pz).sub(tmp.look).multiplyScalar(f).add(tmp.look);
@@ -1773,17 +1737,18 @@ function CameraRig({ reduced }) {
     let sway = 0;
     if (!reduced) {
       const t = clock.elapsedTime;
-      tmp.ptr.lerp(PTR, 0.05);
-      /* gentle handheld breathing + pointer parallax */
-      tmp.pos.x += tmp.ptr.x * 0.06 + Math.sin(t * 0.37) * 0.012 + Math.sin(t * 1.1) * 0.003;
-      tmp.pos.y += tmp.ptr.y * 0.035 + Math.sin(t * 0.51) * 0.01 + Math.sin(t * 1.3) * 0.002;
-      sway = Math.sin(t * 0.43) * 0.18 + Math.sin(t * 0.97) * 0.05;
+      const calm = 1 - lensMix * 0.85; // steadier inside the viewfinder
+      tmp.ptr.lerp(PTR, 1 - Math.exp(-dt * 2.5)); // frame-rate independent pointer follow
+      /* gentle handheld breathing + pointer parallax (low frequency only) */
+      tmp.pos.x += (tmp.ptr.x * 0.04 + Math.sin(t * 0.37) * 0.008) * calm;
+      tmp.pos.y += (tmp.ptr.y * 0.025 + Math.sin(t * 0.51) * 0.006) * calm;
+      sway = Math.sin(t * 0.43) * 0.08 * calm;
     }
     camera.position.copy(tmp.pos);
     camera.lookAt(tmp.look);
     camera.rotateZ(THREE.MathUtils.degToRad(s.roll + sway));
     const fov = Math.min(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(s.fov) / 2) * f) * (180 / Math.PI), 78);
-    if (Math.abs(camera.fov - fov) > 0.01) {
+    if (Math.abs(camera.fov - fov) > 0.001) {
       camera.fov = fov;
       camera.updateProjectionMatrix();
     }
@@ -1793,15 +1758,17 @@ function CameraRig({ reduced }) {
   return null;
 }
 
-const CA_OFFSET = new THREE.Vector2(0.0005, 0.0007);
+/* CRISP: depth of field is kept as a gentle accent (bokeh scaled down, wide focus
+   range, higher internal resolution) and chromatic aberration is removed, so the
+   people, the table and the board stay sharp. Raise DOF_STRENGTH for more blur. */
+const DOF_STRENGTH = 0.3;
 function Effects() {
   const dof = useRef();
-  useFrame(() => { if (dof.current) dof.current.bokehScale = STATE.bk; });
+  useFrame(() => { if (dof.current) dof.current.bokehScale = STATE.bk * DOF_STRENGTH; });
   return (
     <EffectComposer multisampling={0} disableNormalPass>
-      <DepthOfField ref={dof} target={FOCUS} focalLength={0.045} bokehScale={1} focusRange={0.025} height={480} />
-      <Bloom intensity={0.85} luminanceThreshold={0.82} luminanceSmoothing={0.25} mipmapBlur />
-      <ChromaticAberration offset={CA_OFFSET} />
+      <DepthOfField ref={dof} target={FOCUS} focalLength={0.045} bokehScale={1} focusRange={0.08} height={900} />
+      <Bloom intensity={0.6} luminanceThreshold={0.85} luminanceSmoothing={0.2} mipmapBlur />
       <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
       <Vignette offset={0.3} darkness={0.6} />
       <SMAA />
@@ -1809,7 +1776,14 @@ function Effects() {
   );
 }
 
-function Scene({ low, reduced }) {
+/* drops the pixel ratio only if the frame rate stays low, restores it when it recovers */
+function AdaptiveQuality({ low }) {
+  const setDpr = useThree((s) => s.setDpr);
+  const max = Math.min(typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1, low ? 1.4 : 2);
+  return <PerformanceMonitor flipflops={3} onDecline={() => setDpr(1.25)} onIncline={() => setDpr(max)} />;
+}
+
+const Scene = memo(function Scene({ low, reduced }) {
   const tx = useMemo(() => makeTextures(low ? 0.5 : 1), [low]);
   useEffect(() => () => { if (tx) Object.values(tx).forEach((t) => t.dispose()); }, [tx]);
   if (!tx) return null;
@@ -1835,10 +1809,11 @@ function Scene({ low, reduced }) {
       <Hall tx={tx} />
       <StudioSet tx={tx} low={low} reduced={reduced} />
       <FilmSet tx={tx} low={low} reduced={reduced} />
+      <AdaptiveQuality low={low} />
       {!low && <Effects />}
     </>
   );
-}
+});
 
 /* ====================================================================
    5. PAGE
@@ -1971,6 +1946,8 @@ function Loader({ fade = false }) {
 
 export default function Home() {
   const rootRef = useRef(null);
+  const povVideoRef = useRef(null);
+  const povVideoActiveRef = useRef(false);
   const railRef = useRef(null);
   const stageNoRef = useRef(null);
   const stageNameRef = useRef(null);
@@ -1998,7 +1975,9 @@ export default function Home() {
     return () => { h.style.overflowX = prev[0]; b.style.overflowX = prev[1]; };
   }, []);
 
-  /* inertial smooth scrolling, wired into ScrollTrigger and the GSAP ticker */
+  /* inertial smooth scrolling, wired into ScrollTrigger and the GSAP ticker.
+     Lenis is the ONLY scroll smoothing: the timeline uses scrub: true, and the
+     camera spring (stepTime) then removes any remaining step in the input. */
   useEffect(() => {
     if (!cfg || cfg.mode !== "webgl" || cfg.reduced) return;
     const lenis = new Lenis({ lerp: 0.085, wheelMultiplier: 0.9, smoothWheel: true });
@@ -2059,15 +2038,45 @@ export default function Home() {
       };
       const tl = gsap.timeline({
         defaults: { ease: "none" },
-        scrollTrigger: { trigger: root, start: "top top", end: "bottom bottom", scrub: cfg.reduced ? true : 1.1, onUpdate: (self) => hud(self.progress) },
+        scrollTrigger: { trigger: root, start: "top top", end: "bottom bottom", scrub: true, onUpdate: (self) => hud(self.progress) },
       });
       hud(0);
-      sampleTrack(0);
+      /* camera time starts at 0 and snaps on the first frame; from then on the
+         render loop springs towards TIME.target (see stepTime / CameraRig) */
+      TIME.target = 0;
+      TIME.snap = true;
+      TIME.smooth = cfg.reduced ? 0 : 0.4;
 
-      /* the whole camera journey is ONE tween over the spline in PATH:
-         continuous velocity, no stop-start between legs. */
+      /* the whole camera journey is ONE tween over the spline in PATH. It only
+         writes the target time: the render loop does the sampling. */
       const proxy = { t: 0 };
-      tl.to(proxy, { t: T_TOTAL, duration: T_TOTAL, ease: "none", onUpdate: () => sampleTrack(proxy.t) }, 0);
+      tl.to(proxy, {
+        t: T_TOTAL,
+        duration: T_TOTAL,
+        ease: "none",
+        onUpdate: () => {
+          TIME.target = proxy.t;
+          // Play the live-action clip only during the camera viewfinder POV.
+          // This follows the same scroll-scrubbed timeline, including reverse scrolling.
+          const video = povVideoRef.current;
+          const inCameraPOV = proxy.t >= 75.6 && proxy.t < 82.8;
+          if (video && inCameraPOV && !povVideoActiveRef.current) {
+            // POV starts: always begin from frame 0, then play continuously (loops)
+            try { video.currentTime = 0; } catch {}
+            const playback = video.play();
+            if (playback && typeof playback.catch === "function") playback.catch((err) => console.warn("[RCS] camera POV video could not autoplay:", err));
+            povVideoActiveRef.current = true;
+          } else if (video && inCameraPOV && video.paused) {
+            // never let it stall while we are inside the viewfinder
+            const resume = video.play();
+            if (resume && typeof resume.catch === "function") resume.catch(() => {});
+          } else if (video && !inCameraPOV && povVideoActiveRef.current) {
+            video.pause();
+            try { video.currentTime = 0; } catch {}
+            povVideoActiveRef.current = false;
+          }
+        },
+      }, 0);
 
       const cap = (sel, inAt, outAt, dur = 2.8) => {
         const el = root.querySelector(`[data-cap="${sel}"]`);
@@ -2087,6 +2096,15 @@ export default function Home() {
       cap("film", 91, 99);
       cap("rec", 68, 104, 1.6);
       cap("vf", 70, 82, 2);
+
+      // The MP4 takes over the camera's viewfinder only; the surrounding journey
+      // and all existing overlays remain untouched.
+      const povVideo = root.querySelector("[data-pov-video]");
+      if (povVideo) {
+        gsap.set(povVideo, { autoAlpha: 0 });
+        tl.to(povVideo, { autoAlpha: 1, duration: 1.2, ease: "power2.out", immediateRender: false }, 75.2);
+        tl.to(povVideo, { autoAlpha: 0, duration: 1.2, ease: "power2.in", immediateRender: false }, 81.6);
+      }
 
       /* iris: the frame closes in around us as we dive into the lens,
          then opens again as we scroll back out */
@@ -2109,7 +2127,15 @@ export default function Home() {
       if (!cfg.reduced) gsap.to(STATE, { intro: 0, duration: 3.8, ease: "power3.out", delay: 0.4 });
     }, root);
     const refresh = setTimeout(() => ScrollTrigger.refresh(), 400);
-    return () => { clearTimeout(refresh); ctx.revert(); };
+    return () => {
+      clearTimeout(refresh);
+      if (povVideoRef.current) {
+        povVideoRef.current.pause();
+        try { povVideoRef.current.currentTime = 0; } catch {}
+      }
+      povVideoActiveRef.current = false;
+      ctx.revert();
+    };
   }, [cfg, fontsOk]);
 
   if (!cfg) return <div className="min-h-[100svh] bg-[#0B0B0C]" />;
@@ -2165,7 +2191,7 @@ export default function Home() {
                 style={{ width: "100%", height: "100%", display: "block" }}
                 shadows={!cfg.low}
                 flat={!cfg.low}
-                dpr={cfg.low ? [1, 1.4] : [1, 2]}
+                dpr={cfg.low ? [1, 1.4] : [1.5, 2]}
                 frameloop={inView ? "always" : "never"}
                 gl={{ antialias: !cfg.low, powerPreference: "high-performance" }}
                 camera={{ fov: 36, near: 0.05, far: 320, position: [0, 1.7, 6.4] }}
@@ -2175,6 +2201,22 @@ export default function Home() {
               </Canvas>
             </SceneBoundary>
           </div>
+
+          {/* camera POV footage: visible only while the camera is inside the viewfinder */}
+          <video
+            ref={povVideoRef}
+            data-pov-video
+            aria-hidden="true"
+            tabIndex={-1}
+            muted
+            loop
+            playsInline
+            preload="auto"
+            className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+            style={{ opacity: 0, visibility: "hidden" }}
+          >
+            <source src="https://pub-c068270ff2f94b2691bb54438e646383.r2.dev/BBTedit1.mp4" type="video/mp4" />
+          </video>
 
           {/* legibility scrim, grain, vignette */}
           <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-[50%] bg-gradient-to-t from-black/60 via-black/20 to-transparent" />

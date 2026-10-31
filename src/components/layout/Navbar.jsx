@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowUpRight, Menu, X } from "lucide-react";
 
@@ -71,11 +71,41 @@ const FONT_CSS = `
       display: none;
     }
   }
+
+  /* ---------- navbar polish ---------- */
+
+  /* soft amber light bleeding down from the top edge */
+  .rcs-nav-glow {
+    background:
+      radial-gradient(60% 140% at 50% -60%, rgba(198,154,98,0.16) 0%, rgba(198,154,98,0) 70%),
+      linear-gradient(180deg, #0d0d0f 0%, #000000 100%);
+  }
+
+  /* gentle breathing dot on the active link / logo */
+  @keyframes rcs-nav-pulse {
+    0%, 100% { opacity: .55; transform: scale(1); }
+    50%      { opacity: 1;   transform: scale(1.5); }
+  }
+  .rcs-nav-dot { animation: rcs-nav-pulse 2.6s ease-in-out infinite; }
+
+  /* light sweep across the call-to-action on hover */
+  .rcs-cta-shine { transform: translateX(-160%) skewX(-18deg); }
+  @keyframes rcs-nav-shine {
+    from { transform: translateX(-160%) skewX(-18deg); }
+    to   { transform: translateX(520%)  skewX(-18deg); }
+  }
+  .rcs-cta:hover .rcs-cta-shine { animation: rcs-nav-shine 0.95s ease; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rcs-nav-dot,
+    .rcs-cta:hover .rcs-cta-shine { animation: none; }
+  }
 `;
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const progressRef = useRef(null);
 
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -85,10 +115,18 @@ export default function Navbar() {
     setOpen(false);
   }, [pathname]);
 
-  // Update the navbar's visual appearance on scroll.
+  // Update the navbar's visual appearance and the scroll progress hairline.
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 24);
+
+      const max =
+        document.documentElement.scrollHeight - window.innerHeight;
+
+      if (progressRef.current) {
+        const p = max > 0 ? Math.min(1, window.scrollY / max) : 0;
+        progressRef.current.style.transform = `scaleX(${p})`;
+      }
     };
 
     handleScroll();
@@ -164,43 +202,34 @@ export default function Navbar() {
   };
 
   const headerSkin = scrolled
-    ? "border-b border-white/[0.10] bg-[#000000] shadow-[0_12px_40px_rgba(0,0,0,0.35)]"
-    : "border-b border-white/[0.08] bg-[#000000]";
+    ? "rcs-nav-glow border-b border-white/[0.10] shadow-[0_14px_44px_rgba(0,0,0,0.45)] md:backdrop-blur-xl"
+    : "rcs-nav-glow border-b border-white/[0.07]";
 
   const focus =
     "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C69A62]";
 
+  // Desktop pill link
   const linkCls = (active = false) => `
     rcs-nav-sans
+    group
     relative
+    inline-flex
+    items-center
+    gap-2
+    rounded-full
+    px-4
     py-2
-    text-[12px]
+    text-[12.5px]
     font-medium
-    transition-colors
+    tracking-[0.01em]
+    transition-all
     duration-300
     ${
       active
-        ? "text-[#D7B17B]"
-        : "text-white/75 hover:text-[#F2D6A8]"
+        ? "bg-white/[0.07] text-[#EBCFA0] shadow-[inset_0_0_0_1px_rgba(198,154,98,0.28)]"
+        : "text-white/70 hover:bg-white/[0.06] hover:text-white"
     }
     ${focus}
-  `;
-
-  const underline = (active = false) => `
-    absolute
-    -bottom-0.5
-    left-0
-    h-[1.5px]
-    w-full
-    origin-left
-    transition-transform
-    duration-300
-    ${
-      active
-        ? "scale-x-100"
-        : "scale-x-0 group-hover:scale-x-100"
-    }
-    bg-[#C69A62]
   `;
 
   const mobileLinkClass = (active = false) => `
@@ -211,7 +240,7 @@ export default function Navbar() {
     items-center
     justify-between
     text-left
-    text-[29px]
+    text-[30px]
     transition-colors
     duration-300
     ${
@@ -222,6 +251,19 @@ export default function Navbar() {
     ${focus}
   `;
 
+  // Staggered reveal for the mobile menu rows
+  const rowStyle = (index) => ({
+    transitionDelay: open ? `${90 + index * 70}ms` : "0ms",
+  });
+
+  const rowCls = `
+    border-b
+    border-white/10
+    transition-all
+    duration-500
+    ease-out
+  `;
+
   return (
     <>
       <style>{FONT_CSS}</style>
@@ -230,7 +272,7 @@ export default function Navbar() {
         className={`
           rcs-body
           rcs-navbar-header
-          transition-colors
+          transition-all
           duration-300
           ${headerSkin}
         `}
@@ -247,7 +289,9 @@ export default function Navbar() {
             gap-3
             px-4
             sm:px-8
+            md:grid
             md:h-[84px]
+            md:grid-cols-[1fr_auto_1fr]
             md:px-[6vw]
           "
         >
@@ -258,6 +302,7 @@ export default function Navbar() {
             aria-label="Rare Creative Studios home"
             onClick={() => setOpen(false)}
             className={`
+              group
               flex
               min-w-0
               shrink-0
@@ -265,6 +310,7 @@ export default function Navbar() {
               gap-2
               sm:gap-2.5
               md:gap-3
+              md:justify-self-start
               ${focus}
             `}
           >
@@ -276,12 +322,28 @@ export default function Navbar() {
                 uppercase
                 leading-none
                 text-[#F4F0E8]
+                transition-colors
+                duration-300
+                group-hover:text-white
                 sm:text-[30px]
                 md:text-[36px]
               "
             >
               RARE
             </span>
+
+            <span
+              aria-hidden="true"
+              className="
+                h-6
+                w-px
+                bg-gradient-to-b
+                from-transparent
+                via-[#C69A62]/70
+                to-transparent
+                md:h-8
+              "
+            />
 
             <span
               className="
@@ -295,6 +357,9 @@ export default function Navbar() {
                 leading-[1.6]
                 tracking-[0.14em]
                 text-white/55
+                transition-colors
+                duration-300
+                group-hover:text-[#D7B17B]
                 sm:text-[8px]
                 md:text-[9px]
                 md:tracking-[0.22em]
@@ -305,9 +370,22 @@ export default function Navbar() {
             </span>
           </Link>
 
-          {/* Desktop navigation */}
+          {/* Desktop navigation: centred glass pill */}
 
-          <ul className="hidden items-center gap-7 md:flex lg:gap-10">
+          <ul
+            className="
+              hidden
+              items-center
+              gap-1
+              rounded-full
+              border
+              border-white/[0.09]
+              bg-white/[0.03]
+              p-1
+              shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_10px_30px_-12px_rgba(0,0,0,0.8)]
+              md:flex
+            "
+          >
             {NAV_LINKS.map((item) => {
               const active = item.path
                 ? pathname === item.path
@@ -321,19 +399,23 @@ export default function Navbar() {
                       aria-current={
                         active ? "page" : undefined
                       }
-                      className={`group ${linkCls(active)}`}
+                      className={linkCls(active)}
                     >
+                      {active && (
+                        <span
+                          aria-hidden="true"
+                          className="rcs-nav-dot h-1 w-1 rounded-full bg-[#C69A62]"
+                        />
+                      )}
                       {item.label}
-                      <span className={underline(active)} />
                     </Link>
                   ) : (
                     <button
                       type="button"
                       onClick={() => goTo(item.section)}
-                      className={`group ${linkCls(false)}`}
+                      className={linkCls(false)}
                     >
                       {item.label}
-                      <span className={underline(false)} />
                     </button>
                   )}
                 </li>
@@ -346,41 +428,61 @@ export default function Navbar() {
           <Link
             to={CTA.path}
             className={`
+              rcs-cta
+              rcs-nav-sans
               group
+              relative
               hidden
               shrink-0
               items-center
               justify-center
               gap-3
+              overflow-hidden
               rounded-full
-              bg-[#C69A62]
-              px-5
-              py-3
-              text-[11px]
+              bg-gradient-to-b
+              from-[#DDB379]
+              to-[#B98B52]
+              py-1.5
+              pl-6
+              pr-1.5
+              text-[12px]
               font-semibold
               tracking-[0.02em]
               text-[#111318]
-              transition-colors
+              shadow-[0_10px_34px_-10px_rgba(198,154,98,0.7),inset_0_1px_0_rgba(255,255,255,0.4)]
+              transition-all
               duration-300
-              hover:bg-[#E8D7BD]
+              hover:-translate-y-0.5
+              hover:shadow-[0_16px_40px_-10px_rgba(198,154,98,0.85),inset_0_1px_0_rgba(255,255,255,0.5)]
               md:inline-flex
-              md:px-6
-              md:text-[12px]
+              md:justify-self-end
               ${focus}
             `}
           >
-            {CTA.label}
+            <span
+              aria-hidden="true"
+              className="rcs-cta-shine pointer-events-none absolute inset-y-0 left-0 w-8 bg-white/45 blur-md"
+            />
 
-            <ArrowUpRight
-              size={15}
-              strokeWidth={1.8}
+            <span className="relative">{CTA.label}</span>
+
+            <span
               className="
+                relative
+                grid
+                h-8
+                w-8
+                place-items-center
+                rounded-full
+                bg-[#111318]
+                text-[#EBCFA0]
                 transition-transform
                 duration-300
-                group-hover:-translate-y-0.5
-                group-hover:translate-x-0.5
+                group-hover:rotate-45
               "
-            />
+            >
+              <ArrowUpRight size={15} strokeWidth={1.9} />
+            </span>
           </Link>
 
           {/* Mobile: one CTA and one hamburger menu */}
@@ -398,15 +500,18 @@ export default function Navbar() {
                 justify-center
                 gap-1
                 rounded-full
-                bg-[#C69A62]
+                bg-gradient-to-b
+                from-[#DDB379]
+                to-[#B98B52]
                 px-3
                 text-[10px]
                 font-semibold
                 leading-none
                 text-[#111318]
-                transition-colors
+                shadow-[0_8px_24px_-10px_rgba(198,154,98,0.7),inset_0_1px_0_rgba(255,255,255,0.4)]
+                transition-all
                 duration-300
-                hover:bg-[#E8D7BD]
+                active:scale-[0.97]
                 min-[390px]:gap-1.5
                 min-[390px]:px-3.5
                 min-[390px]:text-[11px]
@@ -421,7 +526,7 @@ export default function Navbar() {
 
               <ArrowUpRight
                 size={13}
-                strokeWidth={1.8}
+                strokeWidth={1.9}
                 className="shrink-0"
               />
             </Link>
@@ -443,13 +548,16 @@ export default function Navbar() {
                 place-items-center
                 rounded-full
                 border
-                border-white/20
-                bg-[#000000]
+                bg-white/[0.04]
                 text-[#F4F0E8]
-                transition-colors
+                transition-all
                 duration-300
-                hover:border-[#124CCF]
-                hover:text-[#D7B17B]
+                active:scale-95
+                ${
+                  open
+                    ? "border-[#C69A62]/70 text-[#D7B17B]"
+                    : "border-white/20 hover:border-[#C69A62]/70 hover:text-[#D7B17B]"
+                }
                 ${focus}
               `}
             >
@@ -527,7 +635,12 @@ export default function Navbar() {
                 return (
                   <li
                     key={item.label}
-                    className="border-b border-white/10"
+                    style={rowStyle(index)}
+                    className={`${rowCls} ${
+                      open
+                        ? "translate-y-0 opacity-100"
+                        : "translate-y-3 opacity-0"
+                    }`}
                   >
                     {item.path ? (
                       <Link
@@ -544,6 +657,13 @@ export default function Navbar() {
                           </span>
 
                           {item.label}
+
+                          {active && (
+                            <span
+                              aria-hidden="true"
+                              className="rcs-nav-dot h-1.5 w-1.5 rounded-full bg-[#C69A62]"
+                            />
+                          )}
                         </span>
 
                         <ArrowUpRight
@@ -579,7 +699,14 @@ export default function Navbar() {
               })}
             </ul>
 
-            <div className="mt-6 flex items-center justify-between gap-3">
+            <div
+              style={rowStyle(NAV_LINKS.length)}
+              className={`mt-6 flex items-center justify-between gap-3 transition-all duration-500 ease-out ${
+                open
+                  ? "translate-y-0 opacity-100"
+                  : "translate-y-3 opacity-0"
+              }`}
+            >
               <span className="rcs-nav-mono text-[9px] uppercase tracking-[0.12em] text-white/40">
                 Strategy / Story / Culture
               </span>
@@ -590,6 +717,20 @@ export default function Navbar() {
             </div>
           </div>
         </div>
+
+        {/* amber hairline along the bottom edge + scroll progress */}
+
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#C69A62]/45 to-transparent"
+        />
+
+        <span
+          ref={progressRef}
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-0 left-0 h-[2px] w-full origin-left bg-gradient-to-r from-[#C69A62] to-[#F2D6A8]"
+          style={{ transform: "scaleX(0)" }}
+        />
       </header>
 
       {/* Reserve space only for the fixed mobile navbar. */}
