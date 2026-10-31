@@ -43,6 +43,21 @@ const ZOOM_CSS = `
     .rcs-app-zoom .rcs-cine > .sticky {
       height: calc(100svh * var(--rcs-vh-comp, 1)) !important;
     }
+
+    /* Home sets its own pixel width + centring margin from the viewport width.
+       Under zoom that pixel width gets scaled down a second time (the narrow
+       box in the middle), so let it simply fill the zoomed page instead. */
+    .rcs-app-zoom .rcs-cine {
+      width: 100% !important;
+      margin-left: 0 !important;
+    }
+
+    /* The WebGL canvas measures its own size in real screen pixels, so it must
+       not be zoomed twice: cancel the wrapper zoom for the canvas holder only.
+       (The holder is the first child of the pinned sticky scene.) */
+    .rcs-app-zoom .rcs-cine > .sticky > div:first-child {
+      zoom: ${1 / DESKTOP_ZOOM};
+    }
   }
 `;
 
