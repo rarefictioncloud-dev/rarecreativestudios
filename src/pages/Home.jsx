@@ -79,7 +79,11 @@ const ASSETS = { car: null, carScale: 1, people: {} };
 // Only standA in the opening studio scene is replaced; all other figures remain procedural.
 const FBX_TEST_CHARACTER = {
   id: "standA",
-  url: "/__rcs_fbx__/Flair.fbx",
+  // Local development uses the Vite proxy; GitHub Pages loads the public R2 URL.
+  // The R2 bucket must allow GET from https://rarefictioncloud-dev.github.io.
+  url: import.meta.env.DEV
+    ? "/__rcs_fbx__/Flair.fbx"
+    : "https://pub-c068270ff2f94b2691bb54438e646383.r2.dev/Flair.fbx",
   targetHeight: 1.72,
   // FBX/Mixamo assets commonly face +Z; the studio figures face local -Z.
   // Change to 0 if the model appears to face away from the table.
@@ -998,7 +1002,7 @@ function FBXCharacter({
         if (active) {
           console.error(
             "[RCS FBX] Character request/parse failed. Check DevTools > Network for the FBX request. " +
-            "If the console reports a CORS policy error, add an R2 CORS rule allowing GET from http://localhost:5173.",
+            "For GitHub Pages, ensure the R2 bucket CORS policy allows GET from https://rarefictioncloud-dev.github.io.",
             error
           );
           setAsset({ error: true });
