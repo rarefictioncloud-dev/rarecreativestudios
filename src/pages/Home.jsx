@@ -51,7 +51,6 @@ const FBX_CHARACTERS = {
   seatA: makeFBXConfig("Sitting Talking-compressed.glb", 1.62, OPEN_RANGE),
   standA: makeFBXConfig("Acknowledging-compressed.glb", 1.72, OPEN_RANGE),
   operator: makeFBXConfig("Angry-compressed.glb", 1.72, SET_RANGE),
-  crewA: makeFBXConfig("Standing Clap.fbx", 1.72, SET_RANGE),
 };
 
 /* Downloads run in parallel; PARSING is serialised with a pause between files
@@ -103,7 +102,7 @@ function getFBXPromise(url, priority = "high") {
 }
 
 const OPENING_CHARACTER_IDS = ["seatA", "standA"];
-const FILM_SET_CHARACTER_IDS = ["operator", "crewA"];
+const FILM_SET_CHARACTER_IDS = ["operator"];
 
 function preloadRCSCharacters() {
   const loadGroup = (ids, priority) => Promise.allSettled(ids.map((id) => getFBXPromise(FBX_CHARACTERS[id].url, priority)));
@@ -619,26 +618,31 @@ function drawContact(g, w, h) {
   for (let i = 0; i < 6; i++) photoCard(g, 50 + (i % 3) * 315, 70 + Math.floor(i / 3) * 300, 290, 250, i);
 }
 
-/* abstract, gallery-grade artwork (no cars): used for the studio's wall and credenza */
+/* abstract, gallery-grade artwork in the Rare Creative Studios palette (no cars, no road):
+   used for the studio's gallery wall and the credenza frames */
 function drawArt(g, w, h, kind = 0) {
   const r = rnd(kind + 90);
+  const m = Math.min(w, h);
   if (kind === 0) {
-    const bg = g.createLinearGradient(0, 0, 0, h);
-    bg.addColorStop(0, "#0d1626");
-    bg.addColorStop(0.62, "#234A78");
-    bg.addColorStop(1, "#d9a441");
-    g.fillStyle = bg;
+    /* a calm Bauhaus-style composition: overlapping circles on ivory */
+    g.fillStyle = "#efe8d6";
     g.fillRect(0, 0, w, h);
-    const sun = g.createRadialGradient(w * 0.5, h * 0.64, 2, w * 0.5, h * 0.64, w * 0.24);
-    sun.addColorStop(0, "rgba(255,238,196,1)");
-    sun.addColorStop(0.5, "rgba(246,190,96,.92)");
-    sun.addColorStop(1, "rgba(217,164,65,0)");
-    g.fillStyle = sun;
-    g.fillRect(0, 0, w, h);
-    g.fillStyle = "#0B0B0C";
-    g.fillRect(0, h * 0.7, w, h * 0.3);
-    g.fillStyle = "rgba(241,239,233,.5)";
-    g.fillRect(0, h * 0.7, w, Math.max(1, h * 0.004));
+    g.fillStyle = COL.blue;
+    g.beginPath();
+    g.arc(w * 0.42, h * 0.5, m * 0.34, 0, 7);
+    g.fill();
+    g.fillStyle = COL.amber;
+    g.globalAlpha = 0.92;
+    g.beginPath();
+    g.arc(w * 0.64, h * 0.4, m * 0.21, 0, 7);
+    g.fill();
+    g.globalAlpha = 1;
+    g.fillStyle = COL.copper;
+    g.fillRect(w * 0.12, h * 0.82, w * 0.76, Math.max(3, h * 0.035));
+    g.fillStyle = "#1b1b1d";
+    g.beginPath();
+    g.arc(w * 0.3, h * 0.3, m * 0.05, 0, 7);
+    g.fill();
   } else if (kind === 1) {
     g.fillStyle = "#efe8d6";
     g.fillRect(0, 0, w, h);
@@ -656,20 +660,21 @@ function drawArt(g, w, h, kind = 0) {
     g.fillStyle = "#1b1b1d";
     g.fillRect(w * 0.12, h * 0.62, w * 0.76, Math.max(2, h * 0.006));
   } else if (kind === 2) {
+    /* a contact sheet of film frames: the studio's craft, abstracted */
     g.fillStyle = "#0B0B0C";
     g.fillRect(0, 0, w, h);
-    const band = g.createLinearGradient(w * 0.28, 0, w * 0.72, 0);
-    band.addColorStop(0, "rgba(35,74,120,0)");
-    band.addColorStop(0.5, "rgba(58,110,175,.95)");
-    band.addColorStop(1, "rgba(35,74,120,0)");
-    g.fillStyle = band;
-    g.fillRect(w * 0.28, 0, w * 0.44, h);
-    for (let i = 0; i < 6; i++) {
-      g.fillStyle = `rgba(217,164,65,${0.85 - i * 0.12})`;
-      g.fillRect(w * 0.12 + i * w * 0.028, h * 0.14, Math.max(1.5, w * 0.006), h * 0.72);
+    const cols = 3, rows = 3, pad = m * 0.07;
+    const fw = (w - pad * (cols + 1)) / cols, fh = (h - pad * (rows + 1)) / rows;
+    const fills = [COL.blue, "#efe8d6", COL.amber, COL.copper, "#1c2a40", COL.blue, "#efe8d6", COL.amber, "#3a6eaf"];
+    for (let i = 0; i < cols * rows; i++) {
+      const cx = pad + (i % cols) * (fw + pad), cy = pad + Math.floor(i / cols) * (fh + pad);
+      g.fillStyle = fills[i];
+      g.fillRect(cx, cy, fw, fh);
+      g.fillStyle = "rgba(11,11,12,.55)";
+      g.beginPath();
+      g.arc(cx + fw * (0.3 + (i % 3) * 0.2), cy + fh * 0.58, Math.min(fw, fh) * 0.22, 0, 7);
+      g.fill();
     }
-    g.fillStyle = "rgba(241,239,233,.7)";
-    g.fillRect(w * 0.12, h * 0.8, w * 0.76, Math.max(1.5, h * 0.004));
   } else {
     g.fillStyle = "#efe8d6";
     g.fillRect(0, 0, w, h);
@@ -704,7 +709,49 @@ function framedArt(g, x, y, w, h, kind) {
   g.restore();
 }
 
-/* the studio's gallery wall: curated framed pieces on warm dark plaster */
+/* the studio's own brand panel: who Rare Creative Studios is, in its brand colours */
+function brandPanel(g, x, y, w, h) {
+  g.fillStyle = "rgba(0,0,0,.5)";
+  g.fillRect(x + 10, y + 16, w, h);
+  const bg = g.createLinearGradient(x, y, x + w, y + h);
+  bg.addColorStop(0, "#0d1626");
+  bg.addColorStop(1, COL.blue);
+  g.fillStyle = bg;
+  g.fillRect(x, y, w, h);
+  g.strokeStyle = "#c2a06a";
+  g.lineWidth = 6;
+  g.strokeRect(x + 3, y + 3, w - 6, h - 6);
+  text(g, "RARE CREATIVE STUDIOS", x + 48, y + 92, { font: FI, size: 22, weight: 600, color: COL.amber });
+  text(g, "Ideas, framed", x + 48, y + 250, { font: FS, size: 62, weight: 300, color: "#F1EFE9" });
+  text(g, "in motion.", x + 48, y + 322, { font: FS, size: 62, weight: 300, color: "#a9bbd6" });
+  g.fillStyle = COL.amber;
+  g.fillRect(x + 48, y + 366, 110, 4);
+  ["Film", "Campaigns", "Experiences"].forEach((s, i) => text(g, s, x + 48, y + 438 + i * 48, { font: FI, size: 28, weight: 500, color: "rgba(241,239,233,.88)" }));
+}
+
+/* the brand palette, framed like a swatch card */
+function paletteCard(g, x, y, w, h) {
+  g.fillStyle = "rgba(0,0,0,.5)";
+  g.fillRect(x + 10, y + 16, w, h);
+  g.fillStyle = "#c2a06a";
+  g.fillRect(x, y, w, h);
+  g.fillStyle = "#efe8d6";
+  g.fillRect(x + 9, y + 9, w - 18, h - 18);
+  const cols = [COL.obsidian, COL.blue, COL.amber, COL.copper, COL.ivory];
+  const sw = (w - 18 - 36) / cols.length;
+  cols.forEach((c, i) => {
+    g.fillStyle = c;
+    g.fillRect(x + 18 + i * sw, y + 22, sw - 6, h - 76);
+    if (c === COL.ivory) {
+      g.strokeStyle = "rgba(0,0,0,.25)";
+      g.lineWidth = 2;
+      g.strokeRect(x + 18 + i * sw, y + 22, sw - 6, h - 76);
+    }
+  });
+  text(g, "Brand palette", x + 20, y + h - 24, { font: FI, size: 20, weight: 600, color: "#4a4034" });
+}
+
+/* the studio's gallery wall: curated framed pieces and the brand statement on warm dark plaster */
 function drawBoard(g, w, h) {
   const bg = g.createLinearGradient(0, 0, w, h);
   bg.addColorStop(0, "#27221e");
@@ -721,13 +768,13 @@ function drawBoard(g, w, h) {
   wash.addColorStop(1, "rgba(0,0,0,0)");
   g.fillStyle = wash;
   g.fillRect(0, 0, w, h);
-  framedArt(g, 80, 80, 500, 584, 0);
-  framedArt(g, 630, 80, 330, 260, 2);
-  framedArt(g, 630, 384, 330, 280, 1);
-  framedArt(g, 1010, 80, 290, 380, 1);
-  framedArt(g, 1010, 500, 290, 164, 2);
-  framedArt(g, 1350, 80, 610, 330, 0);
-  framedArt(g, 1350, 450, 610, 214, 3);
+  brandPanel(g, 80, 80, 540, 584);
+  framedArt(g, 670, 80, 300, 260, 0);
+  framedArt(g, 670, 384, 300, 280, 2);
+  framedArt(g, 1020, 80, 270, 380, 1);
+  paletteCard(g, 1020, 500, 270, 164);
+  framedArt(g, 1340, 80, 620, 330, 0);
+  framedArt(g, 1340, 450, 620, 214, 3);
 }
 
 function drawLaptop(g, w, h) {
@@ -1313,7 +1360,7 @@ function Softbox({ pos, aim, size = [1.6, 1.2], hot = HOT_WHITE }) {
 const TABLE_Z = -0.2;
 const TABLE_R = 1.1;
 const SEAT_CHAIR = [-1.3, 0, TABLE_Z]; // where the chair stands
-const SEAT_A = [-1.4, 0, TABLE_Z]; // the director sits a little further back in the chair
+const SEAT_A = [-1.48, 0, TABLE_Z]; // the director sits further back so she settles fully into the seat
 const STAND_A = [1.42, 0, TABLE_Z + 0.02];
 const SEAT_A_YAW = yawTo(SEAT_A, STAND_A);
 /* a chair sits 2 cm behind its occupant (local +z is "behind" for every figure) */
@@ -1883,13 +1930,8 @@ function Car({ reduced = false }) {
 /* ---------- the film set ---------- */
 
 function FilmSet({ tx, shadows, reduced }) {
-  const ring = useRef();
-  useFrame((_, dt) => { if (ring.current && !reduced) ring.current.rotation.y += dt * 0.12; });
   const cx = C.x, cz = C.z;
   const opCam = [OP_POS.x + TO_CAR.x * 0.85, 0, OP_POS.z + TO_CAR.z * 0.85];
-  const A = rel(-5.3, 2.3);
-  const crewA = [A[0], 0, A[1]];
-  const crew = { palette: { top: "#1c1d21", bottom: "#141518", skin: "#b8845f", hair: "#1a120d" } };
   const sbA = rel(-5.4, -4.2), sbB = rel(5.6, -4.4), sbC = rel(-3, -5);
   const flag = rel(-4.6, -0.6), refl = rel(3, 1.2), mon = rel(5.2, 3.2);
   const ticks = useMemo(() => Array.from({ length: 48 }, (_, i) => i * (Math.PI * 2) / 48), []);
@@ -1911,7 +1953,8 @@ function FilmSet({ tx, shadows, reduced }) {
 
       <mesh position={[cx, 0.03, cz]} receiveShadow><cylinderGeometry args={[3.2, 3.2, 0.06, 48]} /><meshStandardMaterial color="#0a0a0b" roughness={0.3} metalness={0.8} /></mesh>
       <mesh position={[cx, 0.062, cz]} rotation-x={Math.PI / 2}><torusGeometry args={[3.18, 0.012, 8, 72]} /><meshBasicMaterial color={HOT_AMBER} toneMapped={false} /></mesh>
-      <group ref={ring} position={[cx, 0.066, cz]}>
+      {/* the tick ring under the car is static: it no longer rotates */}
+      <group position={[cx, 0.066, cz]}>
         {ticks.map((a, i) => (
           <mesh key={i} position={[Math.cos(a) * 2.9, 0, Math.sin(a) * 2.9]} rotation-y={-a}>
             <boxGeometry args={[i % 6 === 0 ? 0.22 : 0.08, 0.006, 0.02]} />
@@ -1953,7 +1996,6 @@ function FilmSet({ tx, shadows, reduced }) {
 
       <Tripod pos={opCam} yaw={SET_YAW} h={1.22}><CinemaCamera /></Tripod>
       <Figure id="operator" pose="standing" pos={[OP_POS.x, 0, OP_POS.z]} yaw={SET_YAW} armL="cam" armR="cam" lean={-0.14} head={0} palette={{ top: "#14151a", bottom: "#101114", skin: "#c08a64", hair: "#1a120d" }} animate={!reduced} low={noCharShadow} />
-      <Figure id="crewA" pose="standing" pos={crewA} yaw={yawTo(crewA, [cx, 0, cz])} armL="hip" armR="rest" {...crew} animate={!reduced} low={noCharShadow} />
 
       <group position={[cx, 0.06, cz]} rotation-y={SET_YAW}><Car reduced={reduced} /></group>
 
