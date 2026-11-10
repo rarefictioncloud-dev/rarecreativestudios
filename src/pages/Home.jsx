@@ -47,13 +47,12 @@ const OPEN_RANGE = [0, 76];
 const SET_RANGE = [40, T_TOTAL];
 
 const FBX_CHARACTERS = {
-  seatA: makeFBXConfig("Sitting Idle-compressed.glb", 1.62, OPEN_RANGE),
-  seatB: makeFBXConfig("Sitting Idle (1).fbx", 1.62, OPEN_RANGE),
-  standA: makeFBXConfig("Searching Pockets.fbx", 1.72, OPEN_RANGE),
-  standB: makeFBXConfig("Thinking.fbx", 1.72, OPEN_RANGE),
+  seatA: makeFBXConfig("Sitting Talking-compressed.glb", 1.62, OPEN_RANGE),
+  seatB: makeFBXConfig("Sitting Talking-compressed.glb", 1.62, OPEN_RANGE),
+  standA: makeFBXConfig("Acknowledging-compressed.glb", 1.72, OPEN_RANGE),
+  standB: makeFBXConfig("Acknowledging-compressed.glb", 1.72, OPEN_RANGE),
   operator: makeFBXConfig("Angry-compressed.glb", 1.72, SET_RANGE),
   crewA: makeFBXConfig("Standing Clap.fbx", 1.72, SET_RANGE),
-  crewB: makeFBXConfig("Arm Stretching-compressed.glb", 1.72, SET_RANGE),
 };
 
 /* Downloads run in parallel; PARSING is serialised with a pause between files
@@ -105,7 +104,7 @@ function getFBXPromise(url, priority = "high") {
 }
 
 const OPENING_CHARACTER_IDS = ["seatA", "seatB", "standA", "standB"];
-const FILM_SET_CHARACTER_IDS = ["operator", "crewA", "crewB"];
+const FILM_SET_CHARACTER_IDS = ["operator", "crewA"];
 
 function preloadRCSCharacters() {
   const loadGroup = (ids, priority) => Promise.allSettled(ids.map((id) => getFBXPromise(FBX_CHARACTERS[id].url, priority)));
@@ -1667,8 +1666,8 @@ function FilmSet({ tx, shadows, reduced }) {
   useFrame((_, dt) => { if (ring.current && !reduced) ring.current.rotation.y += dt * 0.12; });
   const cx = C.x, cz = C.z;
   const opCam = [OP_POS.x + TO_CAR.x * 0.85, 0, OP_POS.z + TO_CAR.z * 0.85];
-  const A = rel(-5.3, 2.3), B = rel(4.3, 2.2);
-  const crewA = [A[0], 0, A[1]], crewB = [B[0], 0, B[1]];
+  const A = rel(-5.3, 2.3);
+  const crewA = [A[0], 0, A[1]];
   const crew = { palette: { top: "#1c1d21", bottom: "#141518", skin: "#b8845f", hair: "#1a120d" } };
   const sbA = rel(-5.4, -4.2), sbB = rel(5.6, -4.4), sbC = rel(-3, -5);
   const flag = rel(-4.6, -0.6), refl = rel(3, 1.2), mon = rel(5.2, 3.2);
@@ -1734,7 +1733,6 @@ function FilmSet({ tx, shadows, reduced }) {
       <Tripod pos={opCam} yaw={SET_YAW} h={1.22}><CinemaCamera /></Tripod>
       <Figure id="operator" pose="standing" pos={[OP_POS.x, 0, OP_POS.z]} yaw={SET_YAW} armL="cam" armR="cam" lean={-0.14} head={0} palette={{ top: "#14151a", bottom: "#101114", skin: "#c08a64", hair: "#1a120d" }} animate={!reduced} low={noCharShadow} />
       <Figure id="crewA" pose="standing" pos={crewA} yaw={yawTo(crewA, [cx, 0, cz])} armL="hip" armR="rest" {...crew} animate={!reduced} low={noCharShadow} />
-      <Figure id="crewB" pose="standing" pos={crewB} yaw={yawTo(crewB, [cx, 0, cz])} armL="rest" armR="mug" palette={{ top: "#2d2a26", bottom: "#17181b", skin: "#8f5e41", hair: "#0c0a09" }} animate={!reduced} low={noCharShadow} />
 
       <group position={[cx, 0.06, cz]} rotation-y={SET_YAW}><Car reduced={reduced} /></group>
 
