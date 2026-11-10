@@ -49,9 +49,7 @@ const SET_RANGE = [40, T_TOTAL];
 
 const FBX_CHARACTERS = {
   seatA: makeFBXConfig("Sitting Talking-compressed.glb", 1.62, OPEN_RANGE),
-  seatB: makeFBXConfig("Sitting Talking-compressed.glb", 1.62, OPEN_RANGE),
   standA: makeFBXConfig("Acknowledging-compressed.glb", 1.72, OPEN_RANGE),
-  standB: makeFBXConfig("Acknowledging-compressed.glb", 1.72, OPEN_RANGE),
   operator: makeFBXConfig("Angry-compressed.glb", 1.72, SET_RANGE),
   crewA: makeFBXConfig("Standing Clap.fbx", 1.72, SET_RANGE),
 };
@@ -104,7 +102,7 @@ function getFBXPromise(url, priority = "high") {
   return promise;
 }
 
-const OPENING_CHARACTER_IDS = ["seatA", "seatB", "standA", "standB"];
+const OPENING_CHARACTER_IDS = ["seatA", "standA"];
 const FILM_SET_CHARACTER_IDS = ["operator", "crewA"];
 
 function preloadRCSCharacters() {
@@ -1237,25 +1235,78 @@ function Softbox({ pos, aim, size = [1.6, 1.2], hot = HOT_WHITE }) {
 
 /* ---------- studio set (the meeting room) ---------- */
 
-/* Round meeting table, centred under the pendant. Two conversations happen around it:
-   each seated person has swivelled their chair toward a standing colleague, and the
-   standing colleague faces them back, so the pairs look straight at each other. */
+/* Round planning table, centred under the pendant. Two people work out what to shoot:
+   the director sits on the left, the DP stands on the right, and they face each other
+   across the storyboards (a profile two-shot for the camera). */
 const TABLE_Z = -0.2;
 const TABLE_R = 1.1;
-const SEAT_A = [-1.12, 0, -0.92];
-const SEAT_B = [1.12, 0, -0.92];
-const STAND_A = [-1.75, 0, -0.02];
-const STAND_B = [1.72, 0, 0.04];
+const SEAT_A = [-1.3, 0, TABLE_Z];
+const STAND_A = [1.42, 0, TABLE_Z + 0.02];
 const SEAT_A_YAW = yawTo(SEAT_A, STAND_A);
-const SEAT_B_YAW = yawTo(SEAT_B, STAND_B);
 /* a chair sits 2 cm behind its occupant (local +z is "behind" for every figure) */
 const chairAt = (p, yaw) => [p[0] + Math.sin(yaw) * 0.02, 0, p[2] + Math.cos(yaw) * 0.02];
 const PEOPLE = [
-  { id: "seatA", pose: "seated", pos: SEAT_A, yaw: SEAT_A_YAW, scale: 1.10, head: 0, armL: "mug", armR: "talk", gestR: true, lean: -0.05, palette: { top: "#2b2f36", bottom: "#15171b", skin: "#c58f6d", hair: "#17110d" }, phase: 0 },
-  { id: "seatB", pose: "seated", pos: SEAT_B, yaw: SEAT_B_YAW, scale: 1.10, head: 0, armL: "talk", armR: "mug", gestL: true, lean: -0.04, long: true, palette: { top: "#6b5642", bottom: "#1c1d22", skin: "#8a5a3f", hair: "#0d0b0a" }, phase: 1.3 },
-  { id: "standA", pose: "standing", pos: STAND_A, yaw: yawTo(STAND_A, SEAT_A), head: 0, armL: "cross", armR: "point", gestR: true, palette: { top: "#2f4358", bottom: "#17181c", skin: "#d1a07c", hair: "#2a1d14" }, phase: 2.1 },
-  { id: "standB", pose: "standing", pos: STAND_B, yaw: yawTo(STAND_B, SEAT_B), head: 0, armL: "talk", armR: "mug", gestL: true, scale: 1.04, palette: { top: "#1b1c20", bottom: "#222428", skin: "#a8734f", hair: "#0f0c0a" }, phase: 3.4 },
+  { id: "seatA", pose: "seated", pos: SEAT_A, yaw: SEAT_A_YAW, scale: 1.10, head: 0, armL: "table", armR: "point", gestR: true, lean: 0.06, palette: { top: "#2b2f36", bottom: "#15171b", skin: "#c58f6d", hair: "#17110d" }, phase: 0 },
+  { id: "standA", pose: "standing", pos: STAND_A, yaw: yawTo(STAND_A, SEAT_A), head: 0, armL: "hip", armR: "point", gestR: true, lean: 0.1, scale: 1.04, palette: { top: "#2f4358", bottom: "#17181c", skin: "#d1a07c", hair: "#2a1d14" }, phase: 2.1 },
 ];
+
+/* little props that make the table read as "planning a shoot" */
+function MiniCar({ pos, rot = 0 }) {
+  const paint = useMemo(() => new THREE.MeshPhysicalMaterial({ color: "#050506", metalness: 0.9, roughness: 0.18, clearcoat: 1, clearcoatRoughness: 0.05, envMapIntensity: 1.6 }), []);
+  useEffect(() => () => paint.dispose(), [paint]);
+  return (
+    <group position={pos} rotation-y={rot}>
+      <mesh position={[0, 0.02, 0]} material={paint} castShadow><boxGeometry args={[0.2, 0.026, 0.085]} /></mesh>
+      <mesh position={[-0.01, 0.04, 0]} material={paint} castShadow><boxGeometry args={[0.095, 0.022, 0.07]} /></mesh>
+      <mesh position={[0.097, 0.026, 0]}><boxGeometry args={[0.006, 0.01, 0.07]} /><meshBasicMaterial color={HOT_WHITE} toneMapped={false} /></mesh>
+      {[[0.065, 0.045], [-0.065, 0.045], [0.065, -0.045], [-0.065, -0.045]].map(([x, z], i) => (
+        <mesh key={i} position={[x, 0.012, z]} rotation-x={Math.PI / 2}><cylinderGeometry args={[0.014, 0.014, 0.014, 14]} /><meshStandardMaterial color="#0a0a0b" roughness={0.7} /></mesh>
+      ))}
+    </group>
+  );
+}
+
+function LensProp({ pos, rot = 0 }) {
+  return (
+    <group position={pos} rotation-y={rot}>
+      <mesh rotation-z={Math.PI / 2} position={[0, 0.045, 0]} castShadow><cylinderGeometry args={[0.042, 0.046, 0.13, 28]} /><meshStandardMaterial color="#0c0c0d" roughness={0.45} metalness={0.5} /></mesh>
+      <mesh rotation-z={Math.PI / 2} position={[0.04, 0.045, 0]}><cylinderGeometry args={[0.047, 0.047, 0.02, 28]} /><meshStandardMaterial color="#9a9da3" metalness={1} roughness={0.25} /></mesh>
+      <mesh rotation-z={Math.PI / 2} position={[-0.066, 0.045, 0]}><cylinderGeometry args={[0.033, 0.033, 0.004, 24]} /><meshStandardMaterial color="#10213b" metalness={0.9} roughness={0.05} /></mesh>
+    </group>
+  );
+}
+
+function Easel({ pos, map }) {
+  const yaw = yawTo(pos, [0, 0, TABLE_Z]);
+  return (
+    <group position={pos} rotation-y={yaw}>
+      {[-0.42, 0.42].map((x, i) => (
+        <mesh key={i} position={[x, 0.82, 0.12]} rotation-z={x * -0.04} rotation-x={0.1} material={METAL} castShadow><boxGeometry args={[0.03, 1.66, 0.03]} /></mesh>
+      ))}
+      <mesh position={[0, 0.7, 0.3]} rotation-x={-0.3} material={METAL}><boxGeometry args={[0.025, 1.4, 0.025]} /></mesh>
+      <mesh position={[0, 0.62, -0.02]} material={METAL}><boxGeometry args={[1.0, 0.03, 0.08]} /></mesh>
+      <mesh position={[0, 1.2, -0.01]} castShadow><boxGeometry args={[1.02, 0.74, 0.02]} /><meshStandardMaterial color="#e8e1cf" roughness={0.9} /></mesh>
+      <mesh position={[0, 1.2, -0.0225]} rotation-y={Math.PI}>
+        <planeGeometry args={[0.94, 0.68]} />
+        <meshStandardMaterial map={map} emissiveMap={map} emissive="#ffffff" emissiveIntensity={0.16} roughness={0.9} />
+      </mesh>
+    </group>
+  );
+}
+
+function Clapper({ pos, rot = 0 }) {
+  return (
+    <group position={pos} rotation-y={rot} rotation-x={-0.18}>
+      <mesh position={[0, 0.11, 0]} castShadow><boxGeometry args={[0.3, 0.2, 0.014]} /><meshStandardMaterial color="#0d0d0f" roughness={0.6} /></mesh>
+      {Array.from({ length: 6 }, (_, i) => (
+        <mesh key={i} position={[-0.125 + i * 0.05, 0.225, 0.002]} rotation-z={0.5}><boxGeometry args={[0.03, 0.06, 0.016]} /><meshStandardMaterial color={i % 2 ? "#0d0d0f" : "#ece8dc"} roughness={0.6} /></mesh>
+      ))}
+      {[0.05, 0.1, 0.15].map((y, i) => (
+        <mesh key={i} position={[0, y, 0.008]}><boxGeometry args={[0.26, 0.004, 0.002]} /><meshBasicMaterial color="#d8d3c3" /></mesh>
+      ))}
+    </group>
+  );
+}
 
 const CEILING_X = [-3.25, -1.1, 1.1, 3.25];
 const FLOOR_JOINTS = [-2.8, -1.4, 0, 1.4, 2.8];
@@ -1280,9 +1331,17 @@ function StudioSet({ tx, low, reduced }) {
         <planeGeometry args={[9.6, 7]} />
         <meshStandardMaterial color="#a79a89" roughness={0.48} metalness={0.08} />
       </mesh>
-      <mesh rotation-x={-Math.PI / 2} position={[0, 0.008, 0.1]} receiveShadow>
-        <planeGeometry args={[5.8, 3.8]} />
+      <mesh rotation-x={-Math.PI / 2} position={[0, 0.008, TABLE_Z]} receiveShadow>
+        <circleGeometry args={[2.45, 96]} />
         <meshStandardMaterial color="#81766a" roughness={0.94} />
+      </mesh>
+      <mesh rotation-x={-Math.PI / 2} position={[0, 0.0085, TABLE_Z]}>
+        <ringGeometry args={[2.18, 2.22, 96]} />
+        <meshStandardMaterial color="#c5a16b" metalness={0.85} roughness={0.3} />
+      </mesh>
+      <mesh rotation-x={-Math.PI / 2} position={[0, 0.0085, TABLE_Z]}>
+        <ringGeometry args={[2.3, 2.45, 96]} />
+        <meshStandardMaterial color="#5e5449" roughness={0.97} />
       </mesh>
       {FLOOR_JOINTS.map((x, i) => (
         <mesh key={`floor-joint-${i}`} rotation-x={-Math.PI / 2} position={[x, 0.006, 0.05]}>
@@ -1489,7 +1548,6 @@ function StudioSet({ tx, low, reduced }) {
       <ContactShadow pos={[0, 0.0125, TABLE_Z]} size={[3.1, 3.1]} blob={tx.blob} opacity={0.45} />
       <Pendant reduced={reduced} />
       <Chair pos={chairAt(SEAT_A, SEAT_A_YAW)} yaw={SEAT_A_YAW} />
-      <Chair pos={chairAt(SEAT_B, SEAT_B_YAW)} yaw={SEAT_B_YAW} />
 
       {/* notes, storyboards and references on the table (all inside the round top) */}
       <ContactShadow pos={[0.2, 0.7545, -0.1]} size={[1.34, 1.04]} blob={tx.blob} />
@@ -1506,12 +1564,33 @@ function StudioSet({ tx, low, reduced }) {
       <Mug pos={[-0.32, 0.752, 0.22]} />
       <Mug pos={[0.82, 0.752, 0.3]} />
       <Mug pos={[-0.88, 0.752, 0.0]} />
+      <MiniCar pos={[0.52, 0.762, 0.12]} rot={0.45} />
+      <LensProp pos={[0.2, 0.7595, 0.38]} rot={0.3} />
       <Pencil pos={[0.7, 0.76, 0.3]} rot={0.4} />
       <Pencil pos={[0.74, 0.76, 0.33]} rot={0.6} color="#7C3F30" />
       <Pencil pos={[-0.1, 0.76, 0.34]} rot={-0.3} color="#234A78" len={0.14} />
       <Pencil pos={[0.45, 0.76, 0.34]} rot={1.2} color="#111" len={0.14} />
 
       {PEOPLE.map((p) => <Figure key={p.id} {...p} animate={!reduced} low={low} />)}
+
+      {/* background dressing: the room reads as a production office */}
+      <Easel pos={[-2.9, 0, -1.7]} map={tx.sheetD} />
+      <Easel pos={[2.75, 0, -1.9]} map={tx.photoA} />
+      <mesh position={[0, 0.065, -2.565]}><boxGeometry args={[5.7, 0.012, 0.02]} /><meshBasicMaterial color={HOT_AMBER} toneMapped={false} /></mesh>
+      {[-2.3, -1.78, -1.26].map((x, i) => (
+        <group key={`credenza-frame-${i}`} position={[x, 0.7, -2.9]} rotation-x={-0.12}>
+          <mesh position={[0, 0.13, 0]}><boxGeometry args={[0.34, 0.25, 0.018]} /><meshStandardMaterial color="#b28b55" metalness={0.8} roughness={0.28} /></mesh>
+          <mesh position={[0, 0.13, 0.011]}><planeGeometry args={[0.3, 0.21]} /><meshStandardMaterial map={[tx.photoA, tx.photoB, tx.photoC][i]} emissiveMap={[tx.photoA, tx.photoB, tx.photoC][i]} emissive="#ffffff" emissiveIntensity={0.22} roughness={0.5} /></mesh>
+        </group>
+      ))}
+      <Clapper pos={[1.1, 0.7, -2.86]} rot={-0.25} />
+      {[0, 1, 2].map((i) => (
+        <mesh key={`reel-${i}`} position={[2.0, 0.725 + i * 0.05, -2.84]} rotation-y={i * 0.5} castShadow>
+          <cylinderGeometry args={[0.15, 0.15, 0.04, 36]} />
+          <meshStandardMaterial color={i % 2 ? "#b8b9bd" : "#2a2b2e"} metalness={0.85} roughness={0.3} />
+        </mesh>
+      ))}
+      <Softbox pos={[-3.2, 1.8, -2.0]} aim={[0, 1, TABLE_Z]} size={[0.5, 1.3]} hot={HOT_AMBER.clone().multiplyScalar(0.45)} />
 
       <Shaft from={[0, 2.25, -0.2]} to={[0, 0.76, -0.2]} r={1.35} color="#ffd9a0" op={0.16} ch="studio" />
 
@@ -2487,7 +2566,7 @@ export default function Home() {
           </div>
 
           <p data-cap="collab" className="rcs-serif rcs-shadow pointer-events-none absolute bottom-[10svh] left-5 max-w-[12ch] text-[clamp(2.2rem,4.8vw,4.4rem)] leading-[0.98] text-[#F1EFE9] sm:left-[5vw]">
-            Four minds. One table.
+            Two minds. One table.
           </p>
 
           <p data-cap="notes" className="rcs-serif rcs-shadow pointer-events-none absolute bottom-[10svh] left-5 max-w-[13ch] text-[clamp(2.2rem,4.8vw,4.4rem)] leading-[0.98] text-[#F1EFE9] sm:left-[5vw]">
@@ -2533,7 +2612,7 @@ export default function Home() {
           </div>
 
           <p className="sr-only">
-            An interactive film. Four people in a creative studio gather close around a table and talk: two sit facing each other, two stand beside them. The camera glides in to the storyboards and notes, cranes up out of the studio, dives into a cinema camera to see a black luxury car through the viewfinder, scrolls out to a third person view of the operator filming, and ends on a hero shot of the car. Scroll to move the camera.
+            An interactive film. Two people in a creative studio plan a shoot around a round table: one sits, one stands, and they talk face to face over the storyboards. The camera glides in to the storyboards and notes, cranes up out of the studio, dives into a cinema camera to see a black luxury car through the viewfinder, scrolls out to a third person view of the operator filming, and ends on a hero shot of the car. Scroll to move the camera.
           </p>
         </div>
       </main>
