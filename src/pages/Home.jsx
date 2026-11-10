@@ -1,4 +1,4 @@
-import { Component, memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Component, Suspense, memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import * as THREE from "three";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
@@ -6,51 +6,15 @@ import { Environment, Lightformer, PerformanceMonitor, useGLTF } from "@react-th
 import { EffectComposer, Bloom, DepthOfField, ToneMapping, SMAA, Vignette } from "@react-three/postprocessing";
 import { RectAreaLightUniformsLib } from "three/examples/jsm/lights/RectAreaLightUniformsLib.js";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
+import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { ToneMappingMode } from "postprocessing";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";
 import { ArrowUpRight } from "lucide-react";
 
-/* ====================================================================
-   RARE CREATIVE STUDIOS: HOME  (v6: fast-load + smooth-everywhere build)
-   Same story, same look. Navbar and Footer are NOT part of this file.
-
-   INSTALL
-     npm i three @react-three/fiber @react-three/drei @react-three/postprocessing postprocessing gsap lenis lucide-react react-router-dom
-     (React 18 projects: @react-three/fiber@8, @react-three/drei@9, @react-three/postprocessing@2)
-
-   WHAT CHANGED IN v6  (why it loaded slowly and stuttered on PC)
-   LOAD SPEED
-     - The scene no longer waits for web fonts. The page paints at once, the
-       canvas mounts on the next tick and fades in after its first frames.
-       Text textures are redrawn IN PLACE when the fonts arrive (no rebuild).
-     - FBX files still download in parallel, but PARSING is serialised with a
-       yield between files, so the main thread is never frozen by seven
-       back-to-back synchronous parses.
-     - Canvas textures are cheaper (fewer noise rects, lower default scale).
-     - Shaders for the whole scene are pre-compiled once (gl.compileAsync), so
-       the film set and characters no longer hitch the first time they appear.
-   SMOOTHNESS
-     - Light count cut from ~33 to ~16 (the per-pixel cost of forward lighting
-       scales with it). 10 point lights became emissive meshes, duplicate
-       rect-area lights merged, one film spot merged into its twin.
-     - Depth of field is OFF by default (ENABLE_DOF). It was the single most
-       expensive pass. Set ENABLE_DOF = true to restore it on "high" only.
-     - Bloom / DOF buffers are smaller. Only ONE shadow map on balanced, two on high.
-     - Characters only animate and render while the camera is near them
-       (see the range in makeFBXConfig). Skinned meshes no longer cost
-       anything when you are looking at something else.
-     - Caption blur filters and the full-screen mix-blend grain were removed
-       (both force expensive re-compositing over a WebGL canvas every frame).
-     - Intro easing no longer uses a second GSAP tween loop.
-   RECOMMENDED OUTSIDE THIS FILE
-     - Load this route with React.lazy so three.js is not in your main bundle.
-     - Convert the FBX characters to meshopt/Draco GLB (typically 5-10x smaller).
-
-   TUNING KNOBS: GAIN, ENABLE_DOF, POSE / PATH, TIME.smooth, ASSETS, FBX_CHARACTERS.
-   The Navbar sits on a dark scene: give it light text on this page.
-   ==================================================================== */
 
 const CONTACT_EMAIL = "info@rarecreativestudios.com";
 const COL = { obsidian: "#0B0B0C", charcoal: "#191A1C", ivory: "#F1EFE9", blue: "#234A78", amber: "#D9A441", copper: "#7C3F30" };
@@ -61,7 +25,10 @@ const FONT_LINK =
   "https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=Caveat:wght@500;600&display=swap";
 
 /* Optional GLB model overrides for non-opening figures and the car. */
-const ASSETS = { car: null, carScale: 1, people: {} };
+const CAR_GLB_URL = "https://pub-c068270ff2f94b2691bb54438e646383.r2.dev/mclaren_p1__www.vecarz.com-compressed%20(1).glb";
+const ASSETS = { car: CAR_GLB_URL, carScale: 1, people: {} };
+const CAR_TARGET_LENGTH = 4.75; // metres, nose to tail (McLaren P1 is ~4.59 m; tweak to taste)
+const CAR_MODEL_YAW = 0; // if the car faces backwards, set to Math.PI (or +/- Math.PI / 2 if sideways)
 
 const R2_FBX_BASE = "https://pub-c068270ff2f94b2691bb54438e646383.r2.dev";
 const T_TOTAL = 118; // master timeline length
@@ -80,17 +47,38 @@ const OPEN_RANGE = [0, 76];
 const SET_RANGE = [40, T_TOTAL];
 
 const FBX_CHARACTERS = {
-  seatA: makeFBXConfig("Sitting Idle.fbx", 1.62, OPEN_RANGE),
+  seatA: makeFBXConfig("Sitting Idle-compressed.glb", 1.62, OPEN_RANGE),
   seatB: makeFBXConfig("Sitting Idle (1).fbx", 1.62, OPEN_RANGE),
   standA: makeFBXConfig("Searching Pockets.fbx", 1.72, OPEN_RANGE),
   standB: makeFBXConfig("Thinking.fbx", 1.72, OPEN_RANGE),
-  operator: makeFBXConfig("Angry.fbx", 1.72, SET_RANGE),
+  operator: makeFBXConfig("Angry-compressed.glb", 1.72, SET_RANGE),
   crewA: makeFBXConfig("Standing Clap.fbx", 1.72, SET_RANGE),
-  crewB: makeFBXConfig("Arm Stretching.fbx", 1.72, SET_RANGE),
+  crewB: makeFBXConfig("Arm Stretching-compressed.glb", 1.72, SET_RANGE),
 };
 
 /* Downloads run in parallel; PARSING is serialised with a pause between files
    so each synchronous FBXLoader.parse never stacks up on the main thread. */
+let gltfLoader = null;
+function getGLTFLoader() {
+  if (!gltfLoader) {
+    gltfLoader = new GLTFLoader();
+    const draco = new DRACOLoader();
+    draco.setDecoderPath("https://www.gstatic.com/draco/versioned/decoders/1.5.7/");
+    gltfLoader.setDRACOLoader(draco); // handles Draco-compressed GLB
+    gltfLoader.setMeshoptDecoder(MeshoptDecoder); // handles Meshopt-compressed GLB
+  }
+  return gltfLoader;
+}
+const isGLB = (url) => /\.glb(\?|$)/i.test(url);
+const parseGLB = (buffer, resourcePath) =>
+  new Promise((resolve, reject) => {
+    getGLTFLoader().parse(buffer, resourcePath, (gltf) => {
+      const root = gltf.scene;
+      root.animations = gltf.animations || []; // same shape the FBX path returns
+      root.updateMatrixWorld(true);
+      resolve(root);
+    }, reject);
+  });
 const FBX_PROMISE_CACHE = new Map();
 let parseChain = Promise.resolve();
 const pause = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -103,6 +91,7 @@ function getFBXPromise(url, priority = "high") {
     const buffer = await response.arrayBuffer();
     const resourcePath = new URL(".", new URL(url, window.location.href)).href;
     const job = parseChain.then(() => pause(24)).then(() => {
+      if (isGLB(url)) return parseGLB(buffer, resourcePath);
       const root = new FBXLoader().parse(buffer, resourcePath);
       root.updateMatrixWorld(true);
       return root;
@@ -128,6 +117,11 @@ function preloadRCSCharacters() {
 gsap.registerPlugin(ScrollTrigger);
 RectAreaLightUniformsLib.init();
 ScrollTrigger.config({ ignoreMobileResize: true });
+
+/* start downloading the car model as soon as this module loads */
+if (ASSETS.car && typeof window !== "undefined") {
+  try { useGLTF.preload(ASSETS.car); } catch { /* ignore */ }
+}
 
 /* ---------- shared mutable state: written by GSAP, read by the scene ---------- */
 const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -1598,6 +1592,56 @@ function ProceduralCar() {
   );
 }
 
+/* The McLaren GLB: auto-normalised so it works whatever scale / pivot the
+   file was exported with. Scaled to CAR_TARGET_LENGTH, centred on the plinth
+   and grounded at y = 0 (same footprint the procedural car used). */
+function CarGLB({ url }) {
+  const { scene } = useGLTF(url);
+  const gl = useThree((s) => s.gl);
+  const threeScene = useThree((s) => s.scene);
+  const camera = useThree((s) => s.camera);
+  const fit = useMemo(() => {
+    const root = scene.clone(true);
+    root.traverse((child) => {
+      if (!child.isMesh) return;
+      child.castShadow = true;
+      child.receiveShadow = false;
+    });
+    root.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(root);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    const alongX = size.x > size.z; // long axis lies on X: turn it onto Z
+    const length = Math.max(size.x, size.z, 0.001);
+    const s = (CAR_TARGET_LENGTH / length) * (ASSETS.carScale || 1);
+    return {
+      root,
+      scale: s,
+      yaw: (alongX ? Math.PI / 2 : 0) + CAR_MODEL_YAW,
+      offset: [-center.x, -box.min.y, -center.z],
+    };
+  }, [scene]);
+
+  // compile the car's materials right after it mounts so it never hitches on screen
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      try {
+        const p = gl.compileAsync ? gl.compileAsync(threeScene, camera) : Promise.resolve(gl.compile(threeScene, camera));
+        p.catch(() => {});
+      } catch { /* ignore */ }
+    });
+    return () => cancelAnimationFrame(id);
+  }, [fit, gl, threeScene, camera]);
+
+  return (
+    <group rotation-y={fit.yaw}>
+      <group scale={fit.scale}>
+        <primitive object={fit.root} position={fit.offset} />
+      </group>
+    </group>
+  );
+}
+
 function Car({ reduced = false }) {
   const g = useRef();
   useFrame(({ clock }) => {
@@ -1605,7 +1649,13 @@ function Car({ reduced = false }) {
   });
   return (
     <group ref={g}>
-      {ASSETS.car ? <GlbModel url={ASSETS.car} scale={ASSETS.carScale} /> : <ProceduralCar />}
+      {ASSETS.car ? (
+        <Suspense fallback={null}>
+          <CarGLB url={ASSETS.car} />
+        </Suspense>
+      ) : (
+        <ProceduralCar />
+      )}
     </group>
   );
 }
