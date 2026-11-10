@@ -13,6 +13,7 @@ import { ArrowRight, ArrowUpRight } from "lucide-react";
 
 const FilmCanvas = lazy(() => import("../components/about/FilmCanvas"));
 
+const FOUNDER_IMAGE = "https://pub-c068270ff2f94b2691bb54438e646383.r2.dev/DSCF6122.JPG";
 const WHATSAPP_URL = `https://wa.me/917997658999?text=${encodeURIComponent("hi , i would like to enquire about rare creative studios")}`;
 
 const STAGES = [
@@ -106,7 +107,8 @@ function StaticFilm({ ctaHref }) {
 
 /* ---------------- page ---------------- */
 export default function About({ ctaHref = "/work" }) {
-  const root = useRef(), film = useRef(), bar = useRef(), chap = useRef();
+  const root = useRef(), track = useRef(), film = useRef(), bar = useRef(), chap = useRef();
+  const [span, setSpan] = useState(1200); // total scroll track height in vh
   const [mode, setMode] = useState("pending"); // pending | 3d | static
   const [active, setActive] = useState(true);
   const [faq, setFaq] = useState(-1);
@@ -119,6 +121,7 @@ export default function About({ ctaHref = "/work" }) {
   }, []);
 
   useEffect(() => {
+    setSpan(window.matchMedia("(max-width: 768px)").matches ? 900 : 1200);
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || navigator.connection?.saveData) return setMode("static");
     try {
       const c = document.createElement("canvas");
@@ -130,7 +133,6 @@ export default function About({ ctaHref = "/work" }) {
   useLayoutEffect(() => {
     if (mode !== "3d") return;
     gsap.registerPlugin(ScrollTrigger);
-    const mobile = window.matchMedia("(max-width: 768px)").matches;
     const ctx = gsap.context(() => {
       const Q = gsap.utils.selector(root.current);
       const chars = (sel, at, dur = 0.03, st = 0.003, from = {}) =>
@@ -140,8 +142,8 @@ export default function About({ ctaHref = "/work" }) {
       const tl = gsap.timeline({
         defaults: { ease: "none" },
         scrollTrigger: {
-          trigger: film.current, start: "top top", end: () => `+=${window.innerHeight * (mobile ? 8 : 11)}`,
-          pin: true, scrub: 1.1, anticipatePin: 1, invalidateOnRefresh: true,
+          trigger: track.current, start: "top top", end: "bottom bottom",
+          scrub: 1.1, invalidateOnRefresh: true,
           onToggle: (s) => setActive(s.isActive),
         },
         onUpdate: () => {
@@ -191,11 +193,12 @@ export default function About({ ctaHref = "/work" }) {
       tl.fromTo(Q("[data-l=final] .fq"), { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.02, ease: "power2.out" }, 0.95);
       tl.fromTo(Q("[data-l=final] .fc"), { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.02, ease: "power2.out" }, 0.965);
     }, root);
-    return () => { ctx.revert(); prog.v = 0; };
+    const t = setTimeout(() => { ScrollTrigger.refresh(); window.dispatchEvent(new Event("resize")); }, 700);
+    return () => { clearTimeout(t); ctx.revert(); prog.v = 0; };
   }, [mode, prog]);
 
   return (
-    <main ref={root} className="rcs-about relative overflow-x-clip">
+    <main ref={root} className="rcs-about relative w-full self-stretch overflow-x-clip">
       <style>{`
         .rcs-about{font-family:'Manrope','Helvetica Neue',Arial,sans-serif;background:#08090B;color:#EAE4DA}
         .rcs-about .disp{font-family:'Playfair Display',Georgia,serif;font-weight:900;letter-spacing:-.04em;line-height:.88;text-transform:uppercase}
@@ -230,8 +233,9 @@ export default function About({ ctaHref = "/work" }) {
 
       {/* =============== THE FILM (pinned, scroll-driven) =============== */}
       {mode === "3d" && (
-        <section ref={film} className="relative h-[100svh] w-full overflow-hidden bg-[#08090B]" aria-label="Beyond the lens — Rare Creative Studios">
-          <div className="absolute inset-0" aria-hidden="true">
+        <section ref={track} className="relative w-full" style={{ height: `${span}vh` }} aria-label="Beyond the lens — Rare Creative Studios">
+          <div ref={film} className="sticky top-0 h-screen w-full overflow-hidden bg-[#08090B]" style={{ height: "100svh" }}>
+          <div className="absolute inset-0" style={{ width: "100%", height: "100%" }} aria-hidden="true">
             <Suspense fallback={null}><FilmCanvas progress={prog} active={active} /></Suspense>
           </div>
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_45%,rgba(8,9,11,.75)_100%)]" aria-hidden="true" />
@@ -291,6 +295,7 @@ export default function About({ ctaHref = "/work" }) {
             </div>
             <div data-l="hint" className="mono absolute bottom-[7.5rem] right-5 flex items-center gap-3 text-[#C7A477] md:right-14">Scroll<span className="h-10 w-px bg-[#B87345]" aria-hidden="true" /></div>
           </div>
+          </div>
         </section>
       )}
 
@@ -328,15 +333,29 @@ export default function About({ ctaHref = "/work" }) {
         </section>
 
         <section className="px-5 py-28 md:px-14 md:py-40">
-          <FadeIn className="relative mx-auto max-w-4xl border-l border-[#B87345] pl-6 md:pl-12">
-            <Eyebrow>Founder’s message</Eyebrow>
-            <h2 className="disp mt-6 text-[clamp(2rem,5.6vw,4.8rem)]">Make work <span className="ital">worth remembering.</span></h2>
-            <div className="mt-8 max-w-2xl space-y-5 leading-8 text-[#EAE4DA]/75 md:text-[17px]">
-              <p>At Rare creative studios, we see every project as an opportunity to think differently, tell better stories, and create work that makes an impact. We bring together creativity, strategy, and execution to help brands communicate with clarity and connect with the people who matter to them.</p>
-              <p>For us, it’s never just about creating content. It’s about understanding the story behind a brand and finding the right way to bring it to life.</p>
-            </div>
-            <p className="mono mt-8 text-[#C7A477]">Pallapati Vinayvardhan Reddy — Founder</p>
-          </FadeIn>
+          <div className="mx-auto grid max-w-[1440px] items-center gap-14 lg:grid-cols-[.8fr_1.2fr] lg:gap-24">
+            <FadeIn className="relative mx-auto w-full max-w-md lg:mx-0">
+              <span aria-hidden="true" className="absolute -left-3 -top-3 h-20 w-20 border-l border-t border-[#B87345]" />
+              <span aria-hidden="true" className="absolute -bottom-3 -right-3 h-20 w-20 border-b border-r border-[#B87345]/50" />
+              <figure className="relative aspect-[4/5] overflow-hidden bg-[#121417]">
+                <img src={FOUNDER_IMAGE} alt="Pallapati Vinayvardhan Reddy, Founder of Rare creative studios" loading="lazy" decoding="async" className="h-full w-full object-cover object-top [filter:saturate(.85)_contrast(1.05)]" />
+                <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(180deg,transparent_55%,rgba(8,9,11,.9)_100%)]" />
+                <figcaption className="absolute inset-x-0 bottom-0 p-5">
+                  <p className="mono text-[#C7A477]">Rare creative studios</p>
+                  <p className="disp mt-2 text-xl leading-tight md:text-2xl">Pallapati Vinayvardhan Reddy</p>
+                  <p className="mono mt-2 text-[#EAE4DA]/60">Founder</p>
+                </figcaption>
+              </figure>
+            </FadeIn>
+            <FadeIn>
+              <Eyebrow>Founder’s message</Eyebrow>
+              <h2 className="disp mt-6 text-[clamp(2rem,5.2vw,4.6rem)]">Make work <span className="ital">worth remembering.</span></h2>
+              <div className="mt-8 max-w-2xl space-y-5 border-l border-[#B87345] pl-5 leading-8 text-[#EAE4DA]/75 md:pl-8 md:text-[17px]">
+                <p>At Rare creative studios, we see every project as an opportunity to think differently, tell better stories, and create work that makes an impact. We bring together creativity, strategy, and execution to help brands communicate with clarity and connect with the people who matter to them.</p>
+                <p>For us, it’s never just about creating content. It’s about understanding the story behind a brand and finding the right way to bring it to life.</p>
+              </div>
+            </FadeIn>
+          </div>
         </section>
 
         <section id="faq" className="border-t border-white/10 bg-[#121417] px-5 py-24 md:px-14 md:py-32">

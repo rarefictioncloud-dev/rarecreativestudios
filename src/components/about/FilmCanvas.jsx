@@ -205,10 +205,10 @@ function Dust({ q }) {
 function Shaft({ p }) {
   const ref = useRef(), mat = useRef();
   const tex = useMemo(() => gradTex(4, 128, true, [[0, "#fff"], [1, "#000"]]), []);
-  useFrame(() => { ref.current.visible = p.v < 0.36; mat.current.opacity = 0.16 * bell(0, 0.06, 0.14, 0.3, p.v) * (p.ex ?? 1); });
+  useFrame(() => { ref.current.visible = p.v < 0.16; mat.current.opacity = 0.12 * bell(0, 0.04, 0.08, 0.14, p.v) * (p.ex ?? 1); });
   return (
-    <mesh ref={ref} position={[0, 0, 8]} rotation-x={-Math.PI / 2}>
-      <coneGeometry args={[4.2, 16, 48, 1, true]} />
+    <mesh ref={ref} position={[0, 0, 4.5]} rotation-x={-Math.PI / 2}>
+      <coneGeometry args={[3.6, 9, 48, 1, true]} />
       <meshBasicMaterial ref={mat} alphaMap={tex} color={C.am} transparent blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.DoubleSide} />
     </mesh>
   );
@@ -503,7 +503,8 @@ export default function FilmCanvas({ progress, active = true }) {
   const x = q.mobile ? 0 : 2.0;
   return (
     <Canvas
-      dpr={dpr} frameloop={active ? "always" : "demand"} style={{ pointerEvents: "none" }}
+      dpr={dpr} frameloop={active ? "always" : "demand"} resize={{ scroll: false }}
+      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}
       camera={{ fov: q.mobile ? 48 : 38, near: 0.05, far: 300, position: [0, 0, 22] }}
       gl={{ antialias: !q.post, powerPreference: "high-performance" }}
     >
