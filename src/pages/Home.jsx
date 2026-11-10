@@ -619,46 +619,115 @@ function drawContact(g, w, h) {
   for (let i = 0; i < 6; i++) photoCard(g, 50 + (i % 3) * 315, 70 + Math.floor(i / 3) * 300, 290, 250, i);
 }
 
-function drawBoard(g, w, h) {
-  g.fillStyle = "#2b2824";
-  g.fillRect(0, 0, w, h);
-  const r = rnd(21);
-  for (let i = 0; i < 3500; i++) { // v6: 9000 -> 3500
-    g.fillStyle = `rgba(${r() > 0.5 ? "0,0,0" : "120,100,80"},${r() * 0.14})`;
-    g.fillRect(r() * w, r() * h, 2.4, 2.4);
+/* abstract, gallery-grade artwork (no cars): used for the studio's wall and credenza */
+function drawArt(g, w, h, kind = 0) {
+  const r = rnd(kind + 90);
+  if (kind === 0) {
+    const bg = g.createLinearGradient(0, 0, 0, h);
+    bg.addColorStop(0, "#0d1626");
+    bg.addColorStop(0.62, "#234A78");
+    bg.addColorStop(1, "#d9a441");
+    g.fillStyle = bg;
+    g.fillRect(0, 0, w, h);
+    const sun = g.createRadialGradient(w * 0.5, h * 0.64, 2, w * 0.5, h * 0.64, w * 0.24);
+    sun.addColorStop(0, "rgba(255,238,196,1)");
+    sun.addColorStop(0.5, "rgba(246,190,96,.92)");
+    sun.addColorStop(1, "rgba(217,164,65,0)");
+    g.fillStyle = sun;
+    g.fillRect(0, 0, w, h);
+    g.fillStyle = "#0B0B0C";
+    g.fillRect(0, h * 0.7, w, h * 0.3);
+    g.fillStyle = "rgba(241,239,233,.5)";
+    g.fillRect(0, h * 0.7, w, Math.max(1, h * 0.004));
+  } else if (kind === 1) {
+    g.fillStyle = "#efe8d6";
+    g.fillRect(0, 0, w, h);
+    g.strokeStyle = "#1b1b1d";
+    g.lineWidth = Math.max(2, w * 0.012);
+    for (let i = 0; i < 5; i++) {
+      g.beginPath();
+      g.arc(w * 0.5, h * 0.62, w * (0.12 + i * 0.09), Math.PI, 0);
+      g.stroke();
+    }
+    g.fillStyle = COL.copper;
+    g.beginPath();
+    g.arc(w * 0.5, h * 0.62, w * 0.045, 0, 7);
+    g.fill();
+    g.fillStyle = "#1b1b1d";
+    g.fillRect(w * 0.12, h * 0.62, w * 0.76, Math.max(2, h * 0.006));
+  } else if (kind === 2) {
+    g.fillStyle = "#0B0B0C";
+    g.fillRect(0, 0, w, h);
+    const band = g.createLinearGradient(w * 0.28, 0, w * 0.72, 0);
+    band.addColorStop(0, "rgba(35,74,120,0)");
+    band.addColorStop(0.5, "rgba(58,110,175,.95)");
+    band.addColorStop(1, "rgba(35,74,120,0)");
+    g.fillStyle = band;
+    g.fillRect(w * 0.28, 0, w * 0.44, h);
+    for (let i = 0; i < 6; i++) {
+      g.fillStyle = `rgba(217,164,65,${0.85 - i * 0.12})`;
+      g.fillRect(w * 0.12 + i * w * 0.028, h * 0.14, Math.max(1.5, w * 0.006), h * 0.72);
+    }
+    g.fillStyle = "rgba(241,239,233,.7)";
+    g.fillRect(w * 0.12, h * 0.8, w * 0.76, Math.max(1.5, h * 0.004));
+  } else {
+    g.fillStyle = "#efe8d6";
+    g.fillRect(0, 0, w, h);
+    text(g, "Rare", w * 0.07, h * 0.66, { font: FS, size: h * 0.62, weight: 300, color: "#1a1a1c" });
+    text(g, "CREATIVE STUDIOS", w * 0.08, h * 0.86, { font: FI, size: h * 0.085, weight: 600, color: COL.copper });
   }
-  const cols = 7, rows = 3, cw = w / cols, ch = h / rows;
-  const words = ["Light", "Speed", "Silence", "Precision", "Night", "Chrome"];
-  for (let ri = 0; ri < rows; ri++) {
-    for (let c = 0; c < cols; c++) {
-      const k = ri * cols + c;
-      const iw = cw * (0.62 + r() * 0.22), ih = ch * (0.6 + r() * 0.2);
-      const x = c * cw + (cw - iw) / 2 + (r() - 0.5) * 24, y = ri * ch + (ch - ih) / 2 + (r() - 0.5) * 20;
-      g.save();
-      g.translate(x + iw / 2, y + ih / 2);
-      g.rotate((r() - 0.5) * 0.12);
-      g.translate(-iw / 2, -ih / 2);
-      const t = k % 5;
-      if (t === 0 || t === 3) photoCard(g, 0, 0, iw, ih, k % 3);
-      else if (t === 1) {
-        g.fillStyle = "rgba(0,0,0,.4)";
-        g.fillRect(8, 10, iw, ih);
-        g.fillStyle = "#efe8d6";
-        g.fillRect(0, 0, iw, ih);
-        carSide(g, iw / 2, ih * 0.62, iw * 0.34, { seed: k });
-      } else if (t === 2) {
-        g.fillStyle = "#efe8d6";
-        g.fillRect(0, 0, iw, ih);
-        ["#0B0B0C", "#234A78", "#D9A441", "#7C3F30"].forEach((c2, i) => { g.fillStyle = c2; g.fillRect(14 + i * (iw - 28) / 4, 14, (iw - 28) / 4 - 6, ih - 28); });
-      } else {
-        g.fillStyle = "#efe8d6";
-        g.fillRect(0, 0, iw, ih);
-        text(g, words[k % words.length], iw / 2, ih * 0.62, { font: FS, size: Math.min(84, iw / 4), align: "center", color: "#1b2a44", weight: 300 });
-      }
-      tape(g, iw / 2, 0, (r() - 0.5) * 0.6, 90, 30);
-      g.restore();
+  if (kind !== 3) {
+    for (let i = 0; i < 160; i++) { // fine print grain
+      g.fillStyle = `rgba(255,255,255,${r() * 0.05})`;
+      g.fillRect(r() * w, r() * h, 1.6, 1.6);
     }
   }
+}
+
+function framedArt(g, x, y, w, h, kind) {
+  g.fillStyle = "rgba(0,0,0,.5)";
+  g.fillRect(x + 10, y + 16, w, h);
+  g.fillStyle = "#c2a06a";
+  g.fillRect(x, y, w, h);
+  g.fillStyle = "#8c6c3d";
+  g.fillRect(x + 4, y + 4, w - 8, h - 8);
+  g.fillStyle = "#efe8d6";
+  g.fillRect(x + 9, y + 9, w - 18, h - 18);
+  const m = Math.min(w, h) * 0.085;
+  const iw = w - 18 - 2 * m, ih = h - 18 - 2 * m;
+  g.save();
+  g.translate(x + 9 + m, y + 9 + m);
+  g.beginPath();
+  g.rect(0, 0, iw, ih);
+  g.clip();
+  drawArt(g, iw, ih, kind);
+  g.restore();
+}
+
+/* the studio's gallery wall: curated framed pieces on warm dark plaster */
+function drawBoard(g, w, h) {
+  const bg = g.createLinearGradient(0, 0, w, h);
+  bg.addColorStop(0, "#27221e");
+  bg.addColorStop(1, "#1c1916");
+  g.fillStyle = bg;
+  g.fillRect(0, 0, w, h);
+  const r = rnd(21);
+  for (let i = 0; i < 3000; i++) {
+    g.fillStyle = `rgba(${r() > 0.5 ? "0,0,0" : "150,125,95"},${r() * 0.07})`;
+    g.fillRect(r() * w, r() * h, 2.2, 2.2);
+  }
+  const wash = g.createRadialGradient(w * 0.5, 0, 20, w * 0.5, 0, w * 0.7);
+  wash.addColorStop(0, "rgba(255,214,150,.16)");
+  wash.addColorStop(1, "rgba(0,0,0,0)");
+  g.fillStyle = wash;
+  g.fillRect(0, 0, w, h);
+  framedArt(g, 80, 80, 500, 584, 0);
+  framedArt(g, 630, 80, 330, 260, 2);
+  framedArt(g, 630, 384, 330, 280, 1);
+  framedArt(g, 1010, 80, 290, 380, 1);
+  framedArt(g, 1010, 500, 290, 164, 2);
+  framedArt(g, 1350, 80, 610, 330, 0);
+  framedArt(g, 1350, 450, 610, 214, 3);
 }
 
 function drawLaptop(g, w, h) {
@@ -762,7 +831,10 @@ function makeTextures(q, maxAnisotropy = 4) {
   T.sheetB = mk(1024, 724, drawSketchSheet, true);
   T.sheetC = mk(1024, 724, drawCameraList, true);
   T.sheetD = mk(1024, 724, drawContact);
-  T.board = mk(2048, 860, drawBoard, true);
+  T.board = mk(2048, 744, drawBoard, true);
+  T.artA = mk(512, 640, (g, w, h) => drawArt(g, w, h, 0));
+  T.artB = mk(512, 640, (g, w, h) => drawArt(g, w, h, 2));
+  T.artC = mk(512, 640, (g, w, h) => drawArt(g, w, h, 1));
   T.photoA = mk(512, 362, (g, w, h) => photo(g, w, h, 0));
   T.photoB = mk(512, 362, (g, w, h) => photo(g, w, h, 1));
   T.photoC = mk(512, 362, (g, w, h) => photo(g, w, h, 2));
@@ -1240,7 +1312,8 @@ function Softbox({ pos, aim, size = [1.6, 1.2], hot = HOT_WHITE }) {
    across the storyboards (a profile two-shot for the camera). */
 const TABLE_Z = -0.2;
 const TABLE_R = 1.1;
-const SEAT_A = [-1.3, 0, TABLE_Z];
+const SEAT_CHAIR = [-1.3, 0, TABLE_Z]; // where the chair stands
+const SEAT_A = [-1.4, 0, TABLE_Z]; // the director sits a little further back in the chair
 const STAND_A = [1.42, 0, TABLE_Z + 0.02];
 const SEAT_A_YAW = yawTo(SEAT_A, STAND_A);
 /* a chair sits 2 cm behind its occupant (local +z is "behind" for every figure) */
@@ -1276,34 +1349,68 @@ function LensProp({ pos, rot = 0 }) {
   );
 }
 
-function Easel({ pos, map }) {
-  const yaw = yawTo(pos, [0, 0, TABLE_Z]);
+/* premium-studio decor */
+function SculpturePlinth({ pos }) {
   return (
-    <group position={pos} rotation-y={yaw}>
-      {[-0.42, 0.42].map((x, i) => (
-        <mesh key={i} position={[x, 0.82, 0.12]} rotation-z={x * -0.04} rotation-x={0.1} material={METAL} castShadow><boxGeometry args={[0.03, 1.66, 0.03]} /></mesh>
-      ))}
-      <mesh position={[0, 0.7, 0.3]} rotation-x={-0.3} material={METAL}><boxGeometry args={[0.025, 1.4, 0.025]} /></mesh>
-      <mesh position={[0, 0.62, -0.02]} material={METAL}><boxGeometry args={[1.0, 0.03, 0.08]} /></mesh>
-      <mesh position={[0, 1.2, -0.01]} castShadow><boxGeometry args={[1.02, 0.74, 0.02]} /><meshStandardMaterial color="#e8e1cf" roughness={0.9} /></mesh>
-      <mesh position={[0, 1.2, -0.0225]} rotation-y={Math.PI}>
-        <planeGeometry args={[0.94, 0.68]} />
-        <meshStandardMaterial map={map} emissiveMap={map} emissive="#ffffff" emissiveIntensity={0.16} roughness={0.9} />
-      </mesh>
+    <group position={pos}>
+      <mesh position={[0, 0.45, 0]} castShadow receiveShadow><boxGeometry args={[0.46, 0.9, 0.46]} /><meshStandardMaterial color="#d8d0c2" roughness={0.78} /></mesh>
+      <mesh position={[0, 0.903, 0]}><boxGeometry args={[0.5, 0.012, 0.5]} /><meshStandardMaterial color="#c5a16b" metalness={0.9} roughness={0.22} /></mesh>
+      <mesh position={[0, 1.07, 0]} rotation={[0.4, 0.6, 0]} castShadow><torusKnotGeometry args={[0.12, 0.032, 160, 18, 2, 3]} /><meshStandardMaterial color="#c9a265" metalness={1} roughness={0.2} /></mesh>
     </group>
   );
 }
 
-function Clapper({ pos, rot = 0 }) {
+function ArcLamp({ pos, yaw = 0 }) {
   return (
-    <group position={pos} rotation-y={rot} rotation-x={-0.18}>
-      <mesh position={[0, 0.11, 0]} castShadow><boxGeometry args={[0.3, 0.2, 0.014]} /><meshStandardMaterial color="#0d0d0f" roughness={0.6} /></mesh>
-      {Array.from({ length: 6 }, (_, i) => (
-        <mesh key={i} position={[-0.125 + i * 0.05, 0.225, 0.002]} rotation-z={0.5}><boxGeometry args={[0.03, 0.06, 0.016]} /><meshStandardMaterial color={i % 2 ? "#0d0d0f" : "#ece8dc"} roughness={0.6} /></mesh>
-      ))}
-      {[0.05, 0.1, 0.15].map((y, i) => (
-        <mesh key={i} position={[0, y, 0.008]}><boxGeometry args={[0.26, 0.004, 0.002]} /><meshBasicMaterial color="#d8d3c3" /></mesh>
-      ))}
+    <group position={pos} rotation-y={yaw}>
+      <mesh position={[0, 0.03, 0]} castShadow><cylinderGeometry args={[0.2, 0.23, 0.06, 40]} /><meshStandardMaterial color="#d8d0c2" roughness={0.45} metalness={0.05} /></mesh>
+      <mesh position={[0, 0.76, 0]} material={METAL}><cylinderGeometry args={[0.012, 0.012, 1.5, 10]} /></mesh>
+      <mesh position={[0.5, 1.5, 0]} rotation-z={Math.PI * 0.15}><torusGeometry args={[0.5, 0.011, 8, 48, Math.PI * 0.85]} /><meshStandardMaterial color="#c5a16b" metalness={0.92} roughness={0.2} /></mesh>
+      <group position={[0.945, 1.7, 0]}>
+        <mesh><sphereGeometry args={[0.17, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2]} /><meshStandardMaterial color="#c5a16b" metalness={0.92} roughness={0.22} side={THREE.DoubleSide} /></mesh>
+        <mesh position={[0, -0.005, 0]} rotation-x={Math.PI / 2}><circleGeometry args={[0.165, 28]} /><meshBasicMaterial color="#fff0d2" toneMapped={false} /></mesh>
+      </group>
+    </group>
+  );
+}
+
+function Vase({ pos, color = "#d8d0c2", r = 0.07 }) {
+  const mat = <meshStandardMaterial color={color} roughness={0.48} metalness={0.04} />;
+  return (
+    <group position={pos}>
+      <mesh position={[0, r * 1.25, 0]} scale={[1, 1.25, 1]} castShadow><sphereGeometry args={[r, 28, 18]} />{mat}</mesh>
+      <mesh position={[0, r * 2.65, 0]} castShadow><cylinderGeometry args={[r * 0.3, r * 0.42, r * 0.9, 24]} />{mat}</mesh>
+    </group>
+  );
+}
+
+function BookStack({ pos }) {
+  const books = [["#b29a75", 0.3, 0.035, 0.21, 0.05], ["#343b45", 0.27, 0.03, 0.19, -0.12], ["#704b36", 0.24, 0.028, 0.17, 0.2]];
+  let y = 0;
+  return (
+    <group position={pos}>
+      {books.map(([c, w, h, d, rot], i) => {
+        const yy = y + h / 2;
+        y += h;
+        return <mesh key={i} position={[0, yy, 0]} rotation-y={rot} castShadow><boxGeometry args={[w, h, d]} /><meshStandardMaterial color={c} roughness={0.8} /></mesh>;
+      })}
+      <mesh position={[0.01, y + 0.03, 0]} castShadow><sphereGeometry args={[0.045, 20, 14]} /><meshStandardMaterial color="#c9a265" metalness={1} roughness={0.2} /></mesh>
+    </group>
+  );
+}
+
+function Plant({ pos, scale = 1 }) {
+  return (
+    <group position={pos} scale={scale}>
+      <mesh position={[0, 0.27, 0]}><cylinderGeometry args={[0.27, 0.2, 0.54, 24]} /><meshStandardMaterial color="#b8aa98" roughness={0.72} /></mesh>
+      {Array.from({ length: 9 }, (_, i) => {
+        const a = (i / 9) * Math.PI * 2;
+        return (
+          <group key={`office-leaf-${i}`} position={[Math.cos(a) * 0.08, 0.58, Math.sin(a) * 0.08]} rotation-z={Math.cos(a) * 0.45} rotation-x={Math.sin(a) * 0.4}>
+            <mesh position={[0, 0.38, 0]}><capsuleGeometry args={[0.095, 0.55, 4, 8]} /><meshStandardMaterial color={i % 2 ? "#29463b" : "#365847"} roughness={0.9} /></mesh>
+          </group>
+        );
+      })}
     </group>
   );
 }
@@ -1496,18 +1603,9 @@ function StudioSet({ tx, low, reduced }) {
         ))}
       </group>
 
-      {/* plant */}
-      <group position={[4.0, 0, -2.72]}>
-        <mesh position={[0, 0.27, 0]}><cylinderGeometry args={[0.27, 0.2, 0.54, 24]} /><meshStandardMaterial color="#b8aa98" roughness={0.72} /></mesh>
-        {Array.from({ length: 9 }, (_, i) => {
-          const a = (i / 9) * Math.PI * 2;
-          return (
-            <group key={`office-leaf-${i}`} position={[Math.cos(a) * 0.08, 0.58, Math.sin(a) * 0.08]} rotation-z={Math.cos(a) * 0.45} rotation-x={Math.sin(a) * 0.4}>
-              <mesh position={[0, 0.38, 0]}><capsuleGeometry args={[0.095, 0.55, 4, 8]} /><meshStandardMaterial color={i % 2 ? "#29463b" : "#365847"} roughness={0.9} /></mesh>
-            </group>
-          );
-        })}
-      </group>
+      {/* plants */}
+      <Plant pos={[4.0, 0, -2.72]} />
+      <Plant pos={[-4.15, 0, -2.8]} scale={0.92} />
 
       <mesh position={[0, 3.52, -3.12]}><boxGeometry args={[7.5, 0.025, 0.025]} /><meshBasicMaterial color="#b38c55" toneMapped={false} /></mesh>
 
@@ -1547,7 +1645,7 @@ function StudioSet({ tx, low, reduced }) {
       </group>
       <ContactShadow pos={[0, 0.0125, TABLE_Z]} size={[3.1, 3.1]} blob={tx.blob} opacity={0.45} />
       <Pendant reduced={reduced} />
-      <Chair pos={chairAt(SEAT_A, SEAT_A_YAW)} yaw={SEAT_A_YAW} />
+      <Chair pos={chairAt(SEAT_CHAIR, SEAT_A_YAW)} yaw={SEAT_A_YAW} />
 
       {/* notes, storyboards and references on the table (all inside the round top) */}
       <ContactShadow pos={[0.2, 0.7545, -0.1]} size={[1.34, 1.04]} blob={tx.blob} />
@@ -1573,24 +1671,26 @@ function StudioSet({ tx, low, reduced }) {
 
       {PEOPLE.map((p) => <Figure key={p.id} {...p} animate={!reduced} low={low} />)}
 
-      {/* background dressing: the room reads as a production office */}
-      <Easel pos={[-2.9, 0, -1.7]} map={tx.sheetD} />
-      <Easel pos={[2.75, 0, -1.9]} map={tx.photoA} />
+      {/* background dressing: a calm, premium creative-studio interior */}
+      <SculpturePlinth pos={[-2.95, 0, -1.75]} />
+      <ArcLamp pos={[2.55, 0, -1.75]} yaw={Math.PI} />
       <mesh position={[0, 0.065, -2.565]}><boxGeometry args={[5.7, 0.012, 0.02]} /><meshBasicMaterial color={HOT_AMBER} toneMapped={false} /></mesh>
-      {[-2.3, -1.78, -1.26].map((x, i) => (
-        <group key={`credenza-frame-${i}`} position={[x, 0.7, -2.9]} rotation-x={-0.12}>
-          <mesh position={[0, 0.13, 0]}><boxGeometry args={[0.34, 0.25, 0.018]} /><meshStandardMaterial color="#b28b55" metalness={0.8} roughness={0.28} /></mesh>
-          <mesh position={[0, 0.13, 0.011]}><planeGeometry args={[0.3, 0.21]} /><meshStandardMaterial map={[tx.photoA, tx.photoB, tx.photoC][i]} emissiveMap={[tx.photoA, tx.photoB, tx.photoC][i]} emissive="#ffffff" emissiveIntensity={0.22} roughness={0.5} /></mesh>
+      {/* brass RCS wordmark above the gallery wall + warm vertical light reveals */}
+      <mesh position={[-0.25, 3.4, -3.17]}><planeGeometry args={[1.9, 0.475]} /><meshBasicMaterial map={tx.sign} color={new THREE.Color(1.25, 1.25, 1.25)} transparent depthWrite={false} toneMapped={false} /></mesh>
+      {[-3.62, 3.22].map((x, i) => (
+        <mesh key={`wall-reveal-${i}`} position={[x, 1.92, -3.24]}><boxGeometry args={[0.02, 3.2, 0.02]} /><meshBasicMaterial color={HOT_AMBER.clone().multiplyScalar(0.55)} toneMapped={false} /></mesh>
+      ))}
+      {[-2.3, -1.82, -1.34].map((x, i) => (
+        <group key={`credenza-frame-${i}`} position={[x, 0.7, -2.92]} rotation-x={-0.12}>
+          <mesh position={[0, 0.155, 0]}><boxGeometry args={[0.25, 0.31, 0.018]} /><meshStandardMaterial color="#c2a06a" metalness={0.8} roughness={0.28} /></mesh>
+          <mesh position={[0, 0.155, 0.011]}><planeGeometry args={[0.205, 0.265]} /><meshStandardMaterial map={[tx.artA, tx.artB, tx.artC][i]} emissiveMap={[tx.artA, tx.artB, tx.artC][i]} emissive="#ffffff" emissiveIntensity={0.2} roughness={0.5} /></mesh>
         </group>
       ))}
-      <Clapper pos={[1.1, 0.7, -2.86]} rot={-0.25} />
-      {[0, 1, 2].map((i) => (
-        <mesh key={`reel-${i}`} position={[2.0, 0.725 + i * 0.05, -2.84]} rotation-y={i * 0.5} castShadow>
-          <cylinderGeometry args={[0.15, 0.15, 0.04, 36]} />
-          <meshStandardMaterial color={i % 2 ? "#b8b9bd" : "#2a2b2e"} metalness={0.85} roughness={0.3} />
-        </mesh>
-      ))}
-      <Softbox pos={[-3.2, 1.8, -2.0]} aim={[0, 1, TABLE_Z]} size={[0.5, 1.3]} hot={HOT_AMBER.clone().multiplyScalar(0.45)} />
+      <Vase pos={[-0.7, 0.7, -2.86]} color="#d8d0c2" r={0.085} />
+      <Vase pos={[-0.42, 0.7, -2.8]} color="#9c5a3f" r={0.058} />
+      <BookStack pos={[0.85, 0.7, -2.82]} />
+      <Vase pos={[1.9, 0.7, -2.84]} color="#1c1d20" r={0.075} />
+      <Vase pos={[2.18, 0.7, -2.78]} color="#d8d0c2" r={0.05} />
 
       <Shaft from={[0, 2.25, -0.2]} to={[0, 0.76, -0.2]} r={1.35} color="#ffd9a0" op={0.16} ch="studio" />
 
