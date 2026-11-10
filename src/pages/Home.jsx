@@ -9,6 +9,7 @@ import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
+import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils.js";
 import { ToneMappingMode } from "postprocessing";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -890,8 +891,11 @@ function Limb({ len, r, mat, rot = [0, 0, 0], pos = [0, 0, 0], gref, children })
  * One preloaded FBX character, normalised to a target height and grounded at y = 0.
  * v6: it only renders and animates while the camera time is inside `range`,
  * and it pre-compiles its shaders once so it never hitches when it appears.
+ * Every instance gets its OWN skinned clone (several figures share one file, and a
+ * single Object3D can only live in one place), and its clip starts at a different
+ * moment so two figures never gesture in lock-step.
  */
-function FBXCharacter({ url, position, yaw = 0, scale = 1, targetHeight = 1.72, rotationY = Math.PI, range = [0, T_TOTAL], shadows = true }) {
+function FBXCharacter({ url, position, yaw = 0, scale = 1, targetHeight = 1.72, rotationY = Math.PI, range = [0, T_TOTAL], shadows = true, phase = 0 }) {
   const [asset, setAsset] = useState(null);
   const grp = useRef();
   const gl = useThree((s) => s.gl);
@@ -903,8 +907,11 @@ function FBXCharacter({ url, position, yaw = 0, scale = 1, targetHeight = 1.72, 
     let mixer = null;
     let rootForCleanup = null;
     getFBXPromise(url)
-      .then((loadedRoot) => {
+      .then((sourceRoot) => {
         if (!active) return;
+        const loadedRoot = SkeletonUtils.clone(sourceRoot);
+        const clips = sourceRoot.animations || [];
+        loadedRoot.animations = clips;
         loadedRoot.updateMatrixWorld(true);
         const bounds = new THREE.Box3().setFromObject(loadedRoot);
         const size = bounds.getSize(new THREE.Vector3());
@@ -916,9 +923,15 @@ function FBXCharacter({ url, position, yaw = 0, scale = 1, targetHeight = 1.72, 
           child.receiveShadow = false;
           child.frustumCulled = false; // skinned bounds are unreliable; the group visibility does the culling
         });
-        if (loadedRoot.animations?.length) {
+        if (clips.length) {
           mixer = new THREE.AnimationMixer(loadedRoot);
-          mixer.clipAction(loadedRoot.animations[0]).reset().play();
+          const clip = clips[0];
+          const action = mixer.clipAction(clip).reset();
+          const dur = clip.duration || 1;
+          action.time = (((phase * 1.9) % dur) + dur) % dur; // each figure starts at its own moment
+          action.setEffectiveTimeScale(0.94 + ((phase * 0.37) % 0.12)); // and breathes at a slightly different pace
+          action.play();
+          mixer.update(0);
         }
         rootForCleanup = loadedRoot;
         setAsset({ root: loadedRoot, fitScale, mixer, offset: [-center.x * fitScale, -bounds.min.y * fitScale, -center.z * fitScale] });
@@ -937,7 +950,7 @@ function FBXCharacter({ url, position, yaw = 0, scale = 1, targetHeight = 1.72, 
       }
       rootForCleanup?.removeFromParent();
     };
-  }, [url, targetHeight, shadows]);
+  }, [url, targetHeight, shadows, phase]);
 
   // compile the new materials off the critical path, right after the model mounts
   useEffect(() => {
@@ -1014,7 +1027,7 @@ function Figure({
       <FBXCharacter
         url={fbxConfig.url} position={pos} yaw={yaw} scale={scale}
         targetHeight={fbxConfig.targetHeight} rotationY={fbxConfig.rotationY}
-        range={fbxConfig.range} shadows={!low}
+        range={fbxConfig.range} shadows={!low} phase={phase}
       />
     );
   }
@@ -1224,17 +1237,24 @@ function Softbox({ pos, aim, size = [1.6, 1.2], hot = HOT_WHITE }) {
 
 /* ---------- studio set (the meeting room) ---------- */
 
-const SEAT_X = 1.28;
+/* Round meeting table, centred under the pendant. Two conversations happen around it:
+   each seated person has swivelled their chair toward a standing colleague, and the
+   standing colleague faces them back, so the pairs look straight at each other. */
 const TABLE_Z = -0.2;
-const SEATED_Z = TABLE_Z - 0.28;
-const NOTES_AT = [0.1, 0, -0.1];
-const STAND_A = [-0.78, 0, 0.82];
-const STAND_B = [0.78, 0, 0.82];
+const TABLE_R = 1.1;
+const SEAT_A = [-1.12, 0, -0.92];
+const SEAT_B = [1.12, 0, -0.92];
+const STAND_A = [-1.75, 0, -0.02];
+const STAND_B = [1.72, 0, 0.04];
+const SEAT_A_YAW = yawTo(SEAT_A, STAND_A);
+const SEAT_B_YAW = yawTo(SEAT_B, STAND_B);
+/* a chair sits 2 cm behind its occupant (local +z is "behind" for every figure) */
+const chairAt = (p, yaw) => [p[0] + Math.sin(yaw) * 0.02, 0, p[2] + Math.cos(yaw) * 0.02];
 const PEOPLE = [
-  { id: "seatA", pose: "seated", pos: [-SEAT_X, 0, SEATED_Z], yaw: -Math.PI / 2, scale: 1.10, head: 0.1, armL: "table", armR: "talk", gestR: true, lean: -0.05, palette: { top: "#2b2f36", bottom: "#15171b", skin: "#c58f6d", hair: "#17110d" }, phase: 0 },
-  { id: "seatB", pose: "seated", pos: [SEAT_X, 0, SEATED_Z], yaw: Math.PI / 2, scale: 1.10, head: -0.1, armL: "talk", armR: "table", gestL: true, lean: -0.04, long: true, palette: { top: "#6b5642", bottom: "#1c1d22", skin: "#8a5a3f", hair: "#0d0b0a" }, phase: 1.3 },
-  { id: "standA", pose: "standing", pos: STAND_A, yaw: yawTo(STAND_A, NOTES_AT), head: -0.3, armL: "cross", armR: "point", gestR: true, palette: { top: "#2f4358", bottom: "#17181c", skin: "#d1a07c", hair: "#2a1d14" }, phase: 2.1 },
-  { id: "standB", pose: "standing", pos: STAND_B, yaw: yawTo(STAND_B, NOTES_AT), head: 0.3, armL: "talk", armR: "mug", gestL: true, scale: 1.04, palette: { top: "#1b1c20", bottom: "#222428", skin: "#a8734f", hair: "#0f0c0a" }, phase: 3.4 },
+  { id: "seatA", pose: "seated", pos: SEAT_A, yaw: SEAT_A_YAW, scale: 1.10, head: 0, armL: "mug", armR: "talk", gestR: true, lean: -0.05, palette: { top: "#2b2f36", bottom: "#15171b", skin: "#c58f6d", hair: "#17110d" }, phase: 0 },
+  { id: "seatB", pose: "seated", pos: SEAT_B, yaw: SEAT_B_YAW, scale: 1.10, head: 0, armL: "talk", armR: "mug", gestL: true, lean: -0.04, long: true, palette: { top: "#6b5642", bottom: "#1c1d22", skin: "#8a5a3f", hair: "#0d0b0a" }, phase: 1.3 },
+  { id: "standA", pose: "standing", pos: STAND_A, yaw: yawTo(STAND_A, SEAT_A), head: 0, armL: "cross", armR: "point", gestR: true, palette: { top: "#2f4358", bottom: "#17181c", skin: "#d1a07c", hair: "#2a1d14" }, phase: 2.1 },
+  { id: "standB", pose: "standing", pos: STAND_B, yaw: yawTo(STAND_B, SEAT_B), head: 0, armL: "talk", armR: "mug", gestL: true, scale: 1.04, palette: { top: "#1b1c20", bottom: "#222428", skin: "#a8734f", hair: "#0f0c0a" }, phase: 3.4 },
 ];
 
 const CEILING_X = [-3.25, -1.1, 1.1, 3.25];
@@ -1438,32 +1458,54 @@ function StudioSet({ tx, low, reduced }) {
       <ChLight as="rectAreaLight" base={5} ch="studio" position={[-3.7, 2.3, -0.4]} rotation-y={Math.PI / 2} width={2.4} height={2.5} color="#f0d8b4" />
       <ChLight as="rectAreaLight" base={13} ch="studio" position={[4.55, 2.0, -0.8]} rotation-y={Math.PI / 2} width={2.7} height={2.4} color="#8eaacb" />
 
-      {/* table + chairs */}
+      {/* round table: solid walnut top, slim brass edge, tapered underside and a sculpted pedestal.
+          Nothing sits between the people, so every seated person looks straight at their partner. */}
       <group position={[0, 0, TABLE_Z]}>
-        <mesh position={[0, 0.72, 0]} castShadow receiveShadow><boxGeometry args={[2.6, 0.06, 1.3]} /><meshStandardMaterial map={tx.wood} color="#c9b0a0" roughness={0.42} metalness={0.05} /></mesh>
-        {[[-1.15, -0.55], [1.15, -0.55], [-1.15, 0.55], [1.15, 0.55]].map(([x, z], i) => (
-          <mesh key={i} position={[x, 0.345, z]} castShadow><boxGeometry args={[0.08, 0.69, 0.08]} /><meshStandardMaterial color="#1a1512" roughness={0.6} /></mesh>
-        ))}
+        <mesh position={[0, 0.72, 0]} castShadow receiveShadow>
+          <cylinderGeometry args={[TABLE_R, TABLE_R, 0.06, 96]} />
+          <meshStandardMaterial map={tx.wood} color="#c9b0a0" roughness={0.42} metalness={0.05} />
+        </mesh>
+        <mesh position={[0, 0.72, 0]} rotation-x={Math.PI / 2}>
+          <torusGeometry args={[TABLE_R, 0.011, 10, 128]} />
+          <meshStandardMaterial color="#c5a16b" metalness={0.92} roughness={0.2} />
+        </mesh>
+        <mesh position={[0, 0.665, 0]} castShadow>
+          <cylinderGeometry args={[0.96, 0.62, 0.07, 64]} />
+          <meshStandardMaterial color="#1a1512" roughness={0.55} metalness={0.15} />
+        </mesh>
+        <mesh position={[0, 0.34, 0]} castShadow>
+          <cylinderGeometry args={[0.09, 0.14, 0.6, 32]} />
+          <meshStandardMaterial color="#1a1512" roughness={0.5} metalness={0.2} />
+        </mesh>
+        <mesh position={[0, 0.045, 0]} castShadow receiveShadow>
+          <cylinderGeometry args={[0.48, 0.54, 0.05, 48]} />
+          <meshStandardMaterial color="#1c1d20" roughness={0.35} metalness={0.7} />
+        </mesh>
+        <mesh position={[0, 0.073, 0]} rotation-x={Math.PI / 2}>
+          <torusGeometry args={[0.46, 0.006, 8, 64]} />
+          <meshStandardMaterial color="#c5a16b" metalness={0.92} roughness={0.2} />
+        </mesh>
       </group>
+      <ContactShadow pos={[0, 0.0125, TABLE_Z]} size={[3.1, 3.1]} blob={tx.blob} opacity={0.45} />
       <Pendant reduced={reduced} />
-      <Chair pos={[-SEAT_X - 0.02, 0, SEATED_Z]} yaw={-Math.PI / 2} />
-      <Chair pos={[SEAT_X + 0.02, 0, SEATED_Z]} yaw={Math.PI / 2} />
+      <Chair pos={chairAt(SEAT_A, SEAT_A_YAW)} yaw={SEAT_A_YAW} />
+      <Chair pos={chairAt(SEAT_B, SEAT_B_YAW)} yaw={SEAT_B_YAW} />
 
-      {/* notes, storyboards and references on the table */}
+      {/* notes, storyboards and references on the table (all inside the round top) */}
       <ContactShadow pos={[0.2, 0.7545, -0.1]} size={[1.34, 1.04]} blob={tx.blob} />
       <group position={[0.2, 0.7585, -0.12]} rotation-y={0.05}><Sheet pos={[0, 0, 0]} size={[1.1, 0.8]} map={tx.hero} glow={0.1} /></group>
-      <ContactShadow pos={[-0.62, 0.7545, -0.5]} size={[0.66, 0.5]} blob={tx.blob} opacity={0.6} />
-      <Sheet pos={[-0.62, 0.7575, -0.5]} rot={0.38} size={[0.52, 0.37]} map={tx.sheetB} />
-      <ContactShadow pos={[0.98, 0.7545, 0.02]} size={[0.66, 0.5]} blob={tx.blob} opacity={0.6} />
-      <Sheet pos={[0.98, 0.7575, 0.02]} rot={-0.3} size={[0.52, 0.37]} map={tx.sheetC} />
-      <Sheet pos={[0.93, 0.7595, -0.55]} rot={0.5} size={[0.4, 0.28]} map={tx.sheetD} />
+      <ContactShadow pos={[-0.58, 0.7545, -0.48]} size={[0.66, 0.5]} blob={tx.blob} opacity={0.6} />
+      <Sheet pos={[-0.58, 0.7575, -0.48]} rot={0.38} size={[0.52, 0.37]} map={tx.sheetB} />
+      <ContactShadow pos={[0.78, 0.7545, 0.04]} size={[0.66, 0.5]} blob={tx.blob} opacity={0.6} />
+      <Sheet pos={[0.78, 0.7575, 0.04]} rot={-0.3} size={[0.52, 0.37]} map={tx.sheetC} />
+      <Sheet pos={[0.66, 0.7595, -0.62]} rot={0.5} size={[0.4, 0.28]} map={tx.sheetD} />
       <Sheet pos={[-0.58, 0.7595, 0.12]} rot={-0.15} size={[0.22, 0.155]} map={tx.photoB} glow={0.2} />
       <Sheet pos={[-0.3, 0.7605, 0.14]} rot={0.3} size={[0.22, 0.155]} map={tx.photoC} glow={0.2} />
-      <Laptop pos={[-0.98, 0.752, -0.5]} rot={0.25} map={tx.laptop} />
-      <DeskLamp pos={[1.08, 0.752, -0.55]} />
+      <Laptop pos={[-0.8, 0.752, -0.45]} rot={0.25} map={tx.laptop} />
+      <DeskLamp pos={[0.86, 0.752, -0.42]} />
       <Mug pos={[-0.32, 0.752, 0.22]} />
-      <Mug pos={[0.9, 0.752, 0.3]} />
-      <Mug pos={[-1.1, 0.752, 0.0]} />
+      <Mug pos={[0.82, 0.752, 0.3]} />
+      <Mug pos={[-0.88, 0.752, 0.0]} />
       <Pencil pos={[0.7, 0.76, 0.3]} rot={0.4} />
       <Pencil pos={[0.74, 0.76, 0.33]} rot={0.6} color="#7C3F30" />
       <Pencil pos={[-0.1, 0.76, 0.34]} rot={-0.3} color="#234A78" len={0.14} />
