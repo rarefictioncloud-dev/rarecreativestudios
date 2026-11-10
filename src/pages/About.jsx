@@ -156,7 +156,7 @@ export default function About({ ctaHref = "/work" }) {
       tl.to(prog, { v: 1, duration: 1 }, 0);
 
       // SCENE 01 — hero reveals on load (not scrubbed), exits as the camera closes in
-      gsap.fromTo(Q("[data-l=hero] .ch"), { yPercent: 110, opacity: 0, rotateX: -50 }, { yPercent: 0, opacity: 1, rotateX: 0, duration: 1.4, stagger: 0.06, ease: "power4.out", delay: 0.9 });
+      gsap.fromTo(Q("[data-l=hero] .ch"), { yPercent: 110, opacity: 0, rotateX: -50, transformPerspective: 800 }, { yPercent: 0, opacity: 1, rotateX: 0, duration: 1.4, stagger: 0.06, ease: "power4.out", delay: 0.9 });
       gsap.fromTo(Q("[data-l=hero] .sm"), { opacity: 0 }, { opacity: 1, duration: 1.6, delay: 1.8 });
       gsap.to(prog, { intro: 1, duration: 3.2, ease: "power2.out", delay: 0.2 });
       tl.to(Q("[data-l=hero]"), { autoAlpha: 0, scale: 1.2, duration: 0.06, ease: "power2.in" }, 0.08);
@@ -202,8 +202,9 @@ export default function About({ ctaHref = "/work" }) {
         .rcs-about .ital{font-style:italic;text-transform:none;color:#B87345;letter-spacing:-.03em}
         .rcs-about .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace;letter-spacing:.28em;text-transform:uppercase;font-size:10px}
         .rcs-about .metal{background:linear-gradient(180deg,#F4EFE6 0%,#C9BFAF 55%,#8E8372 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
-        .rcs-about .metal .ch{background:linear-gradient(180deg,#F4EFE6 0%,#C9BFAF 55%,#8E8372 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
-        .rcs-about .mask{display:block;overflow:hidden;padding:.06em 0 .12em}
+        .rcs-about .mc .ch{background:linear-gradient(180deg,#F4EFE6 0%,#C9BFAF 55%,#8E8372 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+        .rcs-about .mask{display:block;overflow:hidden;padding:.06em 0 .12em;text-align:inherit}
+        .rcs-about .mc{color:#EAE4DA}
         .rcs-about .free{display:block;perspective:900px}
         .rcs-about .ch{display:inline-block;will-change:transform,opacity}
         .rcs-about ::selection{background:#B87345;color:#08090B}
@@ -237,14 +238,14 @@ export default function About({ ctaHref = "/work" }) {
 
           <div className="pointer-events-none absolute inset-0">
             {/* SCENE 01 */}
-            <div data-l="hero" className="absolute inset-x-0 bottom-0 px-5 pb-[14vh] md:px-14 md:pb-[11vh]">
-              <div className="mx-auto max-w-[1440px]">
-                <div className="sm mono mb-5 flex justify-between text-[#C7A477]"><span>Rare Creative Studios / About</span><span className="hidden md:inline">Anamorphic · T1.3 · 50 mm</span></div>
-                <h1 aria-label="Beyond the lens." className="disp text-[clamp(3.4rem,15.5vw,15rem)] [text-shadow:0_8px_60px_rgba(0,0,0,.6)]">
-                  <span className="mask metal"><Split t="BEYOND" /></span>
-                  <span className="mask metal"><Split t="THE LENS" /><Split t="." copper /></span>
-                </h1>
+            <div data-l="hero" className="absolute inset-0">
+              <div className="absolute inset-x-0 top-0 px-5 pt-[12vh] md:px-14 md:pt-[13vh]">
+                <div className="sm mono mx-auto flex max-w-[1440px] justify-between text-[#C7A477]"><span>Rare Creative Studios</span><span className="hidden md:inline">Anamorphic · T1.3 · 50 mm</span><span>About</span></div>
               </div>
+              <h1 aria-label="Beyond the lens." className="disp mc absolute inset-0 text-center text-[clamp(2.8rem,9vw,8.5rem)] [letter-spacing:.02em] [text-shadow:0_8px_60px_rgba(0,0,0,.6)]">
+                <span className="mask absolute inset-x-0 top-[19vh] whitespace-nowrap"><Split t="BEYOND" /></span>
+                <span className="mask absolute inset-x-0 bottom-[16vh] whitespace-nowrap"><Split t="THE LENS" /><Split t="." copper /></span>
+              </h1>
             </div>
 
             {/* SCENE 02 */}
@@ -259,7 +260,7 @@ export default function About({ ctaHref = "/work" }) {
               <div key={s.n} data-l={`st${i}`} className="absolute inset-x-0 bottom-0 px-5 pb-[17vh] md:px-14 md:pb-[15vh]">
                 <div className="mx-auto max-w-[1440px]">
                   <p className="mono mb-4 flex items-center gap-3 text-[#B87345]"><span className="h-px w-10 bg-[#B87345]" aria-hidden="true" />Stage {s.n} / 04</p>
-                  <h2 className="disp mask tt metal text-[clamp(2.1rem,8.2vw,7.2rem)]"><Split t={s.t} /></h2>
+                  <h2 className="disp mask tt mc text-[clamp(2.1rem,8.2vw,7.2rem)]"><Split t={s.t} /></h2>
                   <p className="qq mt-4 max-w-sm font-light leading-relaxed text-[#EAE4DA]/80 md:text-lg">{s.q}</p>
                 </div>
               </div>
@@ -268,15 +269,15 @@ export default function About({ ctaHref = "/work" }) {
             {/* SCENE 04 */}
             {STATEMENTS.map(([a, b], i) => (
               <div key={a} data-l={`ss${i}`} className="disp absolute inset-0 flex flex-col items-center justify-center px-5 text-center" aria-label={`${a} over ${b}`}>
-                <span className="free metal text-[clamp(2.6rem,11.5vw,11rem)]"><Split t={a} /></span>
+                <span className="free mc text-[clamp(2.6rem,11.5vw,11rem)]"><Split t={a} /></span>
                 <span className="free ital my-[.25em] text-[clamp(1.4rem,5vw,4.5rem)]"><Split t="OVER" /></span>
-                <span className="free metal text-[clamp(2.6rem,11.5vw,11rem)]"><Split t={b} /></span>
+                <span className="free mc text-[clamp(2.6rem,11.5vw,11rem)]"><Split t={b} /></span>
               </div>
             ))}
 
             {/* SCENE 05 */}
             <div data-l="final" className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-4 px-5 pb-[11vh] text-center">
-              <h2 className="disp ft mask metal text-[clamp(1.5rem,4.4vw,4rem)]"><Split t="RARE CREATIVE STUDIOS" /></h2>
+              <h2 className="disp ft mask mc text-[clamp(1.5rem,4.4vw,4rem)]"><Split t="RARE CREATIVE STUDIOS" /></h2>
               <p className="fq disp ital text-[clamp(1.1rem,2.4vw,2rem)]">We don’t follow the frame. We redefine it.</p>
               <Cta href={ctaHref}>Explore what we create</Cta>
             </div>

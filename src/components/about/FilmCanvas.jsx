@@ -15,8 +15,8 @@ const C = { obs: "#08090B", char: "#121417", cu: "#B87345", am: "#D99A54", au: "
 const FONT = "https://threejs.org/examples/fonts/helvetiker_bold.typeface.json"; // swap for a brand font / real logo geometry
 const Z = [-18, -32, -46, -60]; // stage depths
 const PATH = [ // camera spline: lens approach, through the lens, 4 stages, void, logo, pull-back
-  [0, 0.4, 18], [0.8, 0.3, 12], [0, 0.1, 7], [0, 0, 1], [0, 0, -5], [1.2, 0.4, -13], [-1, 0.2, -27],
-  [0.8, 0.4, -41], [0, 0.2, -55], [0, 0, -68], [0, 0, -76], [0, 0, -86], [0, 0.7, -74],
+  [0, 0, 22], [0, 0, 14], [0, 0, 7], [0, 0, 1], [0, 0, -5], [0, 0.2, -13], [0, 0.1, -27],
+  [0, 0.2, -41], [0, 0.1, -55], [0, 0, -68], [0, 0, -76], [0, 0, -86], [0, 0.5, -74],
 ];
 
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
@@ -121,7 +121,7 @@ function Director({ p, ca }) {
     const t = p.v, ex = p.intro * (0.35 + 0.65 * sstep(0, 0.08, t));
     p.ex = ex;
     scene.environmentIntensity = 0.9 * ex;
-    if (scene.fog) scene.fog.far = 46 + 70 * sstep(0.84, 0.95, t);
+    if (scene.fog) scene.fog.far = 58 + 70 * sstep(0.84, 0.95, t);
     const k = bell(0.2, 0.26, 0.32, 0.37, t);
     ca.set(k * 0.0035, k * 0.002);
   });
@@ -174,10 +174,10 @@ function Rig({ p, q }) {
     const t = clamp01(p.v), s = m.current, k = Math.min(1, dt * 2);
     s.x += (s.tx - s.x) * k; s.y += (s.ty - s.y) * k;
     curve.getPoint(t, camera.position);
-    camera.position.x += s.x * 0.3; camera.position.y += s.y * 0.18;
-    look.set(camera.position.x * 0.2, camera.position.y * 0.2 - sstep(0.85, 1, t) * 0.6, camera.position.z - 10);
+    const par = sstep(0.3, 0.4, t) * (1 - sstep(0.86, 0.94, t));
+    look.set(s.x * 0.9 * par, camera.position.y * 0.2 + s.y * 0.5 * par - sstep(0.85, 1, t) * 0.6, camera.position.z - 10);
     camera.lookAt(look);
-    camera.rotateZ(Math.sin(t * 20) * 0.012 + bell(0.2, 0.3, 0.3, 0.38, t) * 0.12);
+    camera.rotateZ(bell(0.2, 0.3, 0.3, 0.38, t) * 0.06);
     camera.fov = (q.mobile ? 48 : 38) + 16 * bell(0.2, 0.26, 0.3, 0.37, t);
     camera.updateProjectionMatrix();
     light.current.position.set(camera.position.x, camera.position.y + 1.4, camera.position.z + 2);
@@ -256,7 +256,7 @@ function Lens({ p, q }) {
   useFrame(({ clock }) => {
     const t = p.v, time = clock.elapsedTime;
     root.current.visible = t < 0.44;
-    root.current.rotation.set(Math.sin(time * 0.2) * 0.03, Math.sin(time * 0.15) * 0.05, t * 0.25);
+    root.current.rotation.set(0, 0, 0);
     focus.current.rotation.y = t * 3.2;
     els.current.forEach((g, i) => { if (g) g.rotation.y = (i % 2 ? 1 : -1) * (t * 4 + time * 0.08); });
     const open = 0.3 + 0.12 * Math.sin(t * 50) * (1 - sstep(0.08, 0.13, t)) + 0.7 * sstep(0.1, 0.22, t);
@@ -500,16 +500,16 @@ export default function FilmCanvas({ progress, active = true }) {
   const q = useMemo(quality, []);
   const [dpr, setDpr] = useState(q.dpr[1]);
   const ca = useMemo(() => new THREE.Vector2(0, 0), []);
-  const x = q.mobile ? 0 : 1.7;
+  const x = q.mobile ? 0 : 2.0;
   return (
     <Canvas
       dpr={dpr} frameloop={active ? "always" : "demand"} style={{ pointerEvents: "none" }}
-      camera={{ fov: q.mobile ? 48 : 38, near: 0.05, far: 300, position: [0, 0.4, 18] }}
+      camera={{ fov: q.mobile ? 48 : 38, near: 0.05, far: 300, position: [0, 0, 22] }}
       gl={{ antialias: !q.post, powerPreference: "high-performance" }}
     >
       <PerformanceMonitor onDecline={() => setDpr(1)} onIncline={() => setDpr(q.dpr[1])} />
       <color attach="background" args={[C.obs]} />
-      <fog attach="fog" args={[C.obs, 16, 46]} />
+      <fog attach="fog" args={[C.obs, 24, 58]} />
       <Suspense fallback={null}>
         <Env />
         <Director p={progress} ca={ca} />
