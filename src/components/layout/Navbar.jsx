@@ -13,33 +13,34 @@ const CTA = {
   path: "/letsconnect",
 };
 
+/* Same type and palette as the Home film:
+   Inter Tight (light display, tight tracking), obsidian #0B0B0C, ivory #F1EFE9,
+   amber #D9A441 and the studio blue #234A78. Class names are prefixed so they
+   never clash with the styles Home injects. */
 const FONT_CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=IBM+Plex+Mono:wght@400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&display=swap');
 
-  .rcs-body {
-    font-family: "DM Sans", "Helvetica Neue", Arial, sans-serif;
+  .rcs-nav-root {
+    font-family: 'Inter Tight', 'Helvetica Neue', Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
 
-  .rcs-display {
-    font-family: "Cormorant Garamond", Georgia, serif;
-    font-weight: 500;
-    text-transform: none;
-    letter-spacing: -0.035em;
+  .rcs-nav-display {
+    font-family: 'Inter Tight', 'Helvetica Neue', Arial, sans-serif;
+    font-weight: 300;
+    letter-spacing: -0.045em;
     line-height: 1.05;
   }
 
   .rcs-nav-logo {
-    font-family: "DM Sans", "Helvetica Neue", Arial, sans-serif;
-    font-weight: 700;
-    letter-spacing: -0.075em;
-  }
-
-  .rcs-nav-mono {
-    font-family: "IBM Plex Mono", "Courier New", monospace;
+    font-family: 'Inter Tight', 'Helvetica Neue', Arial, sans-serif;
+    font-weight: 300;
+    letter-spacing: -0.05em;
   }
 
   .rcs-nav-sans {
-    font-family: "DM Sans", "Inter", "Helvetica Neue", Arial, sans-serif;
+    font-family: 'Inter Tight', 'Helvetica Neue', Arial, sans-serif;
   }
 
   /* Desktop: navbar is part of the normal document flow. */
@@ -71,16 +72,15 @@ const FONT_CSS = `
     }
   }
 
-  /* ---------- navbar polish ---------- */
-
-  /* soft amber light bleeding down from the top edge */
-  .rcs-nav-glow {
+  /* obsidian bar with the studio blue and amber light bleeding in from the top edge */
+  .rcs-nav-surface {
     background:
-      radial-gradient(60% 140% at 50% -60%, rgba(198,154,98,0.16) 0%, rgba(198,154,98,0) 70%),
-      linear-gradient(180deg, #0d0d0f 0%, #000000 100%);
+      radial-gradient(46% 170% at 10% -90%, rgba(35,74,120,0.42) 0%, rgba(35,74,120,0) 72%),
+      radial-gradient(38% 150% at 92% -80%, rgba(217,164,65,0.16) 0%, rgba(217,164,65,0) 70%),
+      linear-gradient(180deg, #101113 0%, #0B0B0C 100%);
   }
 
-  /* gentle breathing dot on the active link / logo */
+  /* gentle breathing dot on the active link */
   @keyframes rcs-nav-pulse {
     0%, 100% { opacity: .55; transform: scale(1); }
     50%      { opacity: 1;   transform: scale(1.5); }
@@ -201,11 +201,11 @@ export default function Navbar() {
   };
 
   const headerSkin = scrolled
-    ? "rcs-nav-glow border-b border-white/[0.10] shadow-[0_14px_44px_rgba(0,0,0,0.45)] md:backdrop-blur-xl"
-    : "rcs-nav-glow border-b border-white/[0.07]";
+    ? "rcs-nav-surface border-b border-white/[0.10] shadow-[0_14px_44px_rgba(0,0,0,0.5)] md:backdrop-blur-xl"
+    : "rcs-nav-surface border-b border-white/[0.07]";
 
   const focus =
-    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#C69A62]";
+    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#D9A441]";
 
   // Desktop pill link
   const linkCls = (active = false) => `
@@ -218,34 +218,34 @@ export default function Navbar() {
     rounded-full
     px-4
     py-2
-    text-[12.5px]
+    text-[13px]
     font-medium
-    tracking-[0.01em]
+    tracking-[0.005em]
     transition-all
     duration-300
     ${
       active
-        ? "bg-white/[0.07] text-[#EBCFA0] shadow-[inset_0_0_0_1px_rgba(198,154,98,0.28)]"
-        : "text-white/70 hover:bg-white/[0.06] hover:text-white"
+        ? "bg-white/[0.07] text-[#EBC36F] shadow-[inset_0_0_0_1px_rgba(217,164,65,0.32)]"
+        : "text-[#F1EFE9]/70 hover:bg-white/[0.06] hover:text-[#F1EFE9]"
     }
     ${focus}
   `;
 
   const mobileLinkClass = (active = false) => `
-    rcs-display
+    rcs-nav-display
     flex
     min-h-[64px]
     w-full
     items-center
     justify-between
     text-left
-    text-[30px]
+    text-[32px]
     transition-colors
     duration-300
     ${
       active
-        ? "text-[#D7B17B]"
-        : "text-[#F4F0E8] hover:text-[#D7B17B]"
+        ? "text-[#EBC36F]"
+        : "text-[#F1EFE9] hover:text-[#EBC36F]"
     }
     ${focus}
   `;
@@ -269,7 +269,7 @@ export default function Navbar() {
 
       <header
         className={`
-          rcs-body
+          rcs-nav-root
           rcs-navbar-header
           transition-all
           duration-300
@@ -291,10 +291,10 @@ export default function Navbar() {
             md:grid
             md:h-[84px]
             md:grid-cols-[1fr_auto_1fr]
-            md:px-[6vw]
+            md:px-[5vw]
           "
         >
-          {/* RARE logo */}
+          {/* Rare wordmark, set the way it appears on the studio wall */}
 
           <Link
             to="/"
@@ -306,8 +306,7 @@ export default function Navbar() {
               min-w-0
               shrink-0
               items-center
-              gap-2
-              sm:gap-2.5
+              gap-2.5
               md:gap-3
               md:justify-self-start
               ${focus}
@@ -316,19 +315,17 @@ export default function Navbar() {
             <span
               className="
                 rcs-nav-logo
-                text-[27px]
-                font-normal
-                uppercase
+                text-[30px]
                 leading-none
-                text-[#F4F0E8]
+                text-[#F1EFE9]
                 transition-colors
                 duration-300
                 group-hover:text-white
-                sm:text-[30px]
-                md:text-[36px]
+                sm:text-[32px]
+                md:text-[38px]
               "
             >
-              RARE
+              Rare
             </span>
 
             <span
@@ -338,7 +335,7 @@ export default function Navbar() {
                 w-px
                 bg-gradient-to-b
                 from-transparent
-                via-[#C69A62]/70
+                via-[#D9A441]/80
                 to-transparent
                 md:h-8
               "
@@ -346,22 +343,22 @@ export default function Navbar() {
 
             <span
               className="
-                rcs-nav-mono
+                rcs-nav-sans
                 rcs-nav-subtitle
                 flex
                 flex-col
-                text-[7px]
-                font-normal
+                text-[8px]
+                font-semibold
                 uppercase
-                leading-[1.6]
-                tracking-[0.14em]
-                text-white/55
+                leading-[1.55]
+                tracking-[0.18em]
+                text-[#D9A441]
                 transition-colors
                 duration-300
-                group-hover:text-[#D7B17B]
-                sm:text-[8px]
-                md:text-[9px]
-                md:tracking-[0.22em]
+                group-hover:text-[#EBC36F]
+                sm:text-[8.5px]
+                md:text-[9.5px]
+                md:tracking-[0.2em]
               "
             >
               <span>Creative</span>
@@ -403,7 +400,7 @@ export default function Navbar() {
                       {active && (
                         <span
                           aria-hidden="true"
-                          className="rcs-nav-dot h-1 w-1 rounded-full bg-[#C69A62]"
+                          className="rcs-nav-dot h-1 w-1 rounded-full bg-[#D9A441]"
                         />
                       )}
                       {item.label}
@@ -422,7 +419,7 @@ export default function Navbar() {
             })}
           </ul>
 
-          {/* Desktop CTA: visible only on desktop */}
+          {/* Desktop CTA: same amber pill as the Home page button */}
 
           <Link
             to={CTA.path}
@@ -438,21 +435,21 @@ export default function Navbar() {
               gap-3
               overflow-hidden
               rounded-full
-              bg-gradient-to-b
-              from-[#DDB379]
-              to-[#B98B52]
+              border
+              border-[#D9A441]/70
+              bg-[#D9A441]
               py-1.5
               pl-6
               pr-1.5
-              text-[12px]
+              text-[13px]
               font-semibold
-              tracking-[0.02em]
-              text-[#111318]
-              shadow-[0_10px_34px_-10px_rgba(198,154,98,0.7),inset_0_1px_0_rgba(255,255,255,0.4)]
-              transition-all
+              tracking-[0.005em]
+              text-[#0B0B0C]
+              shadow-[0_10px_40px_-10px_rgba(217,164,65,0.7)]
+              transition
               duration-300
               hover:-translate-y-0.5
-              hover:shadow-[0_16px_40px_-10px_rgba(198,154,98,0.85),inset_0_1px_0_rgba(255,255,255,0.5)]
+              hover:bg-[#F1EFE9]
               md:inline-flex
               md:justify-self-end
               ${focus}
@@ -460,7 +457,7 @@ export default function Navbar() {
           >
             <span
               aria-hidden="true"
-              className="rcs-cta-shine pointer-events-none absolute inset-y-0 left-0 w-8 bg-white/45 blur-md"
+              className="rcs-cta-shine pointer-events-none absolute inset-y-0 left-0 w-8 bg-white/50 blur-md"
             />
 
             <span className="relative">{CTA.label}</span>
@@ -473,14 +470,14 @@ export default function Navbar() {
                 w-8
                 place-items-center
                 rounded-full
-                bg-[#111318]
-                text-[#EBCFA0]
+                bg-[#0B0B0C]
+                text-[#D9A441]
                 transition-transform
                 duration-300
                 group-hover:rotate-45
               "
             >
-              <ArrowUpRight size={15} strokeWidth={1.9} />
+              <ArrowUpRight size={15} strokeWidth={2} />
             </span>
           </Link>
 
@@ -499,15 +496,15 @@ export default function Navbar() {
                 justify-center
                 gap-1
                 rounded-full
-                bg-gradient-to-b
-                from-[#DDB379]
-                to-[#B98B52]
+                border
+                border-[#D9A441]/70
+                bg-[#D9A441]
                 px-3
                 text-[10px]
                 font-semibold
                 leading-none
-                text-[#111318]
-                shadow-[0_8px_24px_-10px_rgba(198,154,98,0.7),inset_0_1px_0_rgba(255,255,255,0.4)]
+                text-[#0B0B0C]
+                shadow-[0_8px_26px_-10px_rgba(217,164,65,0.7)]
                 transition-all
                 duration-300
                 active:scale-[0.97]
@@ -525,7 +522,7 @@ export default function Navbar() {
 
               <ArrowUpRight
                 size={13}
-                strokeWidth={1.9}
+                strokeWidth={2}
                 className="shrink-0"
               />
             </Link>
@@ -548,14 +545,14 @@ export default function Navbar() {
                 rounded-full
                 border
                 bg-white/[0.04]
-                text-[#F4F0E8]
+                text-[#F1EFE9]
                 transition-all
                 duration-300
                 active:scale-95
                 ${
                   open
-                    ? "border-[#C69A62]/70 text-[#D7B17B]"
-                    : "border-white/20 hover:border-[#C69A62]/70 hover:text-[#D7B17B]"
+                    ? "border-[#D9A441]/70 text-[#EBC36F]"
+                    : "border-white/20 hover:border-[#D9A441]/70 hover:text-[#EBC36F]"
                 }
                 ${focus}
               `}
@@ -602,7 +599,7 @@ export default function Navbar() {
             overflow-y-auto
             border-t
             border-white/[0.10]
-            bg-[#000000]
+            bg-[#0B0B0C]
             transition-[max-height,opacity,visibility]
             duration-300
             ease-in-out
@@ -614,14 +611,14 @@ export default function Navbar() {
             }
           `}
         >
-          <div className="px-5 pb-7 pt-5 sm:px-8">
+          <div className="bg-[radial-gradient(ellipse_at_50%_100%,rgba(35,74,120,0.35)_0%,rgba(11,11,12,0)_70%)] px-5 pb-7 pt-5 sm:px-8">
             <div className="mb-5 flex items-center justify-between">
-              <span className="rcs-nav-mono text-[9px] uppercase tracking-[0.2em] text-white/40">
-                Navigation
+              <span className="rcs-nav-sans text-[11px] font-medium tracking-[0.08em] text-[#D9A441]">
+                Rare Creative Studios
               </span>
 
-              <span className="rcs-nav-mono text-[9px] text-[#D7B17B]">
-                RCS / 01
+              <span className="rcs-nav-sans text-[11px] font-medium tracking-wide text-[#F1EFE9]/45">
+                Menu
               </span>
             </div>
 
@@ -651,8 +648,8 @@ export default function Navbar() {
                         className={mobileLinkClass(active)}
                       >
                         <span className="flex items-center gap-4">
-                          <span className="rcs-nav-mono text-[10px] text-white/30">
-                            0{index + 1}
+                          <span className="rcs-nav-sans text-[12px] font-medium text-[#D9A441]/70">
+                            {String(index + 1).padStart(2, "0")}
                           </span>
 
                           {item.label}
@@ -660,7 +657,7 @@ export default function Navbar() {
                           {active && (
                             <span
                               aria-hidden="true"
-                              className="rcs-nav-dot h-1.5 w-1.5 rounded-full bg-[#C69A62]"
+                              className="rcs-nav-dot h-1.5 w-1.5 rounded-full bg-[#D9A441]"
                             />
                           )}
                         </span>
@@ -668,7 +665,7 @@ export default function Navbar() {
                         <ArrowUpRight
                           size={19}
                           strokeWidth={1.5}
-                          className="text-white/45"
+                          className="text-[#F1EFE9]/45"
                         />
                       </Link>
                     ) : (
@@ -679,8 +676,8 @@ export default function Navbar() {
                         className={mobileLinkClass(false)}
                       >
                         <span className="flex items-center gap-4">
-                          <span className="rcs-nav-mono text-[10px] text-white/30">
-                            0{index + 1}
+                          <span className="rcs-nav-sans text-[12px] font-medium text-[#D9A441]/70">
+                            {String(index + 1).padStart(2, "0")}
                           </span>
 
                           {item.label}
@@ -689,7 +686,7 @@ export default function Navbar() {
                         <ArrowUpRight
                           size={19}
                           strokeWidth={1.5}
-                          className="text-white/45"
+                          className="text-[#F1EFE9]/45"
                         />
                       </button>
                     )}
@@ -706,11 +703,11 @@ export default function Navbar() {
                   : "translate-y-3 opacity-0"
               }`}
             >
-              <span className="rcs-nav-mono text-[9px] uppercase tracking-[0.12em] text-white/40">
+              <span className="rcs-nav-sans text-[12px] font-medium text-[#F1EFE9]/50">
                 Strategy / Story / Culture
               </span>
 
-              <span className="rcs-nav-mono text-[9px] text-white/40">
+              <span className="rcs-nav-sans text-[12px] font-medium text-[#F1EFE9]/50">
                 © RCS
               </span>
             </div>
@@ -721,13 +718,13 @@ export default function Navbar() {
 
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#C69A62]/45 to-transparent"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#D9A441]/45 to-transparent"
         />
 
         <span
           ref={progressRef}
           aria-hidden="true"
-          className="pointer-events-none absolute bottom-0 left-0 h-[2px] w-full origin-left bg-gradient-to-r from-[#C69A62] to-[#F2D6A8]"
+          className="pointer-events-none absolute bottom-0 left-0 h-[2px] w-full origin-left bg-gradient-to-r from-[#D9A441] to-[#EBC36F]"
           style={{ transform: "scaleX(0)" }}
         />
       </header>
