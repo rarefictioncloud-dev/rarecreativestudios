@@ -1,37 +1,76 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import {
+  motion,
+  useReducedMotion,
+  useScroll,
+  useTransform,
+} from "framer-motion";
+import { ArrowUpRight } from "lucide-react";
+import RibbonFallback from "../components/hero/RibbonFallback";
 
-/* BEYOND THE LENS — cinematic About.
-   Obsidian #08090B · Charcoal #121417 · Copper #B87345 · Amber #D99A54 · Champagne #C7A477 · Ivory #EAE4DA
-   One pinned stage + one master GSAP timeline (0 → 1). The timeline drives a single progress value
-   that the R3F scene reads every frame, plus every typographic reveal, so scrolling backwards reverses
-   everything. Lenis is NOT created here: use the one your homepage already owns
-   (lenis.on("scroll", ScrollTrigger.update) if you haven't wired that already). */
+/* Fonts (.rcs-display, .rcs-body, .rcs-nav-mono) are injected by Navbar, which is mounted on every page.
+   THEME = Home: cobalt #124CCF, ivory #F5F2EA, Playfair serif headlines, Manrope body, mono labels.
+   LAYOUT = 3D-creator portfolio pattern: giant hero type, scroll marquee, scroll-revealed text,
+   numbered services list, sticky stacking cards. */
 
-const FilmCanvas = lazy(() => import("../components/about/FilmCanvas"));
+const RibbonWorld = lazy(() => import("../components/hero/RibbonWorld"));
+
+const WHATSAPP_URL = `https://wa.me/917997658999?text=${encodeURIComponent(
+  "hi , i would like to enquire about rare creative studios"
+)}`;
 
 const FOUNDER_IMAGE = "https://pub-c068270ff2f94b2691bb54438e646383.r2.dev/DSCF6122.JPG";
-const WHATSAPP_URL = `https://wa.me/917997658999?text=${encodeURIComponent("hi , i would like to enquire about rare creative studios")}`;
 
-const STAGES = [
-  { n: "01", t: "IMAGINE.", q: "Every extraordinary creation begins with an idea." },
-  { n: "02", t: "CONCEPTUALISE.", q: "We turn imagination into direction." },
-  { n: "03", t: "CREATE.", q: "We transform vision into experiences." },
-  { n: "04", t: "DELIVER.", q: "We make ideas impossible to ignore." },
-];
-const STATEMENTS = [["VISION", "CONVENTION."], ["DETAIL", "ORDINARY."], ["IMPACT", "EVERYTHING."]];
-const CHAPTERS = [[0, "The eye of creativity"], [0.17, "Enter the lens"], [0.36, "From nothing to extraordinary"], [0.71, "The RCS philosophy"], [0.9, "The final reveal"]];
+const focus =
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#6B93FF]";
+
+/* Shared type tokens (match Home) */
+const label = "text-[11px] md:text-[8px]";
+const h2Main = "text-[clamp(1.7rem,8vw,2.4rem)] md:text-[clamp(1.45rem,3vw,2.75rem)]";
+const h2Chapter = "text-[clamp(1.6rem,7.4vw,2.2rem)] md:text-[clamp(1.3rem,2.7vw,2.35rem)]";
+const h2Big = "text-[clamp(2.1rem,10vw,3rem)] md:text-[clamp(1.95rem,4vw,3.65rem)]";
+const h2Cta = "text-[clamp(1.8rem,9vw,2.6rem)] md:text-[clamp(1.45rem,3.5vw,3rem)]";
+const bodyDark = "text-[15px] leading-7 md:text-[10.5px] md:leading-relaxed";
+const small = "text-[14px] leading-relaxed md:text-[9px]";
+const itemTitle = "text-[clamp(1.3rem,6vw,1.6rem)] md:text-[clamp(1rem,1.45vw,1.3rem)]";
+const sectionTitle = "text-[clamp(3rem,12vw,9rem)]";
+
+const FRAMES = ["STRATEGY", "STORY", "INFLUENCE", "FILM", "IMPACT"];
 
 const faqs = [
-  { question: "What types of projects do you work on?", answer: "We partner on brand positioning, strategic PR, media strategy, narrative development, campaign execution, and digital amplification. Our creative production work spans creative direction, cinematography, video editing, post-production, and short films. We focus on projects where the ambition is to shape perception—not simply produce more content." },
-  { question: "How much do your services cost?", answer: "Our engagements are scoped around the ambition, complexity, deliverables, timeline, and creative involvement required. We do not use a one-size-fits-all price list. After an initial conversation, we define the opportunity and propose a considered scope with clear deliverables and investment." },
-  { question: "How long does a typical project take?", answer: "Timelines depend on scope. A focused strategy engagement may move faster than an integrated PR campaign or film production. We agree on milestones, approvals, and delivery expectations before work begins." },
-  { question: "Can you work with our in-house team or marketing?", answer: "Yes. We work alongside founders, leadership, internal marketing teams, and production partners. We align on objectives, responsibilities, and approval paths early so the work feels coherent rather than disconnected." },
-  { question: "Do you offer concept development or just execution?", answer: "We work from strategy and narrative through creative development, production, and amplification. We can lead the complete process or collaborate at a specific stage when the strategic foundation is already in place." },
+  {
+    question: "What types of projects do you work on?",
+    answer:
+      "We partner on brand positioning, strategic PR, media strategy, narrative development, campaign execution, and digital amplification. Our creative production work spans creative direction, cinematography, video editing, post-production, and short films. We focus on projects where the ambition is to shape perception—not simply produce more content.",
+  },
+  {
+    question: "How much do your services cost?",
+    answer:
+      "Our engagements are scoped around the ambition, complexity, deliverables, timeline, and creative involvement required. We do not use a one-size-fits-all price list. After an initial conversation, we define the opportunity and propose a considered scope with clear deliverables and investment.",
+  },
+  {
+    question: "How long does a typical project take?",
+    answer:
+      "Timelines depend on scope. A focused strategy engagement may move faster than an integrated PR campaign or film production. We agree on milestones, approvals, and delivery expectations before work begins.",
+  },
+  {
+    question: "Can you work with our in-house team or marketing?",
+    answer:
+      "Yes. We work alongside founders, leadership, internal marketing teams, and production partners. We align on objectives, responsibilities, and approval paths early so the work feels coherent rather than disconnected.",
+  },
+  {
+    question: "Do you offer concept development or just execution?",
+    answer:
+      "We work from strategy and narrative through creative development, production, and amplification. We can lead the complete process or collaborate at a specific stage when the strategic foundation is already in place.",
+  },
 ];
+
+const stages = [
+  { number: "01", title: "Strategy", kicker: "Narrative design, brand positioning, and perception.", body: "Define the territory your brand should own and the feeling it should leave behind." },
+  { number: "02", title: "Influence", kicker: "Thought leadership, media relationships, and cultural relevance.", body: "Give the story a voice through considered media, creators, leadership, and cultural placements." },
+  { number: "03", title: "Execution", kicker: "Targeted media relations, campaign delivery, and amplification.", body: "Bring the plan to life with precise delivery, coherent creative, and purposeful distribution." },
+];
+
 const capabilities = [
   { number: "01", title: "Brand Positioning", description: "Define the space a brand should own, the audience it matters to, and the perception it needs to earn." },
   { number: "02", title: "Media Strategy & PR", description: "Build a deliberate narrative and place it with the right journalists, creators, platforms, and conversations." },
@@ -40,366 +79,699 @@ const capabilities = [
   { number: "05", title: "Digital Amplification", description: "Extend the life of a story through thoughtful distribution and relevant audience touchpoints." },
   { number: "06", title: "Film & Creative Production", description: "Creative direction, cinematography, video editing, post-production, and short-film production." },
 ];
+
 const production = ["Creative direction", "Concept development", "Cinematography", "Video editing", "Post-production", "Short-film production"];
+
 const philosophy = [
   "We don’t begin with a press release or a list of outlets. We begin with the business, the audience, the cultural context, and the perception the brand needs to earn.",
   "From there, we design the narrative, identify the right voices and moments, and bring the story to life through precise execution.",
   "The goal is not noise. It is meaningful attention that lasts.",
 ];
 
-/* ---------------- small pieces ---------------- */
-const Split = ({ t, copper }) =>
-  [...t].map((c, i) => (
-    <span key={i} className="ch" aria-hidden="true" style={copper ? { color: "#B87345" } : undefined}>{c === " " ? "\u00A0" : c}</span>
-  ));
+/* Marquee content: row 1 moves right on scroll, row 2 moves left */
+const MARQUEE_ROW_1 = [
+  ...capabilities.map((c) => ({ n: c.number, t: c.title, k: "Capability" })),
+  ...stages.map((s) => ({ n: s.number, t: s.title, k: "Stage" })),
+];
+const MARQUEE_ROW_2 = [
+  ...FRAMES.map((f, i) => ({ n: `0${i + 1}`, t: f, k: "Frame" })),
+  ...production.map((p, i) => ({ n: `0${i + 1}`, t: p, k: "Production" })),
+];
 
-function FadeIn({ children, delay = 0, y = 24, as = "div", className = "" }) {
+/* ------------------------------------------------------------------ */
+/* Reusable components                                                 */
+/* ------------------------------------------------------------------ */
+
+/* Scroll-in wrapper. Respects reduced motion. */
+function FadeIn({ children, delay = 0, duration = 0.7, x = 0, y = 30, as = "div", className = "", style }) {
   const reduce = useReducedMotion();
   const Comp = motion[as] || motion.div;
-  if (reduce) { const Plain = as; return <Plain className={className}>{children}</Plain>; }
+  if (reduce) {
+    const Plain = as;
+    return <Plain className={className} style={style}>{children}</Plain>;
+  }
   return (
-    <Comp className={className} initial={{ opacity: 0, y }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "40px" }} transition={{ duration: 0.8, delay, ease: [0.22, 1, 0.36, 1] }}>
+    <Comp
+      className={className}
+      style={style}
+      initial={{ opacity: 0, x, y }}
+      whileInView={{ opacity: 1, x: 0, y: 0 }}
+      viewport={{ once: true, margin: "50px", amount: 0 }}
+      transition={{ duration, delay, ease: [0.25, 0.1, 0.25, 1] }}
+    >
       {children}
     </Comp>
   );
 }
 
-const Eyebrow = ({ children }) => (
-  <p className="mono flex items-center gap-3 text-[#C7A477]"><span aria-hidden="true" className="h-px w-8 bg-[#B87345]" />{children}</p>
-);
+/* Mouse-following magnetic effect */
+function Magnet({
+  children,
+  padding = 100,
+  strength = 3,
+  activeTransition = "transform 0.3s ease-out",
+  inactiveTransition = "transform 0.6s ease-in-out",
+  className = "",
+  disabled = false,
+}) {
+  const ref = useRef(null);
+  const [active, setActive] = useState(false);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
 
-function Cta({ href, children, external }) {
+  useEffect(() => {
+    if (disabled) return;
+    if (window.matchMedia("(pointer: coarse)").matches) return;
+    const move = (e) => {
+      const el = ref.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+      const dx = e.clientX - cx;
+      const dy = e.clientY - cy;
+      if (Math.abs(dx) < r.width / 2 + padding && Math.abs(dy) < r.height / 2 + padding) {
+        setActive(true);
+        setPos({ x: dx / strength, y: dy / strength });
+      } else {
+        setActive(false);
+        setPos({ x: 0, y: 0 });
+      }
+    };
+    window.addEventListener("mousemove", move, { passive: true });
+    return () => window.removeEventListener("mousemove", move);
+  }, [padding, strength, disabled]);
+
   return (
-    <a href={href} {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})} className="rcs-cta pointer-events-auto fc">
-      <span className="rcs-cta-label">{children}</span>
-      <span className="rcs-cta-arrow" aria-hidden="true"><ArrowRight size={18} strokeWidth={1.5} /></span>
-      {external && <span className="sr-only"> (opens in a new tab)</span>}
+    <div ref={ref} className={`relative inline-block ${className}`}>
+      <div
+        style={{
+          transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`,
+          transition: active ? activeTransition : inactiveTransition,
+          willChange: "transform",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/* Character-by-character scroll reveal (opacity .2 -> 1) */
+function Char({ char, index, total, progress }) {
+  const start = index / total;
+  const end = Math.min(1, start + 1 / total + 0.02);
+  const opacity = useTransform(progress, [start, end], [0.2, 1]);
+  return <motion.span style={{ opacity }}>{char}</motion.span>;
+}
+
+function AnimatedText({ text, className = "" }) {
+  const ref = useRef(null);
+  const reduce = useReducedMotion();
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start 0.8", "end 0.2"] });
+  if (reduce) return <p className={className}>{text}</p>;
+
+  const words = text.split(" ");
+  const total = text.length;
+  let cursor = 0;
+  return (
+    <p ref={ref} className={className} aria-label={text}>
+      {words.map((word, wi) => {
+        const startIndex = cursor;
+        cursor += word.length + 1;
+        return (
+          <span key={wi} aria-hidden="true" className="inline-block whitespace-nowrap">
+            {word.split("").map((ch, ci) => (
+              <Char key={ci} char={ch} index={startIndex + ci} total={total} progress={scrollYProgress} />
+            ))}
+            {wi < words.length - 1 && <span>&nbsp;</span>}
+          </span>
+        );
+      })}
+    </p>
+  );
+}
+
+/* Cobalt pill CTA (WhatsApp) */
+function ContactButton({ children = "Start a conversation", className = "" }) {
+  return (
+    <a
+      href={WHATSAPP_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`inline-flex items-center justify-center rounded-full px-8 py-3 font-medium uppercase tracking-widest text-white transition-transform duration-300 hover:scale-[1.03] sm:px-10 sm:py-3.5 md:px-12 md:py-4 text-xs sm:text-sm md:text-[11px] ${focus} ${className}`}
+      style={{
+        background: "linear-gradient(123deg, #071C50 7%, #124CCF 40%, #245DFF 72%, #6B93FF 100%)",
+        boxShadow: "0px 4px 4px rgba(18,76,207,.25), 4px 4px 12px #245DFF inset",
+        outline: "2px solid white",
+        outlineOffset: "-3px",
+      }}
+    >
+      {children}
+      <span className="sr-only"> (opens WhatsApp in a new tab)</span>
     </a>
   );
 }
 
-/* Reduced-motion / no-WebGL version: same story, no pinned scene */
-function StaticFilm({ ctaHref }) {
+function GhostPill({ children }) {
   return (
-    <section className="relative px-5 pb-24 pt-40 md:px-14">
-      <div className="mx-auto max-w-[1440px] space-y-24">
-        <h1 className="disp metal text-[clamp(3.4rem,15vw,13rem)]">Beyond<br />the lens<span className="text-[#B87345]">.</span></h1>
-        <p className="disp text-[clamp(2.2rem,8vw,7rem)]">We see what others <span className="ital">imagine.</span></p>
-        <ol className="grid gap-10 md:grid-cols-4">
-          {STAGES.map((s) => (
-            <li key={s.n} className="border-t border-white/15 pt-5">
-              <p className="mono text-[#B87345]">Stage {s.n} / 04</p>
-              <h2 className="disp mt-3 text-3xl md:text-4xl">{s.t}</h2>
-              <p className="mt-3 text-[#EAE4DA]/70">{s.q}</p>
-            </li>
-          ))}
-        </ol>
-        <div className="space-y-4">{STATEMENTS.map(([a, b]) => <p key={a} className="disp metal text-[clamp(2rem,7vw,6rem)]">{a} <span className="ital">over</span> {b}</p>)}</div>
-        <div className="space-y-6">
-          <p className="disp text-[clamp(1.6rem,4vw,3.4rem)]">Rare Creative Studios</p>
-          <p className="disp ital text-xl md:text-3xl">We don’t follow the frame. We redefine it.</p>
-          <Cta href={ctaHref}>Explore what we create</Cta>
-        </div>
+    <span className="inline-flex items-center rounded-full border-2 border-[#D7E2EA]/70 px-6 py-2 text-[11px] font-medium uppercase tracking-widest text-[#D7E2EA] sm:px-8 sm:py-2.5 md:text-[9px]">
+      {children}
+    </span>
+  );
+}
+
+function PlusIcon({ open }) {
+  return (
+    <span aria-hidden="true" className={`relative flex h-11 w-11 shrink-0 items-center justify-center transition-transform duration-300 ${open ? "rotate-45 text-[#6B93FF]" : "text-white/75"}`}>
+      <span className="absolute h-[2px] w-5 bg-current" />
+      <span className="absolute h-5 w-[2px] bg-current" />
+    </span>
+  );
+}
+
+function Eyebrow({ children, tone = "dark" }) {
+  return (
+    <p className={`rcs-nav-mono flex items-center gap-3 ${label} font-medium uppercase tracking-[.28em] md:tracking-[.3em] ${tone === "light" ? "text-[#124CCF]" : "text-[#6B93FF]"}`}>
+      <span aria-hidden="true" className="h-px w-8 bg-current" />
+      {children}
+    </p>
+  );
+}
+
+/* Decorative floating "3D" objects used in the philosophy corners */
+function FloatObject({ kind, className, delay, x, floatDelay = 0 }) {
+  const reduce = useReducedMotion();
+  const shapes = {
+    ring: (
+      <div className="aspect-square w-full rounded-full border-[clamp(10px,2vw,22px)] border-[#245DFF] shadow-[0_0_60px_rgba(36,93,255,.55),inset_0_0_24px_rgba(255,255,255,.35)]" />
+    ),
+    sheet: (
+      <div className="aspect-[4/5] w-full rotate-[-12deg] border border-white/20 bg-[#F5F2EA] shadow-[0_30px_80px_rgba(0,0,0,.55)]">
+        <span className="mt-[14%] ml-[14%] block h-[2px] w-[45%] bg-[#C6A66B]" />
+      </div>
+    ),
+    orb: (
+      <div className="aspect-square w-full rounded-full bg-[radial-gradient(circle_at_30%_28%,#8FB0FF_0%,#124CCF_45%,#071C50_100%)] shadow-[0_20px_70px_rgba(18,76,207,.6)]" />
+    ),
+    gold: (
+      <div className="aspect-square w-full rounded-full border-[clamp(4px,.8vw,9px)] border-[#C6A66B] shadow-[0_0_40px_rgba(198,166,107,.4),inset_0_0_14px_rgba(255,236,190,.5)]" />
+    ),
+  };
+  return (
+    <FadeIn delay={delay} x={x} y={0} duration={0.9} className={`pointer-events-none absolute ${className}`}>
+      <motion.div
+        aria-hidden="true"
+        animate={reduce ? undefined : { y: [0, -16, 0], rotate: [0, 4, 0] }}
+        transition={{ duration: 6 + floatDelay, repeat: Infinity, ease: "easeInOut", delay: floatDelay }}
+      >
+        {shapes[kind]}
+      </motion.div>
+    </FadeIn>
+  );
+}
+
+/* One row of the scroll-driven marquee */
+function MarqueeTile({ item, i }) {
+  const v = i % 3;
+  const styles = [
+    "bg-[#124CCF] text-white",
+    "bg-[#F5F2EA] text-[#111111]",
+    "border border-[#6B93FF]/50 bg-[#071C50]/60 text-[#8FB0FF]",
+  ];
+  return (
+    <div className={`relative flex h-[180px] w-[280px] shrink-0 flex-col justify-between rounded-2xl p-5 sm:h-[270px] sm:w-[420px] sm:p-7 ${styles[v]}`}>
+      <div className="rcs-nav-mono flex items-center justify-between text-[10px] uppercase tracking-[.25em] opacity-70 md:text-[8px]">
+        <span>{item.k}</span>
+        <span>{item.n}</span>
+      </div>
+      <p className="rcs-display uppercase text-[clamp(1.4rem,3.4vw,2.4rem)] leading-[.95]">{item.t}</p>
+    </div>
+  );
+}
+
+function MarqueeSection() {
+  const sectionRef = useRef(null);
+  const row1 = useRef(null);
+  const row2 = useRef(null);
+  const reduce = useReducedMotion();
+
+  useEffect(() => {
+    if (reduce) return;
+    let frame = 0;
+    const run = () => {
+      frame = 0;
+      const el = sectionRef.current;
+      if (!el) return;
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      const offset = (window.scrollY - top + window.innerHeight) * 0.3;
+      if (row1.current) row1.current.style.transform = `translate3d(calc(-33.333% + ${offset - 200}px), 0, 0)`;
+      if (row2.current) row2.current.style.transform = `translate3d(calc(-33.333% - ${offset - 200}px), 0, 0)`;
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(run);
+    };
+    run();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [reduce]);
+
+  const tripled = (arr) => [...arr, ...arr, ...arr];
+
+  return (
+    <section ref={sectionRef} aria-hidden="true" className="relative overflow-hidden border-y border-white/10 bg-[#050A14]/80 pb-10 pt-24 sm:pt-32 md:pt-40">
+      <div ref={row1} className="flex w-max gap-3" style={{ willChange: "transform", transform: "translate3d(-33.333%,0,0)" }}>
+        {tripled(MARQUEE_ROW_1).map((item, i) => (
+          <MarqueeTile key={`a${i}`} item={item} i={i} />
+        ))}
+      </div>
+      <div ref={row2} className="mt-3 flex w-max gap-3" style={{ willChange: "transform", transform: "translate3d(-33.333%,0,0)" }}>
+        {tripled(MARQUEE_ROW_2).map((item, i) => (
+          <MarqueeTile key={`b${i}`} item={item} i={i + 1} />
+        ))}
       </div>
     </section>
   );
 }
 
-/* ---------------- page ---------------- */
-export default function About({ ctaHref = "/work" }) {
-  const root = useRef(), track = useRef(), film = useRef(), bar = useRef(), chap = useRef();
-  const [span, setSpan] = useState(1200); // total scroll track height in vh
-  const [mode, setMode] = useState("pending"); // pending | 3d | static
-  const [active, setActive] = useState(true);
-  const [faq, setFaq] = useState(-1);
-  const prog = useMemo(() => ({ v: 0, intro: 0, ex: 1 }), []);
-
-  useEffect(() => {
-    const prev = document.body.style.backgroundColor;
-    document.body.style.backgroundColor = "#08090B";
-    return () => { document.body.style.backgroundColor = prev; };
-  }, []);
-
-  useEffect(() => {
-    setSpan(window.matchMedia("(max-width: 768px)").matches ? 900 : 1200);
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || navigator.connection?.saveData) return setMode("static");
-    try {
-      const c = document.createElement("canvas");
-      setMode(window.WebGLRenderingContext && (c.getContext("webgl2") || c.getContext("webgl")) ? "3d" : "static");
-    } catch { setMode("static"); }
-  }, []);
-
-  /* ============ MASTER TIMELINE: one scrubbed timeline, 0 → 1 ============ */
-  useLayoutEffect(() => {
-    if (mode !== "3d") return;
-    gsap.registerPlugin(ScrollTrigger);
-    const ctx = gsap.context(() => {
-      const Q = gsap.utils.selector(root.current);
-      const chars = (sel, at, dur = 0.03, st = 0.003, from = {}) =>
-        tl.fromTo(Q(`${sel} .ch`), { yPercent: 110, opacity: 0, ...from }, { yPercent: 0, opacity: 1, rotateX: 0, z: 0, duration: dur, stagger: st, ease: "power3.out" }, at);
-      const out = (sel, at, dur = 0.03, to = {}) => tl.to(Q(sel), { autoAlpha: 0, duration: dur, ease: "power2.in", ...to }, at);
-
-      const tl = gsap.timeline({
-        defaults: { ease: "none" },
-        scrollTrigger: {
-          trigger: track.current, start: "top top", end: "bottom bottom",
-          scrub: 1.1, invalidateOnRefresh: true,
-          onToggle: (s) => setActive(s.isActive),
-        },
-        onUpdate: () => {
-          const v = prog.v;
-          if (bar.current) bar.current.style.transform = `scaleX(${v})`;
-          let c = 0; CHAPTERS.forEach(([s], i) => { if (v >= s) c = i; });
-          if (chap.current && chap.current.dataset.i !== String(c)) { chap.current.dataset.i = c; chap.current.textContent = `0${c + 1} — ${CHAPTERS[c][1]}`; }
-        },
-      });
-
-      // the world: camera, lenses, lights, particles all read prog.v
-      tl.to(prog, { v: 1, duration: 1 }, 0);
-
-      // SCENE 01 — hero reveals on load (not scrubbed), exits as the camera closes in
-      gsap.fromTo(Q("[data-l=hero] .ch"), { yPercent: 110, opacity: 0, rotateX: -50, transformPerspective: 800 }, { yPercent: 0, opacity: 1, rotateX: 0, duration: 1.4, stagger: 0.06, ease: "power4.out", delay: 0.9 });
-      gsap.fromTo(Q("[data-l=hero] .sm"), { opacity: 0 }, { opacity: 1, duration: 1.6, delay: 1.8 });
-      gsap.to(prog, { intro: 1, duration: 3.2, ease: "power2.out", delay: 0.2 });
-      tl.to(Q("[data-l=hero]"), { autoAlpha: 0, scale: 1.2, duration: 0.06, ease: "power2.in" }, 0.08);
-      tl.to(Q("[data-l=hint]"), { autoAlpha: 0, duration: 0.02 }, 0);
-
-      // SCENE 02 — enter the lens
-      chars("[data-l=enter] .r1", 0.25, 0.03, 0.004);
-      chars("[data-l=enter] .r2", 0.275, 0.03, 0.004);
-      chars("[data-l=enter] .r3", 0.3, 0.035, 0.005);
-      out("[data-l=enter]", 0.345, 0.035, { scale: 1.15 });
-
-      // SCENE 03 — four stages
-      [0.385, 0.465, 0.545, 0.625].forEach((a, i) => {
-        const s = `[data-l=st${i}]`;
-        tl.fromTo(Q(s), { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.015 }, a);
-        chars(`${s} .tt`, a, 0.03, 0.003);
-        tl.fromTo(Q(`${s} .qq`), { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: 0.025, ease: "power2.out" }, a + 0.02);
-        out(s, a + 0.062, 0.02, { y: -30 });
-      });
-
-      // SCENE 04 — philosophy
-      [0.715, 0.775, 0.835].forEach((s, i) => {
-        const sel = `[data-l=ss${i}]`;
-        tl.fromTo(Q(sel), { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.01 }, s);
-        chars(sel, s, 0.035, 0.002, { rotateX: -75, z: -260 });
-        out(sel, s + 0.052, 0.02, { scale: 1.08 });
-      });
-
-      // SCENE 05 — final reveal
-      tl.fromTo(Q("[data-l=final]"), { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.01 }, 0.915);
-      chars("[data-l=final] .ft", 0.92, 0.03, 0.002);
-      tl.fromTo(Q("[data-l=final] .fq"), { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.02, ease: "power2.out" }, 0.95);
-      tl.fromTo(Q("[data-l=final] .fc"), { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.02, ease: "power2.out" }, 0.965);
-    }, root);
-    const t = setTimeout(() => { ScrollTrigger.refresh(); window.dispatchEvent(new Event("resize")); }, 700);
-    return () => { clearTimeout(t); ctx.revert(); prog.v = 0; };
-  }, [mode, prog]);
+/* Sticky stacking card: scales down as later cards slide over it */
+function StageCard({ stage, index, total, progress }) {
+  const targetScale = 1 - (total - 1 - index) * 0.03;
+  const range = [index / total, 1];
+  const scale = useTransform(progress, range, [1, targetScale]);
 
   return (
-    <main ref={root} className="rcs-about relative w-full self-stretch overflow-x-clip">
+    <div className="sticky top-24 h-[85vh] md:top-32">
+      <motion.div
+        style={{ scale, top: `${index * 28}px` }}
+        className="relative origin-top rounded-[40px] border-2 border-[#6B93FF]/50 bg-[#050A14] p-4 shadow-[0_40px_120px_rgba(0,0,0,.6)] sm:rounded-[50px] sm:p-6 md:rounded-[60px] md:p-8"
+      >
+        {/* top row */}
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 px-2 sm:px-4">
+          <div className="flex items-center gap-4 sm:gap-8">
+            <span className="rcs-display rcs-outline text-[clamp(3rem,10vw,8rem)] leading-none text-[#245DFF]">{stage.number}</span>
+            <div>
+              <p className={`rcs-nav-mono ${label} uppercase tracking-[.25em] text-[#6B93FF]`}>Stage {stage.number} / 0{total}</p>
+              <h3 className="rcs-display mt-1 uppercase text-[clamp(1.4rem,4vw,3rem)]">{stage.title}</h3>
+            </div>
+          </div>
+          <GhostPill>The hierarchy</GhostPill>
+        </div>
+
+        {/* bottom grid: 40% / 60% */}
+        <div className="mt-4 grid grid-cols-[40fr_60fr] gap-3 sm:mt-6 sm:gap-4">
+          <div className="flex flex-col gap-3 sm:gap-4">
+            <div
+              className="flex items-end overflow-hidden rounded-[28px] bg-[#124CCF] p-4 sm:rounded-[40px] sm:p-6 md:rounded-[50px]"
+              style={{ height: "clamp(130px, 16vw, 230px)" }}
+            >
+              <p className="text-[11px] font-semibold leading-snug text-white sm:text-[13px] md:text-[11px]">{stage.kicker}</p>
+            </div>
+            <div
+              className="flex items-end overflow-hidden rounded-[28px] bg-[#F5F2EA] p-4 text-[#111111] sm:rounded-[40px] sm:p-6 md:rounded-[50px]"
+              style={{ height: "clamp(160px, 22vw, 340px)" }}
+            >
+              <p className="text-[11px] leading-snug text-black/70 sm:text-[13px] md:text-[11px]">{stage.body}</p>
+            </div>
+          </div>
+          <div
+            className="relative flex items-center justify-center overflow-hidden rounded-[28px] bg-[radial-gradient(ellipse_at_70%_20%,#245DFF_0%,#124CCF_40%,#071C50_100%)] sm:rounded-[40px] md:rounded-[50px]"
+            style={{ height: "calc(clamp(130px, 16vw, 230px) + clamp(160px, 22vw, 340px) + 0.75rem)" }}
+          >
+            <span aria-hidden="true" className="absolute h-[70%] w-[46%] rotate-[-18deg] rounded-[50%] border-[clamp(10px,2.4vw,30px)] border-[#8FB0FF]/70 shadow-[0_0_60px_rgba(143,176,255,.5)]" />
+            <span aria-hidden="true" className="absolute right-[12%] top-[14%] h-[14%] w-[9%] rounded-full border-[3px] border-[#C6A66B]" />
+            <span aria-hidden="true" className="rcs-display pointer-events-none select-none uppercase text-[clamp(1.6rem,6.5vw,6rem)] text-white/90 mix-blend-overlay">{stage.title}</span>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function StrategyStack() {
+  const ref = useRef(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
+  return (
+    <div ref={ref} className="mt-12 md:mt-20">
+      {stages.map((s, i) => (
+        <StageCard key={s.number} stage={s} index={i} total={stages.length} progress={scrollYProgress} />
+      ))}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Page                                                                */
+/* ------------------------------------------------------------------ */
+
+export default function About() {
+  const rootRef = useRef(null);
+  const heroRef = useRef(null);
+  const [activeFaq, setActiveFaq] = useState(-1);
+  const [webgl, setWebgl] = useState(false);
+  const [reduced, setReduced] = useState(false);
+
+  const { scrollYProgress: heroProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
+  const heroY = useTransform(heroProgress, [0, 1], [0, -140]);
+  const heroOpacity = useTransform(heroProgress, [0, 0.8], [1, 0.2]);
+
+  /* The footer sits outside <main>; give the page a solid navy backdrop so it is always readable */
+  useEffect(() => {
+    const prev = document.body.style.backgroundColor;
+    document.body.style.backgroundColor = "#050A14";
+    return () => {
+      document.body.style.backgroundColor = prev;
+    };
+  }, []);
+
+  /* WebGL support + reduced motion + data saver */
+  useEffect(() => {
+    const rm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    setReduced(rm);
+    if (rm || navigator.connection?.saveData) return;
+    try {
+      const c = document.createElement("canvas");
+      setWebgl(Boolean(window.WebGLRenderingContext && (c.getContext("webgl2") || c.getContext("webgl"))));
+    } catch {
+      setWebgl(false);
+    }
+  }, []);
+
+  return (
+    <main ref={rootRef} data-scene-root className="rcs-about rcs-body relative overflow-x-clip bg-[#050A14] text-[#F5F2EA]">
       <style>{`
-        .rcs-about{font-family:'Manrope','Helvetica Neue',Arial,sans-serif;background:#08090B;color:#EAE4DA}
-        .rcs-about .disp{font-family:'Playfair Display',Georgia,serif;font-weight:900;letter-spacing:-.04em;line-height:.88;text-transform:uppercase}
-        .rcs-about .ital{font-style:italic;text-transform:none;color:#B87345;letter-spacing:-.03em}
-        .rcs-about .mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace;letter-spacing:.28em;text-transform:uppercase;font-size:10px}
-        .rcs-about .metal{background:linear-gradient(180deg,#F4EFE6 0%,#C9BFAF 55%,#8E8372 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
-        .rcs-about .mc .ch{background:linear-gradient(180deg,#F4EFE6 0%,#C9BFAF 55%,#8E8372 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
-        .rcs-about .mask{display:block;overflow:hidden;padding:.06em 0 .12em;text-align:inherit}
-        .rcs-about .mc{color:#EAE4DA}
-        .rcs-about .free{display:block;perspective:900px}
-        .rcs-about .ch{display:inline-block;will-change:transform,opacity}
-        .rcs-about ::selection{background:#B87345;color:#08090B}
-        .rcs-about [data-l]{visibility:hidden}
-        .rcs-about [data-l=hero]{visibility:visible}
-        .rcs-cta{display:inline-flex;align-items:center;gap:1.1rem;position:relative;padding:1rem 0;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:#EAE4DA}
-        .rcs-cta::before,.rcs-cta::after{content:"";position:absolute;left:0;bottom:0;height:1px;width:100%}
-        .rcs-cta::before{background:rgba(234,228,218,.25)}
-        .rcs-cta::after{background:#B87345;transform:scaleX(0);transform-origin:left;transition:transform .7s cubic-bezier(.2,.8,.2,1)}
-        .rcs-cta:hover::after,.rcs-cta:focus-visible::after{transform:scaleX(1)}
-        .rcs-cta-label{transition:letter-spacing .6s cubic-bezier(.2,.8,.2,1),color .4s}
-        .rcs-cta:hover .rcs-cta-label{letter-spacing:.38em;color:#D99A54}
-        .rcs-cta-arrow{display:grid;place-items:center;width:2.6rem;height:2.6rem;border:1px solid #B87345;border-radius:999px;color:#B87345;transition:transform .6s cubic-bezier(.2,.8,.2,1),background .4s,color .4s}
-        .rcs-cta:hover .rcs-cta-arrow{transform:translateX(10px);background:#B87345;color:#08090B}
-        .rcs-cta:focus-visible{outline:2px solid #D99A54;outline-offset:6px}
-        .rcs-faq{display:grid;grid-template-rows:0fr;visibility:hidden;transition:grid-template-rows .4s ease,visibility 0s linear .4s}
-        .rcs-faq[data-open=true]{grid-template-rows:1fr;visibility:visible;transition-delay:0s}
-        @media (prefers-reduced-motion:reduce){.rcs-faq{transition:none}}
+        .rcs-about { font-family: 'Manrope', 'Helvetica Neue', Arial, sans-serif; }
+        .rcs-about .rcs-display { font-family: 'Playfair Display', Georgia, serif; font-weight: 900; letter-spacing: -0.045em; line-height: .92; }
+        .rcs-about .font-editorial { font-family: 'Playfair Display', Georgia, serif; }
+        .rcs-about ::selection { background: #124CCF; color: #fff; }
+
+        /* gradient headline text */
+        .rcs-grad { background: linear-gradient(180deg, #7F8796 0%, #D7E2EA 100%);
+          -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
+
+        .rcs-grain::after { content: ""; pointer-events: none; position: absolute; inset: 0; opacity: .07;
+          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.32'/%3E%3C/svg%3E");
+          mix-blend-mode: soft-light; }
+
+        .rcs-outline { color: transparent; -webkit-text-stroke: 1px currentColor; }
+
+        .rcs-faq-panel { display: grid; grid-template-rows: 0fr; visibility: hidden; transition: grid-template-rows .35s ease, visibility 0s linear .35s; }
+        .rcs-faq-panel[data-open="true"] { grid-template-rows: 1fr; visibility: visible; transition-delay: 0s; }
+
+        @media (prefers-reduced-motion: reduce) {
+          .rcs-faq-panel { transition: none; }
+        }
       `}</style>
 
-      {mode === "pending" && <div className="h-[100svh] bg-[#08090B]" />}
-      {mode === "static" && <StaticFilm ctaHref={ctaHref} />}
+      {/* ============ SHARED 3D LAYER (one canvas for the whole page) ============ */}
+      <div className="pointer-events-none absolute inset-0 z-0 [clip-path:inset(0)]" aria-hidden="true">
+        <div className="fixed inset-0">
+          {webgl ? (
+            <Suspense fallback={<RibbonFallback />}>
+              <RibbonWorld />
+            </Suspense>
+          ) : (
+            <RibbonFallback />
+          )}
+          <div className="absolute inset-0 bg-[#050A14]/55 md:bg-[#050A14]/40" />
+        </div>
+      </div>
 
-      {/* =============== THE FILM (pinned, scroll-driven) =============== */}
-      {mode === "3d" && (
-        <section ref={track} className="relative w-full" style={{ height: `${span}vh` }} aria-label="Beyond the lens — Rare Creative Studios">
-          <div ref={film} className="sticky top-0 h-screen w-full overflow-hidden bg-[#08090B]" style={{ height: "100svh" }}>
-          <div className="absolute inset-0" style={{ width: "100%", height: "100%" }} aria-hidden="true">
-            <Suspense fallback={null}><FilmCanvas progress={prog} active={active} /></Suspense>
-          </div>
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_45%,rgba(8,9,11,.75)_100%)]" aria-hidden="true" />
+      <div className="relative z-10">
+        {/* ================= 1. HERO ================= */}
+        <section ref={heroRef} className="rcs-grain relative isolate flex h-screen min-h-[640px] flex-col justify-end overflow-hidden px-5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-28 sm:px-8 md:px-14">
+          <div className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(4,5,8,.1)_0%,rgba(4,5,8,.2)_45%,#050A14_100%)]" aria-hidden="true" />
 
-          <div className="pointer-events-none absolute inset-0">
-            {/* SCENE 01 */}
-            <div data-l="hero" className="absolute inset-0">
-              <div className="absolute inset-x-0 top-0 px-5 pt-[12vh] md:px-14 md:pt-[13vh]">
-                <div className="sm mono mx-auto flex max-w-[1440px] justify-between text-[#C7A477]"><span>Rare Creative Studios</span><span className="hidden md:inline">Anamorphic · T1.3 · 50 mm</span><span>About</span></div>
-              </div>
-              <h1 aria-label="Beyond the lens." className="disp mc absolute inset-0 text-center text-[clamp(2.8rem,9vw,8.5rem)] [letter-spacing:.02em] [text-shadow:0_8px_60px_rgba(0,0,0,.6)]">
-                <span className="mask absolute inset-x-0 top-[19vh] whitespace-nowrap"><Split t="BEYOND" /></span>
-                <span className="mask absolute inset-x-0 bottom-[16vh] whitespace-nowrap"><Split t="THE LENS" /><Split t="." copper /></span>
+          <motion.div style={reduced ? undefined : { y: heroY, opacity: heroOpacity }} className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col justify-end">
+            <FadeIn delay={0} y={-20}>
+              <p className={`rcs-nav-mono mb-6 ${label} uppercase tracking-[.3em] text-white/70`}>Strategy / Story / Culture</p>
+            </FadeIn>
+
+            <FadeIn delay={0.15} y={40} className="w-full overflow-hidden">
+              <h1 className="rcs-display w-full whitespace-nowrap uppercase leading-none text-[10.5vw] sm:text-[11vw] md:text-[11.5vw] lg:text-[12vw]">
+                <span className="rcs-grad block">The best PR</span>
+                <span className="rcs-grad block">isn’t seen.</span>
+                <span className="font-editorial mt-2 block font-black normal-case italic tracking-[-.04em] text-[#6B93FF] text-[9vw] sm:text-[9.5vw] md:text-[9.5vw]">It’s felt.</span>
               </h1>
+            </FadeIn>
+          </motion.div>
+
+          {/* bottom bar */}
+          <div className="relative mx-auto mt-8 flex w-full max-w-[1440px] items-end justify-between gap-6 pb-2 sm:pb-4 md:pb-6">
+            <FadeIn delay={0.35} y={20}>
+              <p className="max-w-[160px] font-light uppercase leading-snug tracking-wide text-[#D7E2EA] sm:max-w-[220px] md:max-w-[260px]" style={{ fontSize: "clamp(0.75rem, 1.2vw, 1.1rem)" }}>
+                Modern PR, reimagined. Narrative, influence and film that shape perception.
+              </p>
+            </FadeIn>
+            <FadeIn delay={0.5} y={20}>
+              <Magnet padding={120} strength={3}>
+                <ContactButton />
+              </Magnet>
+            </FadeIn>
+          </div>
+        </section>
+
+        {/* ============ 2. MARQUEE ============ */}
+        <MarqueeSection />
+
+        {/* ================= 3. PHILOSOPHY (about) ================= */}
+        <section id="our-philosophy" className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#050A14]/55 px-5 py-20 sm:px-8 md:px-10">
+          <FloatObject kind="orb" delay={0.1} x={-80} floatDelay={0} className="left-[1%] top-[4%] w-[110px] sm:left-[2%] sm:w-[150px] md:left-[4%] md:w-[200px]" />
+          <FloatObject kind="gold" delay={0.25} x={-80} floatDelay={1.2} className="bottom-[8%] left-[3%] w-[90px] sm:left-[6%] sm:w-[130px] md:left-[10%] md:w-[170px]" />
+          <FloatObject kind="ring" delay={0.15} x={80} floatDelay={0.6} className="right-[1%] top-[4%] w-[110px] sm:right-[2%] sm:w-[150px] md:right-[4%] md:w-[200px]" />
+          <FloatObject kind="sheet" delay={0.3} x={80} floatDelay={1.8} className="bottom-[8%] right-[3%] w-[100px] sm:right-[6%] sm:w-[140px] md:right-[10%] md:w-[190px]" />
+
+          <div className="relative z-10 flex flex-col items-center gap-16 text-center sm:gap-20 md:gap-24">
+            <div className="flex flex-col items-center gap-10 sm:gap-14 md:gap-16">
+              <FadeIn y={40}>
+                <div className="flex flex-col items-center gap-5">
+                  <Eyebrow>Our philosophy</Eyebrow>
+                  <h2 className="rcs-display rcs-grad uppercase leading-none text-[clamp(2.2rem,9vw,7rem)]">
+                    Visibility
+                    <br />
+                    is easy.
+                  </h2>
+                  <p className="font-editorial font-black italic tracking-[-.04em] text-[#6B93FF] text-[clamp(1.6rem,6vw,4.5rem)]">Relevance is earned.</p>
+                </div>
+              </FadeIn>
+
+              <div className="flex max-w-[560px] flex-col gap-5">
+                <AnimatedText text={philosophy[0]} className="text-center font-medium leading-relaxed text-[#D7E2EA]" />
+                <AnimatedText text={philosophy[1]} className="text-center font-medium leading-relaxed text-[#D7E2EA]" />
+                <AnimatedText text={philosophy[2]} className="text-center font-bold leading-relaxed text-white" />
+              </div>
             </div>
 
-            {/* SCENE 02 */}
-            <div data-l="enter" className="absolute inset-0 flex flex-col items-center justify-center px-5 text-center" aria-label="We see what others imagine.">
-              <span className="mask disp r1 text-[clamp(2.6rem,10vw,10rem)]"><Split t="WE SEE" /></span>
-              <span className="mask disp r2 text-[clamp(2.6rem,10vw,10rem)]"><Split t="WHAT OTHERS" /></span>
-              <span className="mask disp ital r3 text-[clamp(2.6rem,10vw,10rem)]"><Split t="IMAGINE." /></span>
-            </div>
+            <FadeIn delay={0.1}>
+              <Magnet padding={120} strength={3}>
+                <ContactButton />
+              </Magnet>
+            </FadeIn>
+          </div>
+        </section>
 
-            {/* SCENE 03 */}
-            {STAGES.map((s, i) => (
-              <div key={s.n} data-l={`st${i}`} className="absolute inset-x-0 bottom-0 px-5 pb-[17vh] md:px-14 md:pb-[15vh]">
-                <div className="mx-auto max-w-[1440px]">
-                  <p className="mono mb-4 flex items-center gap-3 text-[#B87345]"><span className="h-px w-10 bg-[#B87345]" aria-hidden="true" />Stage {s.n} / 04</p>
-                  <h2 className="disp mask tt mc text-[clamp(2.1rem,8.2vw,7.2rem)]"><Split t={s.t} /></h2>
-                  <p className="qq mt-4 max-w-sm font-light leading-relaxed text-[#EAE4DA]/80 md:text-lg">{s.q}</p>
+        {/* ================= 4. WHAT WE DO (ivory, numbered list) ================= */}
+        <section className="relative rounded-t-[40px] bg-[#F5F2EA] px-5 py-20 text-[#0C0C0C] sm:rounded-t-[50px] sm:px-8 sm:py-24 md:rounded-t-[60px] md:px-10 md:py-32">
+          <FadeIn>
+            <div className="mb-16 flex flex-col items-center gap-4 text-center sm:mb-20 md:mb-28">
+              <Eyebrow tone="light">What we do</Eyebrow>
+              <h2 className={`rcs-display uppercase leading-none ${sectionTitle}`}>
+                One clear
+                <br />
+                <span className="font-editorial font-black normal-case italic tracking-[-.04em] text-[#124CCF]">point of view.</span>
+              </h2>
+            </div>
+          </FadeIn>
+
+          <ul className="mx-auto max-w-5xl">
+            {capabilities.map((c, i) => (
+              <FadeIn as="li" key={c.number} delay={i * 0.1} className="flex items-start gap-5 border-b py-8 sm:gap-8 sm:py-10 md:gap-12 md:py-12" style={{ borderColor: "rgba(12,12,12,.15)", borderTopWidth: i === 0 ? 1 : 0, borderTopStyle: "solid" }}>
+                <span className="rcs-display shrink-0 leading-none text-[#0C0C0C]" style={{ fontSize: "clamp(3rem, 10vw, 140px)" }}>{c.number}</span>
+                <div className="flex flex-col gap-3 pt-1 sm:pt-3">
+                  <h3 className="rcs-display uppercase" style={{ fontSize: "clamp(1rem, 2.2vw, 2.1rem)" }}>{c.title}</h3>
+                  <p className="max-w-2xl font-light leading-relaxed" style={{ fontSize: "clamp(0.85rem, 1.6vw, 1.25rem)", opacity: 0.6 }}>{c.description}</p>
+                </div>
+              </FadeIn>
+            ))}
+          </ul>
+        </section>
+
+        {/* ================= 5. STRATEGY HIERARCHY (sticky stacking cards) ================= */}
+        <section className="relative z-10 -mt-10 rounded-t-[40px] bg-[#050A14] px-5 pb-24 pt-20 sm:-mt-12 sm:rounded-t-[50px] sm:px-8 sm:pt-24 md:-mt-14 md:rounded-t-[60px] md:px-10 md:pt-32">
+          <FadeIn>
+            <div className="flex flex-col items-center gap-5 text-center">
+              <Eyebrow>The strategy hierarchy</Eyebrow>
+              <h2 className={`rcs-display rcs-grad uppercase leading-none ${sectionTitle}`}>Start at the top.</h2>
+              <p className="font-editorial font-black italic tracking-[-.04em] text-white/55 text-[clamp(1.4rem,5vw,3.2rem)]">Make every move count.</p>
+              <p className={`mt-2 max-w-xl text-white/70 ${bodyDark}`}>
+                Every campaign begins with a clear strategic objective, not a list of disconnected tactics. Each stage carries the one before it.
+              </p>
+            </div>
+          </FadeIn>
+
+          <div className="mx-auto max-w-[1440px]">
+            <StrategyStack />
+          </div>
+        </section>
+
+        {/* ================= 6. CREATIVE PRODUCTION ================= */}
+        <section className="relative overflow-hidden border-t border-white/10 bg-[#071C50]/85 px-5 py-24 sm:px-8 sm:py-32 md:px-14 md:py-44">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_70%_40%,rgba(36,93,255,.3),transparent_60%)]" />
+          <FadeIn className="relative mx-auto max-w-[1440px]">
+            <div className="relative px-0 py-2 sm:px-10 sm:py-10">
+              <span aria-hidden="true" className="absolute left-0 top-0 hidden h-8 w-8 border-l border-t border-[#6B93FF]/70 sm:block" />
+              <span aria-hidden="true" className="absolute right-0 top-0 hidden h-8 w-8 border-r border-t border-[#6B93FF]/70 sm:block" />
+              <span aria-hidden="true" className="absolute bottom-0 left-0 hidden h-8 w-8 border-b border-l border-[#6B93FF]/70 sm:block" />
+              <span aria-hidden="true" className="absolute bottom-0 right-0 hidden h-8 w-8 border-b border-r border-[#6B93FF]/70 sm:block" />
+
+              <Eyebrow>Creative production</Eyebrow>
+              <h2 className={`rcs-display mt-5 uppercase ${h2Big}`}>
+                Stories designed
+                <br />
+                <span className="font-editorial font-black normal-case italic tracking-[-.04em] text-[#8FB0FF]">to be felt.</span>
+              </h2>
+
+              <div className="mt-10 grid gap-10 md:grid-cols-[1fr_1fr] md:gap-16">
+                <p className={`max-w-md text-white/75 ${bodyDark}`}>
+                  Creative production translates strategy into visual experiences with a clear point of view. The idea comes first; the craft carries it.
+                </p>
+                <ul className="border-t border-white/20">
+                  {production.map((p, i) => (
+                    <FadeIn as="li" key={p} delay={i * 0.06} y={16} className="flex items-baseline gap-4 border-b border-white/20 py-3.5 text-[15px] font-medium tracking-[-.01em] text-[#F5F2EA] md:text-[10.5px]">
+                      <span aria-hidden="true" className={`rcs-nav-mono ${label} tracking-[.2em] text-[#8FB0FF]`}>0{i + 1}</span>
+                      {p}
+                    </FadeIn>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </FadeIn>
+        </section>
+
+        {/* ================= 7. FOUNDER'S MESSAGE ================= */}
+        <section className="relative px-4 py-16 sm:px-8 sm:py-24 md:px-14 md:py-32">
+          <div className="relative mx-auto max-w-[1440px]">
+            <FadeIn y={50} className="relative overflow-hidden rounded-[40px] bg-[#F5F2EA] px-5 py-12 text-[#111111] shadow-[0_40px_120px_rgba(0,0,0,.55)] sm:rounded-[50px] sm:px-10 sm:py-16 md:rounded-[60px] md:px-16 md:py-24">
+              <span aria-hidden="true" className="rcs-display pointer-events-none absolute -bottom-6 right-[-4%] select-none text-[clamp(8rem,34vw,32rem)] uppercase leading-none text-black/[0.045]">Rare</span>
+
+              <div className="relative grid items-start gap-12 lg:grid-cols-[minmax(0,.62fr)_minmax(0,1.38fr)] lg:gap-20">
+                <figure className="relative mx-auto w-full max-w-sm lg:mx-0 lg:max-w-none">
+                  <span aria-hidden="true" className="absolute -left-3 -top-3 h-16 w-16 border-l border-t border-[#124CCF] sm:h-24 sm:w-24" />
+                  <span aria-hidden="true" className="absolute -bottom-3 -right-3 h-16 w-16 border-b border-r border-black/25 sm:h-24 sm:w-24" />
+                  <Magnet padding={150} strength={3} activeTransition="transform 0.3s ease-out" inactiveTransition="transform 0.6s ease-in-out" className="block w-full">
+                    <div className="relative aspect-[4/5] overflow-hidden rounded-[28px] bg-[#C6CBD3] sm:rounded-[36px]">
+                      <img src={FOUNDER_IMAGE} alt="Pallapati Vinayvardhan Reddy, Founder of Rare creative studios" loading="lazy" decoding="async" className="h-full w-full object-cover object-top" />
+                      <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/40 to-transparent px-5 pb-5 pt-16">
+                        <p className="rcs-nav-mono text-[10px] font-medium uppercase tracking-[.22em] text-[#8FB0FF] md:text-[8px]">Rare creative studios</p>
+                        <p className="rcs-display mt-1 text-base leading-tight text-white md:text-[clamp(1rem,1.45vw,1.3rem)]">Pallapati Vinayvardhan Reddy</p>
+                        <p className="rcs-nav-mono mt-1 text-[10px] uppercase tracking-[.22em] text-white/70 md:text-[8px]">Founder</p>
+                      </figcaption>
+                    </div>
+                  </Magnet>
+                </figure>
+
+                <div className="min-w-0">
+                  <Eyebrow tone="light">Founder’s message</Eyebrow>
+                  <h2 className={`rcs-display mt-5 uppercase ${h2Chapter}`}>
+                    Make work
+                    <br />
+                    <span className="text-[#124CCF]">worth remembering.</span>
+                  </h2>
+
+                  <div className={`mt-8 max-w-2xl space-y-5 border-l border-[#124CCF] pl-5 text-black/75 sm:pl-7 ${bodyDark}`}>
+                    <p>At Rare creative studios, we see every project as an opportunity to think differently, tell better stories, and create work that makes an impact. We bring together creativity, strategy, and execution to help brands communicate with clarity and connect with the people who matter to them.</p>
+                    <p>For us, it’s never just about creating content. It’s about understanding the story behind a brand and finding the right way to bring it to life.</p>
+                  </div>
+
+                  <div className="rcs-nav-mono mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-[#111111]/15 pt-5 text-[10px] uppercase tracking-[.2em] text-black/60 md:text-[8px]">
+                    <span>Pallapati Vinayvardhan Reddy</span>
+                    <span aria-hidden="true" className="h-px w-10 bg-[#124CCF]" />
+                    <span className="text-black/50">Founder / Rare creative studios</span>
+                  </div>
                 </div>
               </div>
-            ))}
-
-            {/* SCENE 04 */}
-            {STATEMENTS.map(([a, b], i) => (
-              <div key={a} data-l={`ss${i}`} className="disp absolute inset-0 flex flex-col items-center justify-center px-5 text-center" aria-label={`${a} over ${b}`}>
-                <span className="free mc text-[clamp(2.6rem,11.5vw,11rem)]"><Split t={a} /></span>
-                <span className="free ital my-[.25em] text-[clamp(1.4rem,5vw,4.5rem)]"><Split t="OVER" /></span>
-                <span className="free mc text-[clamp(2.6rem,11.5vw,11rem)]"><Split t={b} /></span>
-              </div>
-            ))}
-
-            {/* SCENE 05 */}
-            <div data-l="final" className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-4 px-5 pb-[11vh] text-center">
-              <h2 className="disp ft mask mc text-[clamp(1.5rem,4.4vw,4rem)]"><Split t="RARE CREATIVE STUDIOS" /></h2>
-              <p className="fq disp ital text-[clamp(1.1rem,2.4vw,2rem)]">We don’t follow the frame. We redefine it.</p>
-              <Cta href={ctaHref}>Explore what we create</Cta>
-            </div>
-
-            {/* HUD */}
-            <div className="absolute inset-x-0 bottom-0 px-5 pb-4 md:px-14">
-              <div className="mx-auto max-w-[1440px]">
-                <p ref={chap} data-i="0" className="mono mb-3 text-[#EAE4DA]/55">01 — The eye of creativity</p>
-                <div className="h-px w-full bg-white/10"><div ref={bar} className="h-full origin-left bg-[#B87345]" style={{ transform: "scaleX(0)" }} /></div>
-              </div>
-            </div>
-            <div data-l="hint" className="mono absolute bottom-[7.5rem] right-5 flex items-center gap-3 text-[#C7A477] md:right-14">Scroll<span className="h-10 w-px bg-[#B87345]" aria-hidden="true" /></div>
-          </div>
-          </div>
-        </section>
-      )}
-
-      {/* =============== AFTER THE FILM =============== */}
-      <div className="relative z-10 bg-[#08090B]">
-        <section className="px-5 py-28 md:px-14 md:py-44">
-          <div className="mx-auto grid max-w-[1440px] gap-14 lg:grid-cols-[1.1fr_.9fr]">
-            <FadeIn>
-              <Eyebrow>Our philosophy</Eyebrow>
-              <h2 className="disp metal mt-6 text-[clamp(2.6rem,8vw,7.5rem)]">Visibility<br />is easy.</h2>
-              <p className="disp ital mt-4 text-[clamp(1.8rem,5vw,4.5rem)]">Relevance is earned.</p>
-            </FadeIn>
-            <div className="max-w-xl space-y-6 self-end text-[15px] leading-8 text-[#EAE4DA]/70 md:text-[17px]">
-              {philosophy.map((t, i) => <FadeIn key={i} delay={i * 0.08}><p className={i === 2 ? "font-semibold text-[#EAE4DA]" : ""}>{t}</p></FadeIn>)}
-            </div>
-          </div>
-        </section>
-
-        <section className="bg-[#121417] px-5 py-24 md:px-14 md:py-36">
-          <div className="mx-auto max-w-6xl">
-            <FadeIn><Eyebrow>What we do</Eyebrow><h2 className="disp mt-6 text-[clamp(2.4rem,7vw,6.5rem)]">One clear <span className="ital">point of view.</span></h2></FadeIn>
-            <ul className="mt-16 md:mt-24">
-              {capabilities.map((c, i) => (
-                <FadeIn as="li" key={c.number} delay={i * 0.04} className="grid grid-cols-[3.5rem_1fr] gap-x-4 gap-y-3 border-t border-white/10 py-8 md:grid-cols-[8rem_1fr_1.1fr] md:items-baseline md:py-10">
-                  <span className="disp text-3xl text-[#B87345] md:text-6xl">{c.number}</span>
-                  <h3 className="disp text-xl md:text-3xl">{c.title}</h3>
-                  <p className="col-span-2 leading-7 text-[#EAE4DA]/60 md:col-span-1">{c.description}</p>
-                </FadeIn>
-              ))}
-            </ul>
-            <FadeIn className="mt-12 flex flex-wrap gap-3">
-              {production.map((p) => <span key={p} className="rounded-full border border-[#B87345]/50 px-4 py-2 text-[13px] text-[#C7A477]">{p}</span>)}
             </FadeIn>
           </div>
         </section>
 
-        <section className="px-5 py-28 md:px-14 md:py-40">
-          <div className="mx-auto grid max-w-[1440px] items-center gap-14 lg:grid-cols-[.8fr_1.2fr] lg:gap-24">
-            <FadeIn className="relative mx-auto w-full max-w-md lg:mx-0">
-              <span aria-hidden="true" className="absolute -left-3 -top-3 h-20 w-20 border-l border-t border-[#B87345]" />
-              <span aria-hidden="true" className="absolute -bottom-3 -right-3 h-20 w-20 border-b border-r border-[#B87345]/50" />
-              <figure className="relative aspect-[4/5] overflow-hidden bg-[#121417]">
-                <img src={FOUNDER_IMAGE} alt="Pallapati Vinayvardhan Reddy, Founder of Rare creative studios" loading="lazy" decoding="async" className="h-full w-full object-cover object-top [filter:saturate(.85)_contrast(1.05)]" />
-                <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(180deg,transparent_55%,rgba(8,9,11,.9)_100%)]" />
-                <figcaption className="absolute inset-x-0 bottom-0 p-5">
-                  <p className="mono text-[#C7A477]">Rare creative studios</p>
-                  <p className="disp mt-2 text-xl leading-tight md:text-2xl">Pallapati Vinayvardhan Reddy</p>
-                  <p className="mono mt-2 text-[#EAE4DA]/60">Founder</p>
-                </figcaption>
-              </figure>
-            </FadeIn>
-            <FadeIn>
-              <Eyebrow>Founder’s message</Eyebrow>
-              <h2 className="disp mt-6 text-[clamp(2rem,5.2vw,4.6rem)]">Make work <span className="ital">worth remembering.</span></h2>
-              <div className="mt-8 max-w-2xl space-y-5 border-l border-[#B87345] pl-5 leading-8 text-[#EAE4DA]/75 md:pl-8 md:text-[17px]">
-                <p>At Rare creative studios, we see every project as an opportunity to think differently, tell better stories, and create work that makes an impact. We bring together creativity, strategy, and execution to help brands communicate with clarity and connect with the people who matter to them.</p>
-                <p>For us, it’s never just about creating content. It’s about understanding the story behind a brand and finding the right way to bring it to life.</p>
-              </div>
-            </FadeIn>
-          </div>
-        </section>
-
-        <section id="faq" className="border-t border-white/10 bg-[#121417] px-5 py-24 md:px-14 md:py-32">
+        {/* ================= 8. FAQ ================= */}
+        <section id="faq" className="relative border-t border-white/10 bg-[#050A14]/90 px-5 py-20 sm:px-8 sm:py-28 md:px-14 md:py-32">
           <div className="mx-auto grid max-w-[1440px] gap-10 lg:grid-cols-[.72fr_1.28fr] lg:gap-20">
-            <FadeIn className="lg:sticky lg:top-28 lg:self-start">
+            <FadeIn className="lg:sticky lg:top-24 lg:self-start">
               <Eyebrow>Frequently asked questions</Eyebrow>
-              <h2 className="disp metal mt-6 text-[clamp(2.2rem,5vw,4.6rem)]">The right<br />questions.</h2>
+              <h2 className={`rcs-display rcs-grad mt-5 uppercase ${h2Main}`}>
+                The right
+                <br />
+                questions.
+              </h2>
             </FadeIn>
-            <div className="border-t border-white/15">
-              {faqs.map((f, i) => {
-                const open = faq === i;
+
+            <div className="border-t border-white/20">
+              {faqs.map((item, index) => {
+                const open = activeFaq === index;
+                const panelId = `rcs-faq-panel-${index}`;
+                const buttonId = `rcs-faq-button-${index}`;
                 return (
-                  <div key={f.question} className="border-b border-white/15">
+                  <FadeIn key={item.question} delay={index * 0.05} y={18} className="border-b border-white/20">
                     <h3>
-                      <button type="button" id={`rcs-fb-${i}`} aria-expanded={open} aria-controls={`rcs-fp-${i}`} onClick={() => setFaq(open ? -1 : i)}
-                        className="flex min-h-[76px] w-full items-center justify-between gap-4 py-5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#D99A54]">
-                        <span className="flex-1 text-[clamp(1.05rem,4.4vw,1.25rem)] font-medium leading-snug tracking-[-.01em]">{f.question}</span>
-                        <span aria-hidden="true" className={`relative grid h-10 w-10 shrink-0 place-items-center transition-transform duration-300 ${open ? "rotate-45 text-[#D99A54]" : "text-[#EAE4DA]/70"}`}>
-                          <span className="absolute h-[2px] w-5 bg-current" /><span className="absolute h-5 w-[2px] bg-current" />
-                        </span>
+                      <button
+                        type="button"
+                        id={buttonId}
+                        aria-expanded={open}
+                        aria-controls={panelId}
+                        onClick={() => setActiveFaq(open ? -1 : index)}
+                        className={`flex min-h-[72px] w-full items-center justify-between gap-4 py-5 text-left md:min-h-[84px] ${focus}`}
+                      >
+                        <span className="min-w-0 flex-1 text-[clamp(1.05rem,4.6vw,1.2rem)] font-medium leading-snug tracking-[-.02em] md:text-[clamp(.9rem,1.45vw,1.15rem)]">{item.question}</span>
+                        <PlusIcon open={open} />
                       </button>
                     </h3>
-                    <div id={`rcs-fp-${i}`} role="region" aria-labelledby={`rcs-fb-${i}`} data-open={open} className="rcs-faq">
-                      <div className="overflow-hidden"><p className="max-w-3xl pb-7 pr-2 leading-7 text-[#EAE4DA]/65 md:pr-10">{f.answer}</p></div>
+                    <div id={panelId} role="region" aria-labelledby={buttonId} data-open={open} className="rcs-faq-panel">
+                      <div className="overflow-hidden">
+                        <p className={`max-w-3xl pb-7 pr-2 text-white/70 sm:pr-10 ${bodyDark} md:text-[10px]`}>{item.answer}</p>
+                      </div>
                     </div>
-                  </div>
+                  </FadeIn>
                 );
               })}
             </div>
           </div>
         </section>
 
-        <section className="relative isolate overflow-hidden border-t border-white/10 px-5 py-28 md:px-14 md:py-44">
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_80%_110%,rgba(184,115,69,.35),transparent_60%)]" />
-          <FadeIn className="mx-auto max-w-[1440px]">
-            <Eyebrow>The next move</Eyebrow>
-            <h2 className="disp mt-6 max-w-5xl text-[clamp(2.2rem,7vw,6.2rem)]">Your brand deserves <span className="ital">a defining moment.</span></h2>
-            <div className="mt-12 flex flex-col gap-10 sm:flex-row sm:items-end sm:justify-between">
-              <p className="max-w-md leading-8 text-[#EAE4DA]/75">If the ambition is bigger than a mention, let’s start with the story worth telling.</p>
-              <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="rcs-cta">
-                <span className="rcs-cta-label">Start a conversation</span>
-                <span className="rcs-cta-arrow" aria-hidden="true"><ArrowUpRight size={18} strokeWidth={1.5} /></span>
-                <span className="sr-only"> (opens WhatsApp in a new tab)</span>
-              </a>
+        {/* ================= 9. CTA ================= */}
+        <section className="relative isolate overflow-hidden border-t border-white/10 bg-[#124CCF] px-5 pb-[max(6rem,env(safe-area-inset-bottom))] pt-24 text-[#F5F2EA] sm:px-8 sm:py-36 md:px-14 md:py-48">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_80%_110%,rgba(36,93,255,.9),transparent_55%),radial-gradient(ellipse_at_15%_0%,rgba(7,28,80,.7),transparent_55%)]" />
+          <FadeIn className="relative mx-auto max-w-[1440px]">
+            <p className={`rcs-nav-mono flex items-center gap-3 ${label} font-medium uppercase tracking-[.28em] text-white/80`}>
+              <span aria-hidden="true" className="h-px w-8 bg-current" />
+              The next move
+            </p>
+            <h2 className={`rcs-display mt-5 max-w-5xl uppercase ${h2Cta}`}>
+              Your brand deserves
+              <br />
+              <span className="font-editorial font-black normal-case italic tracking-[-.04em]">a defining moment.</span>
+            </h2>
+
+            <div className="mt-10 flex flex-col gap-10 sm:flex-row sm:items-end sm:justify-between">
+              <p className={`max-w-md text-white/85 ${bodyDark}`}>If the ambition is bigger than a mention, let’s start with the story worth telling.</p>
+              <Magnet padding={140} strength={3}>
+                <a
+                  href={WHATSAPP_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`group inline-flex shrink-0 items-center gap-5 ${label} font-semibold uppercase tracking-[.2em] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white`}
+                >
+                  <span className="grid h-16 w-16 place-items-center rounded-full border border-[#F5F2EA]/80 text-[#F5F2EA] transition-colors duration-300 group-hover:bg-[#F5F2EA] group-hover:text-[#124CCF]">
+                    <ArrowUpRight size={20} strokeWidth={1.6} aria-hidden="true" />
+                  </span>
+                  Start a conversation
+                  <span className="sr-only"> (opens WhatsApp in a new tab)</span>
+                </a>
+              </Magnet>
             </div>
           </FadeIn>
         </section>
